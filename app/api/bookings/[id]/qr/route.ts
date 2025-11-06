@@ -64,6 +64,22 @@ export async function POST(
       });
     }
 
+    // Check QR generation limit (2 per day)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const generatedTodayCount = await QRToken.countDocuments({
+      bookingId: params.id,
+      createdAt: { $gte: todayStart },
+    });
+
+    if (generatedTodayCount >= 2) {
+      return NextResponse.json(
+        { error: 'QR code generation limit reached. Maximum 2 QR codes per day per booking.' },
+        { status: 400 }
+      );
+    }
+
     // Generate new QR token (equipment only)
     const expiryMinutes = POLICIES.QR_EQUIPMENT_PICKUP_WINDOW;
 

@@ -9,13 +9,13 @@ export function Badge({ className, variant = 'default', ...props }: BadgeProps) 
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors border',
+        'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap',
         {
-          'bg-primary/10 text-primary border-primary/20': variant === 'default',
-          'bg-secondary text-secondary-foreground border-border/50': variant === 'secondary',
-          'bg-destructive/10 text-destructive border-destructive/20': variant === 'destructive',
-          'bg-green-500/10 text-green-400 border-green-500/20': variant === 'success',
-          'bg-yellow-500/10 text-yellow-400 border-yellow-500/20': variant === 'warning',
+          'bg-badge-blue text-white': variant === 'default',
+          'bg-bg-dark text-text-muted border border-card-border': variant === 'secondary',
+          'bg-danger text-white': variant === 'destructive',
+          'bg-success text-white': variant === 'success',
+          'bg-yellow-500 text-white': variant === 'warning',
         },
         className
       )}

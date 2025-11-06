@@ -4,22 +4,52 @@
 
 @layer base {
   :root {
-    --background: 230 35% 7%;
-    --foreground: 0 0% 98%;
-    --card: 230 25% 11%;
-    --card-foreground: 0 0% 98%;
-    --border: 230 20% 18%;
-    --primary: 262 83% 58%;
+    /* Backgrounds / surfaces */
+    --bg-very-dark: #070914;
+    --bg-dark: #0E1116;
+    --card-border: rgba(255, 255, 255, 0.03);
+    --glass-overlay: rgba(255, 255, 255, 0.02);
+    --grid-line: #0f1720;
+
+    /* Primary / headings */
+    --accent-blue: #2FB0FF;
+
+    /* Secondary / accent gradient */
+    --accent-purple-1: #7A3CFF;
+    --accent-purple-2: #D45AFF;
+
+    /* Cards / muted text */
+    --text-main: #E6EAF0;
+    --text-muted: #AEB6C6;
+
+    /* Status */
+    --success: #27C46A;
+    --danger: #FF6B6B;
+    --badge-blue: #2E7BFF;
+
+    /* Icon glow / highlight */
+    --icon-glow: rgba(255, 255, 255, 0.12);
+
+    /* Radius */
+    --radius-lg: 16px;
+
+    /* Tailwind compatibility */
+    --background: 222 44% 6%;
+    --foreground: 220 27% 92%;
+    --card: 220 24% 8%;
+    --card-foreground: 220 27% 92%;
+    --border: 220 24% 12%;
+    --primary: 203 100% 59%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 230 25% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --muted: 230 25% 15%;
-    --muted-foreground: 215 16% 60%;
-    --accent: 262 83% 58%;
+    --secondary: 261 100% 62%;
+    --secondary-foreground: 0 0% 100%;
+    --destructive: 0 100% 71%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 220 15% 74%;
+    --muted-foreground: 220 15% 74%;
+    --accent: 203 100% 59%;
     --accent-foreground: 0 0% 100%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 }
 
@@ -29,21 +59,161 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #0a0e27 0%, #0f1432 50%, #0a0e27 100%);
+    @apply text-foreground;
+    background: linear-gradient(180deg, #05060b 0%, #0b1018 100%);
     background-attachment: fixed;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--text-main);
   }
 
-  /* Card styles with subtle glow */
-  .card-glow {
-    background: rgba(26, 31, 58, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(124, 58, 237, 0.1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  /* Grid texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
   }
 
-  .card-glow:hover {
-    border-color: rgba(124, 58, 237, 0.3);
-    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.1), 0 4px 6px -2px rgba(124, 58, 237, 0.05);
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-main);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    color: var(--accent-blue);
+  }
+
+  p {
+    line-height: 1.4;
+  }
+}
+
+@layer components {
+  /* Glass card effect */
+  .card-glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0));
+    background-color: var(--bg-dark);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow:
+      0 8px 30px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.015);
+    backdrop-filter: blur(6px);
+    transition: all 0.3s ease;
+  }
+
+  .card-glass:hover {
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  /* Glassy panel with blur */
+  .panel-blur {
+    backdrop-filter: blur(6px);
+    background: var(--glass-overlay);
+  }
+
+  /* Purple gradient button / pill CTA */
+  .btn-gradient,
+  .pill-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-purple-1), var(--accent-purple-2));
+    box-shadow: 0 6px 22px rgba(122, 60, 255, 0.12);
+    color: white;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-gradient:hover,
+  .pill-cta:hover {
+    box-shadow: 0 8px 28px rgba(122, 60, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Icon circle with glow */
+  .icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(239, 239, 239, 0.1), rgba(0, 0, 0, 0));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 8px 24px var(--icon-glow));
+  }
+
+  /* Icon glow effect */
+  .icon-glow {
+    filter: drop-shadow(0 8px 24px var(--icon-glow));
+  }
+
+  /* Status badge styles */
+  .badge-success {
+    background-color: var(--success);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .badge-danger {
+    background-color: var(--danger);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .badge-info {
+    background-color: var(--info-badge);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* Cyan accent text */
+  .text-accent {
+    color: var(--accent-blue);
+  }
+
+  /* Muted text */
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  /* Modern card hover with blue glow */
+  .card-hover-glow {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .card-hover-glow:hover {
+    box-shadow: 0 0 30px rgba(47, 176, 255, 0.3), 0 12px 40px rgba(0, 0, 0, 0.7);
+    border-color: rgba(47, 176, 255, 0.4);
+    transform: translateY(-4px);
   }
 }

@@ -54,19 +54,9 @@ async function seed() {
     // Create Facilities
     console.log('Creating facilities...');
 
-    const footballTurf = await Resource.create({
+    const mainTurf = await Resource.create({
       type: 'FACILITY',
-      name: 'Football Turf',
-      location: 'Sports Complex',
-      capacity: 22,
-      rules: { slotMinutes: 60 },
-      sharedGroupId: POLICIES.SHARED_TURF_GROUP_ID,
-      status: 'ACTIVE',
-    });
-
-    const cricketTurf = await Resource.create({
-      type: 'FACILITY',
-      name: 'Cricket Ground',
+      name: 'Main Turf',
       location: 'Sports Complex',
       capacity: 22,
       rules: { slotMinutes: 60 },
@@ -83,20 +73,11 @@ async function seed() {
       status: 'ACTIVE',
     });
 
-    const badmintonCourt1 = await Resource.create({
+    const volleyballCourt = await Resource.create({
       type: 'FACILITY',
-      name: 'Badminton Court 1',
-      location: 'Indoor Arena',
-      capacity: 4,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const badmintonCourt2 = await Resource.create({
-      type: 'FACILITY',
-      name: 'Badminton Court 2',
-      location: 'Indoor Arena',
-      capacity: 4,
+      name: 'Volleyball Court',
+      location: 'Sports Complex',
+      capacity: 12,
       rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
@@ -118,8 +99,6 @@ async function seed() {
       rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
-
-    // Gym removed per requirements
 
     console.log('Facilities created');
 
@@ -188,7 +167,7 @@ async function seed() {
       type: 'SPORTS_EQUIPMENT',
       name: 'Sports Equipment',
       location: 'Sports Complex - Counter',
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -222,7 +201,7 @@ async function seed() {
       location: 'Innovation Lab - Building C',
       rules: {
         requiresApproval: true,
-        slotMinutes: 120,
+        slotMinutes: 60,
         studentsOnly: true,
       },
       status: 'ACTIVE',
@@ -249,7 +228,7 @@ async function seed() {
     console.log('\n=== SEED DATA SUMMARY ===');
     console.log('Admin:', admin.email);
     console.log('Guards: guard-1@local, guard-2@local (password: 123456)');
-    console.log('Facilities:', 7);
+    console.log('Facilities:', 4);
     console.log('Rooms:', 6);
     console.log('Sports Equipment Items:', sportsItems.length);
     console.log('Lab Equipment Items:', labItems.length);

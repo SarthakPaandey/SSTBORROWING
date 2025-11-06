@@ -64,13 +64,37 @@ export default function EquipmentPage() {
       return;
     }
 
+    // Check item limits
+    const totalItemCount = items.reduce((sum, item) => sum + item.qty, 0);
+    const isSports = kind === 'EQUIPMENT' && sportsResources.some(r => r._id === resourceId);
+    const isLab = kind === 'EQUIPMENT' && labResources.some(r => r._id === resourceId);
+
+    if (isSports && totalItemCount > 3) {
+      setError('You can only borrow up to 3 sports equipment items at once');
+      return;
+    }
+
+    if (isLab && totalItemCount > 1) {
+      setError('You can only borrow 1 lab equipment item at a time');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       const start = new Date(`${date}T${startTime}`);
+      const startHour = start.getHours();
+
+      // Equipment bookings only allowed between 9am and 8pm
+      if (startHour < 9 || startHour >= 20) {
+        setError('Equipment bookings are only available between 9:00 AM and 8:00 PM');
+        setLoading(false);
+        return;
+      }
+
       const end = new Date(start);
-      end.setHours(end.getHours() + 2);
+      end.setHours(end.getHours() + 1);
 
       const res = await fetch('/api/bookings', {
         method: 'POST',
@@ -102,12 +126,12 @@ export default function EquipmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Borrow Equipment</h1>
-        <p className="text-gray-600">Select sports or lab equipment</p>
+        <h1 className="text-3xl font-bold text-accent-blue">Borrow Equipment</h1>
+        <p className="text-text-muted">Select sports or lab equipment</p>
       </div>
 
       <Tabs defaultValue="sports">
-        <TabsList>
+        <TabsList className="mb-6">
           <TabsTrigger value="sports">Sports Equipment</TabsTrigger>
           <TabsTrigger value="lab">Lab Equipment</TabsTrigger>
         </TabsList>
@@ -116,11 +140,14 @@ export default function EquipmentPage() {
           <Card>
             <CardHeader>
               <CardTitle>Sports Equipment</CardTitle>
-              <CardDescription>Available for immediate checkout</CardDescription>
+              <CardDescription>
+                Available for immediate checkout • Max 3 items per booking
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Pickup Date & Time</label>
+                <p className="text-xs text-text-muted">Available between 9:00 AM - 8:00 PM</p>
                 <div className="flex gap-2">
                   <Input
                     type="date"
@@ -132,6 +159,8 @@ export default function EquipmentPage() {
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
+                    min="09:00"
+                    max="20:00"
                   />
                 </div>
               </div>
@@ -200,14 +229,18 @@ export default function EquipmentPage() {
         <TabsContent value="lab">
           <Card>
             <CardHeader>
-              <CardTitle>Lab Equipment</CardTitle>
-              <CardDescription>
-                <Badge variant="warning">Requires Admin Approval</Badge>
-              </CardDescription>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <CardTitle className="mb-0">Lab Equipment</CardTitle>
+                  <Badge variant="warning">Requires Admin Approval</Badge>
+                </div>
+                <CardDescription>Max 1 item per booking</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Pickup Date & Time</label>
+                <p className="text-xs text-text-muted">Available between 9:00 AM - 8:00 PM</p>
                 <div className="flex gap-2">
                   <Input
                     type="date"
@@ -219,6 +252,8 @@ export default function EquipmentPage() {
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
+                    min="09:00"
+                    max="20:00"
                   />
                 </div>
               </div>

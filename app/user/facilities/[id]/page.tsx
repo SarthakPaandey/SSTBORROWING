@@ -66,13 +66,18 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   };
 
   if (!resource) {
-    return <div>Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-10 w-32 animate-pulse rounded bg-card"></div>
+        <div className="h-96 animate-pulse rounded-lg bg-card"></div>
+      </div>
+    );
   }
 
-  // Generate time slots (simplified)
+  // Generate time slots (6am - 8pm)
   const generateSlots = () => {
     const slots = [];
-    for (let hour = 6; hour < 22; hour++) {
+    for (let hour = 6; hour < 20; hour++) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(start);

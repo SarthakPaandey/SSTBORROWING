@@ -26,8 +26,8 @@ export default async function FacilitiesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Book a Facility</h1>
-        <p className="text-gray-600">Select a sports facility to book</p>
+        <h1 className="text-3xl font-bold text-accent-blue">Book a Facility</h1>
+        <p className="text-text-muted">Select a sports facility to book</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -36,18 +36,18 @@ export default async function FacilitiesPage() {
             key={facility._id.toString()}
             href={`/user/facilities/${facility._id.toString()}`}
           >
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg">
+            <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
               <CardHeader>
                 <CardTitle>{facility.name}</CardTitle>
                 {facility.location && (
-                  <CardDescription className="flex items-center">
+                  <CardDescription className="flex items-center text-text-muted">
                     <MapPin className="mr-1 h-4 w-4" />
                     {facility.location}
                   </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-text-muted">
                   <p>Slot Duration: {facility.rules.slotMinutes || 60} minutes</p>
                   {facility.capacity && <p>Capacity: {facility.capacity} people</p>}
                 </div>

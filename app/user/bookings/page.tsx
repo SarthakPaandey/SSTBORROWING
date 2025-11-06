@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTime } from '@/lib/utils';
-import { QrCode, X } from 'lucide-react';
+import { QrCode, X, Clock } from 'lucide-react';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
-  const [qrModal, setQrModal] = useState<{ open: boolean; qrImage?: string; booking?: any }>({
+  const [qrModal, setQrModal] = useState<{ open: boolean; qrImage?: string; booking?: any; expiresAt?: string }>({
     open: false,
   });
   const [loading, setLoading] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
 
   useEffect(() => {
     fetchBookings();
@@ -26,6 +27,35 @@ export default function BookingsPage() {
     setLoading(false);
   };
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (!qrModal.open || !qrModal.expiresAt) {
+      setTimeRemaining('');
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const expiry = new Date(qrModal.expiresAt!).getTime();
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        setTimeRemaining('Expired');
+        clearInterval(timer);
+        setTimeout(() => {
+          setQrModal({ open: false });
+          alert('QR code has expired. Please generate a new one.');
+        }, 1000);
+      } else {
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [qrModal.open, qrModal.expiresAt]);
+
   const handleGenerateQR = async (bookingId: string) => {
     try {
       const res = await fetch(`/api/bookings/${bookingId}/qr`, {
@@ -35,7 +65,12 @@ export default function BookingsPage() {
 
       if (res.ok) {
         const booking = bookings.find((b) => b._id === bookingId);
-        setQrModal({ open: true, qrImage: data.qrImage, booking });
+        setQrModal({
+          open: true,
+          qrImage: data.qrImage,
+          booking,
+          expiresAt: data.expiresAt
+        });
       } else {
         alert(data.error || 'Failed to generate QR code');
       }
@@ -94,7 +129,16 @@ export default function BookingsPage() {
   );
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-12 w-64 animate-pulse rounded bg-card"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-lg bg-card"></div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -124,8 +168,14 @@ export default function BookingsPage() {
                       {getStatusBadge(booking.status, booking.approval)}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">
-                      {formatDateTime(booking.start)} - {formatDateTime(booking.end)}
+                      {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
+                      {booking.kind !== 'EQUIPMENT' && ` - ${formatDateTime(booking.end)}`}
                     </p>
+                    {booking.kind === 'EQUIPMENT' && (
+                      <p className="mt-1 text-sm text-gray-600">
+                        Return by: {formatDateTime(booking.end)}
+                      </p>
+                    )}
                     {booking.items && booking.items.length > 0 && (
                       <div className="mt-2 text-sm text-gray-600">
                         Items: {booking.items.map((item: any) => `${item.name} (${item.qty})`).join(', ')}
@@ -133,7 +183,7 @@ export default function BookingsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {booking.status === 'CONFIRMED' && (
+                    {booking.status === 'CONFIRMED' && booking.kind === 'EQUIPMENT' && (
                       <Button
                         size="sm"
                         onClick={() => handleGenerateQR(booking._id)}
@@ -197,13 +247,28 @@ export default function BookingsPage() {
       >
         {qrModal.qrImage && (
           <div className="space-y-4">
-            <div className="flex justify-center">
+            {/* Countdown Timer */}
+            <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-accent-blue/10 border border-accent-blue/30">
+              <Clock className="h-5 w-5 text-accent-blue" />
+              <span className="text-lg font-bold text-accent-blue">
+                {timeRemaining || 'Loading...'}
+              </span>
+              <span className="text-sm text-text-muted">remaining</span>
+            </div>
+
+            {/* QR Code */}
+            <div className="flex justify-center p-6 bg-white rounded-lg">
               <img src={qrModal.qrImage} alt="QR Code" className="w-64 h-64" />
             </div>
-            <div className="text-center">
-              <p className="font-medium">{qrModal.booking?.resourceName}</p>
-              <p className="text-sm text-gray-600">
-                Show this QR code to the guard for check-in
+
+            {/* Instructions */}
+            <div className="text-center space-y-2">
+              <p className="font-medium text-text-main">{qrModal.booking?.resourceName}</p>
+              <p className="text-sm text-text-muted">
+                Show this QR code to the guard for equipment pickup
+              </p>
+              <p className="text-xs text-danger">
+                ⚠️ QR code expires in 10 minutes. You can generate QR code maximum 2 times per booking.
               </p>
             </div>
           </div>

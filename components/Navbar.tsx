@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -54,17 +55,15 @@ export function Navbar() {
         <div className="flex h-16 justify-between items-center">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
-              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
-                <span className="text-lg sm:text-xl font-bold text-primary">S</span>
-              </div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-sm font-bold text-foreground">Scaler School of Technology</span>
-                <span className="text-xs text-muted-foreground">Booking System</span>
-              </div>
-              <div className="sm:hidden flex flex-col">
-                <span className="text-xs font-bold text-foreground">SST Booking</span>
-              </div>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/sst-logo.png"
+                alt="SST Logo"
+                width={180}
+                height={50}
+                className="object-contain h-10 sm:h-12"
+                priority
+              />
             </Link>
           </div>
 

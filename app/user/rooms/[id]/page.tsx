@@ -66,13 +66,18 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   };
 
   if (!resource) {
-    return <div>Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-10 w-32 animate-pulse rounded bg-card"></div>
+        <div className="h-96 animate-pulse rounded-lg bg-card"></div>
+      </div>
+    );
   }
 
-  // Generate 2-hour slots
+  // Generate 2-hour slots (8am - 8pm)
   const generateSlots = () => {
     const slots = [];
-    for (let hour = 8; hour < 22; hour += 2) {
+    for (let hour = 8; hour < 20; hour += 2) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(start);

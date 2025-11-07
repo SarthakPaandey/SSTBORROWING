@@ -60,9 +60,9 @@ export default function CalendarPage() {
       case 'COMPLETED':
         return <Badge variant="default">Completed</Badge>;
       case 'CANCELLED':
-        return <Badge variant="danger">Cancelled</Badge>;
+        return <Badge variant="destructive">Cancelled</Badge>;
       case 'NO_SHOW':
-        return <Badge variant="danger">No Show</Badge>;
+        return <Badge variant="destructive">No Show</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }

@@ -7,7 +7,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { AlertCircle, Calendar, Clock } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, MapPin, Package, DoorOpen, Users, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
@@ -77,34 +77,62 @@ export default async function UserDashboard() {
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-4">
         <Link href="/user/facilities">
-          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
-            <CardHeader>
-              <CardTitle className="text-base">Book Facility</CardTitle>
-              <CardDescription>Turf & Courts</CardDescription>
+          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="icon-circle w-12 h-12">
+                  <MapPin className="h-6 w-6 text-accent-blue group-hover:scale-110 transition-transform" />
+                </div>
+              </div>
+              <div>
+                <CardTitle className="text-base">Book Facility</CardTitle>
+                <CardDescription>Turf & Courts</CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/user/rooms">
-          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
-            <CardHeader>
-              <CardTitle className="text-base">Book Room</CardTitle>
-              <CardDescription>Meeting & Study Rooms</CardDescription>
+          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="icon-circle w-12 h-12">
+                  <DoorOpen className="h-6 w-6 text-accent-blue group-hover:scale-110 transition-transform" />
+                </div>
+              </div>
+              <div>
+                <CardTitle className="text-base">Book Room</CardTitle>
+                <CardDescription>Meeting & Study Rooms</CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/user/equipment">
-          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
-            <CardHeader>
-              <CardTitle className="text-base">Borrow Equipment</CardTitle>
-              <CardDescription>Sports & Lab Items</CardDescription>
+          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="icon-circle w-12 h-12">
+                  <Package className="h-6 w-6 text-accent-blue group-hover:scale-110 transition-transform" />
+                </div>
+              </div>
+              <div>
+                <CardTitle className="text-base">Borrow Equipment</CardTitle>
+                <CardDescription>Sports & Lab Items</CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/user/bookings">
-          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
-            <CardHeader>
-              <CardTitle className="text-base">My Bookings</CardTitle>
-              <CardDescription>View & manage</CardDescription>
+          <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="icon-circle w-12 h-12">
+                  <CalendarDays className="h-6 w-6 text-accent-blue group-hover:scale-110 transition-transform" />
+                </div>
+              </div>
+              <div>
+                <CardTitle className="text-base">My Bookings</CardTitle>
+                <CardDescription>View & manage</CardDescription>
+              </div>
             </CardHeader>
           </Card>
         </Link>
@@ -124,7 +152,17 @@ export default async function UserDashboard() {
         </CardHeader>
         <CardContent>
           {enrichedBookings.length === 0 ? (
-            <p className="text-center text-text-muted">No upcoming bookings</p>
+            <div className="empty-state">
+              <div className="empty-state-icon">📅</div>
+              <h3 className="text-xl font-semibold text-text-main mb-2">No Upcoming Bookings</h3>
+              <p className="text-text-muted mb-6">Start by booking a facility, room, or equipment</p>
+              <Link href="/user/facilities">
+                <Button variant="gradient" size="lg" className="btn-ripple">
+                  <MapPin className="mr-2 h-5 w-5" />
+                  Book a Facility
+                </Button>
+              </Link>
+            </div>
           ) : (
             <div className="space-y-4">
               {enrichedBookings.map((booking: any) => (

@@ -209,6 +209,16 @@ export async function POST(req: NextRequest) {
     let enrichedItems;
     if (kind === 'EQUIPMENT' && items) {
       enrichedItems = [];
+
+      // Find all overlapping equipment bookings to check reserved quantities
+      const overlappingBookings = await Booking.find({
+        resourceId,
+        kind: 'EQUIPMENT',
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        start: { $lt: new Date(end) },
+        end: { $gt: new Date(start) },
+      });
+
       for (const item of items) {
         const equipItem = await EquipmentItem.findById(item.itemId);
         if (!equipItem) {
@@ -218,9 +228,22 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        if (equipItem.qtyAvailable < item.qty) {
+        // Calculate already booked quantity for this item in overlapping bookings
+        let bookedQty = 0;
+        for (const booking of overlappingBookings) {
+          if (booking.items) {
+            const bookedItem = booking.items.find((i: any) => i.itemId === item.itemId);
+            if (bookedItem) {
+              bookedQty += bookedItem.qty;
+            }
+          }
+        }
+
+        // Check if enough quantity available (total - already booked)
+        const availableQty = equipItem.qtyAvailable - bookedQty;
+        if (availableQty < item.qty) {
           return NextResponse.json(
-            { error: `Insufficient quantity for ${equipItem.name}` },
+            { error: `Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}` },
             { status: 400 }
           );
         }

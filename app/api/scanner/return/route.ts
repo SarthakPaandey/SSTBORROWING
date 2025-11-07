@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Restore equipment quantities
-    if (booking.items) {
+    // Restore equipment quantities (only if checked in)
+    if (booking.status === 'CHECKED_IN' && booking.items) {
       for (const item of booking.items) {
         const equipItem = await EquipmentItem.findById(item.itemId);
         if (equipItem) {

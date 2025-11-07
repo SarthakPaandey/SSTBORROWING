@@ -5,7 +5,7 @@ import { connectDB } from '@/lib/db';
 import { Resource } from '@/models/Resource';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import Link from 'next/link';
-import { MapPin } from 'lucide-react';
+import { MapPin, Users, Clock } from 'lucide-react';
 
 export default async function FacilitiesPage() {
   const session = await getServerSession(authOptions);
@@ -36,9 +36,9 @@ export default async function FacilitiesPage() {
             key={facility._id.toString()}
             href={`/user/facilities/${facility._id.toString()}`}
           >
-            <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1">
+            <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
               <CardHeader>
-                <CardTitle>{facility.name}</CardTitle>
+                <CardTitle className="group-hover:text-accent-blue transition-colors">{facility.name}</CardTitle>
                 {facility.location && (
                   <CardDescription className="flex items-center text-text-muted">
                     <MapPin className="mr-1 h-4 w-4" />
@@ -47,9 +47,17 @@ export default async function FacilitiesPage() {
                 )}
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-text-muted">
-                  <p>Slot Duration: {facility.rules.slotMinutes || 60} minutes</p>
-                  {facility.capacity && <p>Capacity: {facility.capacity} people</p>}
+                <div className="text-sm text-text-muted space-y-2">
+                  <div className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4 text-accent-blue" />
+                    <span>Slot: {facility.rules.slotMinutes || 60} minutes</span>
+                  </div>
+                  {facility.capacity && (
+                    <div className="flex items-center">
+                      <Users className="mr-2 h-4 w-4 text-accent-blue" />
+                      <span>Capacity: {facility.capacity} people</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

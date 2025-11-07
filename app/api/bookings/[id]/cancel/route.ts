@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
+import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
 
 export async function PATCH(
@@ -36,6 +37,10 @@ export async function PATCH(
         { status: 400 }
       );
     }
+
+    // Note: We don't need to restore equipment inventory here because
+    // we never actually reduced it. Equipment is only reduced when QR is scanned (check-in).
+    // The booking just "reserves" the equipment by being counted in availability checks.
 
     booking.status = 'CANCELLED';
     await booking.save();

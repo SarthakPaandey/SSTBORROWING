@@ -48,6 +48,25 @@ export async function POST(
       );
     }
 
+    // Check if booking time has passed
+    const now = new Date();
+    if (now > booking.end) {
+      return NextResponse.json(
+        { error: 'Cannot generate QR for past bookings' },
+        { status: 400 }
+      );
+    }
+
+    // Check if too early (before pickup window)
+    const pickupWindow = new Date(booking.start);
+    pickupWindow.setMinutes(pickupWindow.getMinutes() - 30); // Allow 30 min before start
+    if (now < pickupWindow) {
+      return NextResponse.json(
+        { error: 'QR code can only be generated 30 minutes before booking start time' },
+        { status: 400 }
+      );
+    }
+
     // Check if already has valid QR
     const existingToken = await QRToken.findOne({
       bookingId: params.id,

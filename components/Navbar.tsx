@@ -22,6 +22,7 @@ export function Navbar() {
     if (role === 'GUARD') {
       return [
         { href: '/guard/scanner', label: 'Scanner' },
+        { href: '/guard/returns', label: 'Returns' },
         { href: '/guard/history', label: 'History' },
       ];
     }
@@ -44,6 +45,7 @@ export function Navbar() {
       { href: '/user/rooms', label: 'Rooms' },
       { href: '/user/equipment', label: 'Equipment' },
       { href: '/user/bookings', label: 'My Bookings' },
+      { href: '/user/calendar', label: 'Calendar' },
     ];
   };
 

@@ -24,6 +24,11 @@ export interface IBooking extends Document {
   qrIssued: boolean;
   approvedBy?: string; // Admin user ID
   approvedAt?: Date;
+  checkedInAt?: Date; // When equipment was checked in by guard
+  returnedAt?: Date; // When equipment was returned
+  returnCondition?: 'excellent' | 'good' | 'fair' | 'damaged'; // Condition on return
+  returnNotes?: string; // Notes about damage or issues
+  returnedBy?: string; // Guard user ID who processed return
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +73,14 @@ const BookingSchema = new Schema<IBooking>(
     qrIssued: { type: Boolean, default: false },
     approvedBy: { type: String, ref: 'User' },
     approvedAt: { type: Date },
+    checkedInAt: { type: Date },
+    returnedAt: { type: Date },
+    returnCondition: {
+      type: String,
+      enum: ['excellent', 'good', 'fair', 'damaged'],
+    },
+    returnNotes: { type: String },
+    returnedBy: { type: String, ref: 'User' },
   },
   {
     timestamps: true,

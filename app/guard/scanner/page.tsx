@@ -58,42 +58,51 @@ export default function ScannerPage() {
     setCameraError('');
     setError('');
     setResult(null);
-
-    try {
-      const html5QrCode = new Html5Qrcode('qr-reader');
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' }, // Use back camera on mobile
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        async (decodedText) => {
-          // Prevent multiple scans
-          if (isScanningRef.current) return;
-          isScanningRef.current = true;
-
-          // Auto-validate the scanned QR code
-          await handleValidate(decodedText);
-
-          setTimeout(() => {
-            isScanningRef.current = false;
-          }, 2000);
-        },
-        (errorMessage) => {
-          // Ignore scan errors (happens continuously while scanning)
-        }
-      );
-
-      setIsScanning(true);
-    } catch (err: any) {
-      setCameraError(
-        err.message || 'Failed to start camera. Please check permissions and try again.'
-      );
-      setIsScanning(false);
-    }
+    setIsScanning(true);
   };
+
+  // Initialize camera when isScanning becomes true
+  useEffect(() => {
+    if (!isScanning) return;
+
+    const initCamera = async () => {
+      try {
+        const html5QrCode = new Html5Qrcode('qr-reader');
+        scannerRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: 'environment' }, // Use back camera on mobile
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          async (decodedText) => {
+            // Prevent multiple scans
+            if (isScanningRef.current) return;
+            isScanningRef.current = true;
+
+            // Auto-validate the scanned QR code
+            await handleValidate(decodedText);
+
+            setTimeout(() => {
+              isScanningRef.current = false;
+            }, 2000);
+          },
+          (errorMessage) => {
+            // Ignore scan errors (happens continuously while scanning)
+          }
+        );
+      } catch (err: any) {
+        console.error('Camera error:', err);
+        setCameraError(
+          err.message || 'Failed to start camera. Please check permissions and try again.'
+        );
+        setIsScanning(false);
+      }
+    };
+
+    initCamera();
+  }, [isScanning]);
 
   const stopScanner = async () => {
     try {

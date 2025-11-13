@@ -26,6 +26,9 @@ A production-ready unified booking system for SST facilities, rooms, and equipme
 - 7-day advance booking window
 - QR code generation with HMAC signing
 
+## UI Preview
+   <img width="1807" height="971" alt="image" src="https://github.com/user-attachments/assets/0822e1a3-5ec0-4894-beed-b06d6e4501bb" />
+
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)

@@ -70,7 +70,7 @@ export function showNotification(data: NotificationData): Notification | null {
   }
 
   try {
-    const options: NotificationOptions = {
+    const options: NotificationOptions & { vibrate?: number[] } = {
       body: data.body,
       icon: data.icon || '/sst-logo.png',
       badge: '/sst-logo.png',

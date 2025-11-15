@@ -225,13 +225,92 @@ async function seed() {
 
     console.log('Lab equipment created');
 
+    // Create Library Resources with Categories
+    console.log('Creating library categories...');
+
+    // Fiction Library
+    const fictionLibrary = await Resource.create({
+      type: 'LIBRARY',
+      name: 'Fiction Library',
+      location: 'Library - Floor 2',
+      rules: { slotMinutes: 20160, studentsOnly: true }, // 14 days
+      status: 'ACTIVE',
+    });
+
+    const fictionBooks = [
+      { name: '1984 by George Orwell', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+      { name: 'To Kill a Mockingbird by Harper Lee', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'The Great Gatsby by F. Scott Fitzgerald', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'Pride and Prejudice by Jane Austen', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'The Catcher in the Rye by J.D. Salinger', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+    ];
+
+    for (const book of fictionBooks) {
+      await EquipmentItem.create({
+        resourceId: fictionLibrary._id.toString(),
+        ...book,
+      });
+    }
+
+    // Non-Fiction Library
+    const nonFictionLibrary = await Resource.create({
+      type: 'LIBRARY',
+      name: 'Non-Fiction Library',
+      location: 'Library - Floor 2',
+      rules: { slotMinutes: 20160, studentsOnly: true }, // 14 days
+      status: 'ACTIVE',
+    });
+
+    const nonFictionBooks = [
+      { name: 'Sapiens by Yuval Noah Harari', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+      { name: 'Educated by Tara Westover', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'Atomic Habits by James Clear', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+      { name: 'Thinking, Fast and Slow by Daniel Kahneman', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'The Lean Startup by Eric Ries', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+    ];
+
+    for (const book of nonFictionBooks) {
+      await EquipmentItem.create({
+        resourceId: nonFictionLibrary._id.toString(),
+        ...book,
+      });
+    }
+
+    // Textbooks Library
+    const textbooksLibrary = await Resource.create({
+      type: 'LIBRARY',
+      name: 'Textbooks Library',
+      location: 'Library - Floor 1',
+      rules: { slotMinutes: 20160, studentsOnly: true }, // 14 days
+      status: 'ACTIVE',
+    });
+
+    const textbooks = [
+      { name: 'Introduction to Algorithms (CLRS)', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false },
+      { name: 'Clean Code by Robert C. Martin', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+      { name: 'Design Patterns: Elements of Reusable Object-Oriented Software', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'Computer Networks by Andrew S. Tanenbaum', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+      { name: 'Operating System Concepts by Silberschatz', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
+    ];
+
+    for (const book of textbooks) {
+      await EquipmentItem.create({
+        resourceId: textbooksLibrary._id.toString(),
+        ...book,
+      });
+    }
+
+    console.log('Library categories and books created');
+
     console.log('\n=== SEED DATA SUMMARY ===');
     console.log('Admin:', admin.email);
     console.log('Guards: guard-1@local, guard-2@local (password: 123456)');
-    console.log('Facilities:', 4);
+    console.log('Facilities:', 5);
     console.log('Rooms:', 6);
     console.log('Sports Equipment Items:', sportsItems.length);
     console.log('Lab Equipment Items:', labItems.length);
+    console.log('Library Categories:', 3);
+    console.log('Library Books:', fictionBooks.length + nonFictionBooks.length + textbooks.length);
     console.log('\nDatabase seeded successfully!');
     console.log('\nYou can now:');
     console.log('1. Start the dev server: npm run dev');

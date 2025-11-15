@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx seed/seed.ts"
+    "seed": "tsx --env-file=.env seed/seed.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

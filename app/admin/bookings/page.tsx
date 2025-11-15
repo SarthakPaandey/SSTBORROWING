@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, parseStudentEmail } from '@/lib/utils';
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -47,25 +47,43 @@ export default function AdminBookingsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {bookings.slice(0, 50).map((booking) => (
-              <div
-                key={booking._id}
-                className="flex items-start justify-between rounded-lg border p-4"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{booking.resourceName}</p>
-                    {getStatusBadge(booking.status)}
+            {bookings.slice(0, 50).map((booking) => {
+              const studentInfo = booking.userEmail
+                ? parseStudentEmail(booking.userEmail)
+                : null;
+
+              return (
+                <div
+                  key={booking._id}
+                  className="flex items-start justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-text-main">{booking.resourceName}</p>
+                      {getStatusBadge(booking.status)}
+                    </div>
+                    {studentInfo ? (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm text-text-main">
+                          <span className="font-medium">Student:</span> {studentInfo.name}
+                        </p>
+                        <p className="text-sm text-text-muted">
+                          <span className="font-medium">Roll No:</span> {studentInfo.rollNumber}
+                        </p>
+                        <p className="text-xs text-text-muted">{studentInfo.email}</p>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-text-muted">
+                        User: {booking.userName || booking.userId}
+                      </p>
+                    )}
+                    <p className="mt-2 text-sm text-text-muted">
+                      {formatDateTime(booking.start)} - {formatDateTime(booking.end)}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600">
-                    User: {booking.userId}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {formatDateTime(booking.start)} - {formatDateTime(booking.end)}
-                  </p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

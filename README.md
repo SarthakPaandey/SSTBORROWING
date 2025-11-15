@@ -5,7 +5,7 @@ A production-ready unified booking system for SST facilities, rooms, and equipme
 ## Features
 
 ### Core Functionality
-- **Facility Booking**: Sports facilities (turf, courts, gym) with slot-based scheduling
+- **Facility Booking**: Sports facilities (turf, courts) with slot-based scheduling
 - **Room Booking**: Meeting and study rooms with 2-hour slots
 - **Equipment Management**: Sports and lab equipment with quantity tracking
 - **QR Code Check-in**: Secure check-in/checkout via QR codes
@@ -122,7 +122,7 @@ npm run seed
 This will create:
 - 1 admin user: `admin@scaler.com`
 - 2 guards: `guard-1` and `guard-2` (password: `123456`)
-- 8 facilities (turf, courts, gym)
+- 5 facilities (turf, courts)
 - 6 rooms (meeting and study rooms)
 - 10 sports equipment items
 - 6 lab equipment items
@@ -175,7 +175,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Advance Window**: 7 days
 - **Daily Limit**: 2 bookings
 - **Weekly Limit**: 6 bookings
-- **Facility Duration**: 60 minutes (30 for gym)
+- **Facility Duration**: 60 minutes
 - **Room Duration**: 120 minutes
 - **Equipment Duration**: 120 minutes
 

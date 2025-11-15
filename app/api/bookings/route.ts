@@ -6,7 +6,14 @@ import { Block } from '@/models/Block';
 import { User } from '@/models/User';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
-import { POLICIES, canUserBook, isWithinAdvanceWindow } from '@/lib/policies';
+import {
+  POLICIES,
+  canUserBook,
+  isWithinAdvanceWindow,
+  calculateTotalHours,
+  hasMinimumGap,
+  hasConsecutiveBookings,
+} from '@/lib/policies';
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,10 +54,20 @@ export async function GET(req: NextRequest) {
     const resources = await Resource.find({ _id: { $in: resourceIds } });
     const resourceMap = new Map(resources.map(r => [r._id.toString(), r]));
 
-    const enrichedBookings = bookings.map(b => ({
-      ...b.toObject(),
-      resourceName: resourceMap.get(b.resourceId)?.name || 'Unknown',
-    }));
+    // Populate user details
+    const userIds = [...new Set(bookings.map(b => b.userId))];
+    const users = await User.find({ _id: { $in: userIds } });
+    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+
+    const enrichedBookings = bookings.map(b => {
+      const userData = userMap.get(b.userId);
+      return {
+        ...b.toObject(),
+        resourceName: resourceMap.get(b.resourceId)?.name || 'Unknown',
+        userEmail: userData?.email || null,
+        userName: userData?.name || null,
+      };
+    });
 
     return NextResponse.json({ bookings: enrichedBookings });
   } catch (error: any) {
@@ -147,6 +164,137 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check total active bookings limit
+    const totalActiveBookings = await Booking.countDocuments({
+      userId: user._id.toString(),
+      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+      end: { $gt: new Date() }, // Future bookings only
+    });
+
+    if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+      return NextResponse.json(
+        {
+          error: `You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check monthly limits based on resource type
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const monthEnd = new Date(monthStart);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+    const monthlyBookings = await Booking.find({
+      userId: user._id.toString(),
+      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
+      start: { $gte: monthStart, $lt: monthEnd },
+    });
+
+    if (kind === 'FACILITY') {
+      const facilityBookings = monthlyBookings.filter((b: any) => b.kind === 'FACILITY');
+      const totalHours = calculateTotalHours(facilityBookings);
+      const newHours = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
+
+      if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
+        return NextResponse.json(
+          {
+            error: `Monthly facility limit exceeded. You have used ${totalHours.toFixed(
+              1
+            )} hours out of ${
+              POLICIES.MAX_FACILITY_HOURS_PER_MONTH
+            } hours this month.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (kind === 'ROOM') {
+      const roomBookings = monthlyBookings.filter((b: any) => b.kind === 'ROOM');
+      const totalHours = calculateTotalHours(roomBookings);
+      const newHours = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
+
+      if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
+        return NextResponse.json(
+          {
+            error: `Monthly room limit exceeded. You have used ${totalHours.toFixed(
+              1
+            )} hours out of ${
+              POLICIES.MAX_ROOM_HOURS_PER_MONTH
+            } hours this month.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (kind === 'EQUIPMENT') {
+      const equipmentBookings = monthlyBookings.filter((b: any) => b.kind === 'EQUIPMENT');
+
+      if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
+        return NextResponse.json(
+          {
+            error: `Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check library book limits
+    if (kind === 'LIBRARY') {
+      // Check if user already has an active book borrowing
+      const activeBookBorrowings = await Booking.countDocuments({
+        userId: user._id.toString(),
+        kind: 'LIBRARY',
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        end: { $gt: new Date() },
+      });
+
+      if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
+        return NextResponse.json(
+          {
+            error: `You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check minimum gap between bookings
+    const upcomingBookings = await Booking.find({
+      userId: user._id.toString(),
+      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+      end: { $gt: new Date() },
+    });
+
+    if (!hasMinimumGap(upcomingBookings, start, end)) {
+      return NextResponse.json(
+        {
+          error: `You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check consecutive bookings for same resource
+    const sameResourceBookings = upcomingBookings.filter(
+      (b: any) => b.resourceId === resourceId
+    );
+
+    if (hasConsecutiveBookings(sameResourceBookings, start, end, resourceId)) {
+      return NextResponse.json(
+        {
+          error: `You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Check for conflicts with blocks
     const conflictingBlocks = await Block.findOne({
       resourceId,
@@ -205,15 +353,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Handle equipment bookings
+    // Handle equipment and library bookings
     let enrichedItems;
-    if (kind === 'EQUIPMENT' && items) {
+    if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
       enrichedItems = [];
 
-      // Find all overlapping equipment bookings to check reserved quantities
+      // Find all overlapping bookings to check reserved quantities
       const overlappingBookings = await Booking.find({
         resourceId,
-        kind: 'EQUIPMENT',
+        kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         start: { $lt: new Date(end) },
         end: { $gt: new Date(start) },
@@ -223,7 +371,7 @@ export async function POST(req: NextRequest) {
         const equipItem = await EquipmentItem.findById(item.itemId);
         if (!equipItem) {
           return NextResponse.json(
-            { error: `Equipment item ${item.itemId} not found` },
+            { error: `${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.itemId} not found` },
             { status: 404 }
           );
         }
@@ -256,8 +404,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Determine if approval required
-    const requiresApproval = resource.rules.requiresApproval || false;
+    // Determine if approval required (library books never require approval)
+    const requiresApproval = kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
 
     // Create booking
     const booking = await Booking.create({

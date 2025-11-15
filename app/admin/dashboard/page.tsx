@@ -7,6 +7,7 @@ import { User } from '@/models/User';
 import { Penalty } from '@/models/Penalty';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Calendar, Users, AlertTriangle, Clock } from 'lucide-react';
+import { AdminNotifications } from '@/components/AdminNotifications';
 
 export default async function AdminDashboard() {
   const session = await getServerSession(authOptions);
@@ -92,6 +93,9 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Notification Settings */}
+      <AdminNotifications />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

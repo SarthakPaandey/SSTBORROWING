@@ -35,7 +35,12 @@ export async function GET(req: NextRequest) {
           gb.members.map(async (member) => {
             const user = await User.findById(member.userId);
             return {
-              ...member.toObject(),
+              userId: member.userId,
+              email: member.email,
+              name: member.name,
+              status: member.status,
+              invitedAt: member.invitedAt,
+              respondedAt: member.respondedAt,
               userName: user?.name || 'Unknown',
             };
           })

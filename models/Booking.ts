@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type BookingKind = 'FACILITY' | 'ROOM' | 'EQUIPMENT';
+export type BookingKind = 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
 export type ApprovalStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -22,6 +22,8 @@ export interface IBooking extends Document {
   requiresApproval: boolean;
   approval: ApprovalStatus;
   qrIssued: boolean;
+  isGroupBooking: boolean; // Whether this is a group booking
+  groupBookingId?: string; // Reference to GroupBooking if applicable
   approvedBy?: string; // Admin user ID
   approvedAt?: Date;
   checkedInAt?: Date; // When equipment was checked in by guard
@@ -53,7 +55,7 @@ const BookingSchema = new Schema<IBooking>(
     },
     kind: {
       type: String,
-      enum: ['FACILITY', 'ROOM', 'EQUIPMENT'],
+      enum: ['FACILITY', 'ROOM', 'EQUIPMENT', 'LIBRARY'],
       required: true,
     },
     items: [BookingItemSchema],
@@ -71,6 +73,8 @@ const BookingSchema = new Schema<IBooking>(
       default: 'NOT_REQUIRED',
     },
     qrIssued: { type: Boolean, default: false },
+    isGroupBooking: { type: Boolean, default: false },
+    groupBookingId: { type: String, ref: 'GroupBooking' },
     approvedBy: { type: String, ref: 'User' },
     approvedAt: { type: Date },
     checkedInAt: { type: Date },

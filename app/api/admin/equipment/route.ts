@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth/guards';
 
 export async function GET(req: NextRequest) {
   try {
+    // Allow all authenticated users to view equipment
     await requireAuth();
     await connectDB();
 
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ items });
   } catch (error: any) {
+    console.error('Equipment fetch error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch equipment' },
       { status: 500 }

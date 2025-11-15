@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    // Only equipment bookings can be validated via QR
-    if (booking.kind !== 'EQUIPMENT') {
+    // Only equipment and library bookings can be validated via QR
+    if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
       return NextResponse.json(
-        { error: 'QR validation is only allowed for equipment pickup' },
+        { error: 'QR validation is only allowed for equipment/book pickup' },
         { status: 400 }
       );
     }

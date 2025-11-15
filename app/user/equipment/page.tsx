@@ -93,8 +93,13 @@ export default function EquipmentPage() {
         return;
       }
 
+      // Calculate end time based on equipment type
       const end = new Date(start);
-      end.setHours(end.getHours() + 1);
+      if (isSports) {
+        end.setMinutes(end.getMinutes() + 75); // 75 minutes for sports equipment
+      } else if (isLab) {
+        end.setHours(end.getHours() + 24); // 24 hours for lab equipment
+      }
 
       const res = await fetch('/api/bookings', {
         method: 'POST',

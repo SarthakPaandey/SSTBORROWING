@@ -20,15 +20,36 @@ export async function POST(
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    // Check ownership
-    if (booking.userId !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check ownership - for group bookings, only organizer can generate QR
+    if (booking.isGroupBooking) {
+      const { GroupBooking } = await import('@/models/GroupBooking');
+      const groupBooking = await GroupBooking.findById(booking.groupBookingId);
+
+      if (!groupBooking || groupBooking.organizerId !== user.id) {
+        return NextResponse.json(
+          { error: 'Only the organizer can generate QR code for group bookings' },
+          { status: 403 }
+        );
+      }
+
+      // Check if group booking is confirmed
+      if (groupBooking.status !== 'CONFIRMED') {
+        return NextResponse.json(
+          { error: `Group booking is ${groupBooking.status}. Cannot generate QR until confirmed.` },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Regular booking - check ownership
+      if (booking.userId !== user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
-    // Restrict QR to equipment bookings only
-    if (booking.kind !== 'EQUIPMENT') {
+    // Restrict QR to equipment and library bookings only
+    if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
       return NextResponse.json(
-        { error: 'QR codes are only available for equipment pickup' },
+        { error: 'QR codes are only available for equipment/book pickup' },
         { status: 400 }
       );
     }
@@ -60,10 +81,10 @@ export async function POST(
     // Check if too early (before pickup window) - only in production
     if (process.env.NODE_ENV === 'production') {
       const pickupWindow = new Date(booking.start);
-      pickupWindow.setMinutes(pickupWindow.getMinutes() - 30); // Allow 30 min before start
+      pickupWindow.setMinutes(pickupWindow.getMinutes() - POLICIES.QR_VALIDITY_BEFORE_START);
       if (now < pickupWindow) {
         return NextResponse.json(
-          { error: 'QR code can only be generated 30 minutes before booking start time' },
+          { error: `QR code can only be generated ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before booking start time` },
           { status: 400 }
         );
       }

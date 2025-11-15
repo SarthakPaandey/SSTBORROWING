@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type ResourceType = 'FACILITY' | 'ROOM' | 'LAB_EQUIPMENT' | 'SPORTS_EQUIPMENT';
+export type ResourceType = 'FACILITY' | 'ROOM' | 'LAB_EQUIPMENT' | 'SPORTS_EQUIPMENT' | 'LIBRARY';
 export type ResourceStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface IResourceRules {
@@ -26,7 +26,7 @@ const ResourceSchema = new Schema<IResource>(
   {
     type: {
       type: String,
-      enum: ['FACILITY', 'ROOM', 'LAB_EQUIPMENT', 'SPORTS_EQUIPMENT'],
+      enum: ['FACILITY', 'ROOM', 'LAB_EQUIPMENT', 'SPORTS_EQUIPMENT', 'LIBRARY'],
       required: true,
     },
     name: { type: String, required: true },

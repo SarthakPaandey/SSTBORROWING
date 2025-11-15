@@ -4,11 +4,50 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+
+type ModalMode = 'add' | 'edit' | null;
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Resource modal state
+  const [resourceModal, setResourceModal] = useState(false);
+  const [resourceMode, setResourceMode] = useState<ModalMode>(null);
+  const [selectedResource, setSelectedResource] = useState<any>(null);
+  const [resourceForm, setResourceForm] = useState({
+    type: 'FACILITY',
+    name: '',
+    location: '',
+    capacity: '',
+    requiresApproval: false,
+    slotMinutes: '',
+    studentsOnly: false,
+    status: 'ACTIVE',
+  });
+
+  // Equipment modal state
+  const [equipmentModal, setEquipmentModal] = useState(false);
+  const [equipmentMode, setEquipmentMode] = useState<ModalMode>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [equipmentForm, setEquipmentForm] = useState({
+    name: '',
+    qtyTotal: '',
+    qtyAvailable: '',
+    safety: false,
+    restricted: false,
+    resourceId: '',
+  });
+
+  // Delete confirmation
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteType, setDeleteType] = useState<'resource' | 'equipment'>('resource');
 
   useEffect(() => {
     fetchResources();
@@ -16,16 +55,187 @@ export default function ResourcesPage() {
   }, []);
 
   const fetchResources = async () => {
-    const res = await fetch('/api/resources');
-    const data = await res.json();
-    setResources(data.resources);
+    try {
+      const res = await fetch('/api/resources?type=');
+      const data = await res.json();
+      setResources(data.resources || []);
+    } catch (error) {
+      console.error('Failed to fetch resources:', error);
+    }
   };
 
   const fetchEquipment = async () => {
-    const res = await fetch('/api/admin/equipment');
-    const data = await res.json();
-    setEquipment(data.items);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/admin/equipment');
+      const data = await res.json();
+      setEquipment(data.items || []);
+    } catch (error) {
+      console.error('Failed to fetch equipment:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resource handlers
+  const openAddResource = (type: string) => {
+    setResourceForm({
+      type,
+      name: '',
+      location: '',
+      capacity: '',
+      requiresApproval: false,
+      slotMinutes: '',
+      studentsOnly: false,
+      status: 'ACTIVE',
+    });
+    setResourceMode('add');
+    setResourceModal(true);
+  };
+
+  const openEditResource = (resource: any) => {
+    setSelectedResource(resource);
+    setResourceForm({
+      type: resource.type,
+      name: resource.name,
+      location: resource.location || '',
+      capacity: resource.capacity?.toString() || '',
+      requiresApproval: resource.rules?.requiresApproval || false,
+      slotMinutes: resource.rules?.slotMinutes?.toString() || '',
+      studentsOnly: resource.rules?.studentsOnly || false,
+      status: resource.status,
+    });
+    setResourceMode('edit');
+    setResourceModal(true);
+  };
+
+  const handleSaveResource = async () => {
+    try {
+      const payload = {
+        type: resourceForm.type,
+        name: resourceForm.name,
+        location: resourceForm.location || undefined,
+        capacity: resourceForm.capacity ? parseInt(resourceForm.capacity) : undefined,
+        rules: {
+          requiresApproval: resourceForm.requiresApproval,
+          slotMinutes: resourceForm.slotMinutes ? parseInt(resourceForm.slotMinutes) : undefined,
+          studentsOnly: resourceForm.studentsOnly,
+        },
+        status: resourceForm.status,
+      };
+
+      if (resourceMode === 'add') {
+        await fetch('/api/resources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else if (resourceMode === 'edit' && selectedResource) {
+        await fetch(`/api/resources/${selectedResource._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setResourceModal(false);
+      fetchResources();
+    } catch (error) {
+      console.error('Failed to save resource:', error);
+      alert('Failed to save resource');
+    }
+  };
+
+  const handleDeleteResource = async () => {
+    try {
+      await fetch(`/api/resources/${deleteTarget._id}`, {
+        method: 'DELETE',
+      });
+      setDeleteModal(false);
+      fetchResources();
+    } catch (error) {
+      console.error('Failed to delete resource:', error);
+      alert('Failed to delete resource');
+    }
+  };
+
+  // Equipment handlers
+  const openAddEquipment = (resourceId: string) => {
+    setEquipmentForm({
+      name: '',
+      qtyTotal: '',
+      qtyAvailable: '',
+      safety: false,
+      restricted: false,
+      resourceId,
+    });
+    setEquipmentMode('add');
+    setEquipmentModal(true);
+  };
+
+  const openEditEquipment = (item: any) => {
+    setSelectedEquipment(item);
+    setEquipmentForm({
+      name: item.name,
+      qtyTotal: item.qtyTotal.toString(),
+      qtyAvailable: item.qtyAvailable.toString(),
+      safety: item.safety || false,
+      restricted: item.restricted || false,
+      resourceId: item.resourceId,
+    });
+    setEquipmentMode('edit');
+    setEquipmentModal(true);
+  };
+
+  const handleSaveEquipment = async () => {
+    try {
+      const payload = {
+        name: equipmentForm.name,
+        qtyTotal: parseInt(equipmentForm.qtyTotal),
+        qtyAvailable: parseInt(equipmentForm.qtyAvailable),
+        safety: equipmentForm.safety,
+        restricted: equipmentForm.restricted,
+        resourceId: equipmentForm.resourceId,
+      };
+
+      if (equipmentMode === 'add') {
+        await fetch('/api/admin/equipment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else if (equipmentMode === 'edit' && selectedEquipment) {
+        await fetch(`/api/admin/equipment/${selectedEquipment._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setEquipmentModal(false);
+      fetchEquipment();
+    } catch (error) {
+      console.error('Failed to save equipment:', error);
+      alert('Failed to save equipment');
+    }
+  };
+
+  const handleDeleteEquipment = async () => {
+    try {
+      await fetch(`/api/admin/equipment/${deleteTarget._id}`, {
+        method: 'DELETE',
+      });
+      setDeleteModal(false);
+      fetchEquipment();
+    } catch (error) {
+      console.error('Failed to delete equipment:', error);
+      alert('Failed to delete equipment');
+    }
+  };
+
+  const confirmDelete = (item: any, type: 'resource' | 'equipment') => {
+    setDeleteTarget(item);
+    setDeleteType(type);
+    setDeleteModal(true);
   };
 
   if (loading) {
@@ -35,11 +245,23 @@ export default function ResourcesPage() {
   const facilities = resources.filter((r) => r.type === 'FACILITY');
   const rooms = resources.filter((r) => r.type === 'ROOM');
 
+  // Get equipment resources (excluding library)
+  const sportsEquipmentResource = resources.find(r => r.type === 'SPORTS_EQUIPMENT');
+  const labEquipmentResource = resources.find(r => r.type === 'LAB_EQUIPMENT');
+
+  // Filter equipment by resource type (exclude library books)
+  const sportsEquipment = equipment.filter(item =>
+    sportsEquipmentResource && item.resourceId === sportsEquipmentResource._id
+  );
+  const labEquipment = equipment.filter(item =>
+    labEquipmentResource && item.resourceId === labEquipmentResource._id
+  );
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Resource Management</h1>
-        <p className="text-gray-600">Manage facilities, rooms, and equipment</p>
+        <h1 className="text-3xl font-bold text-text-main">Resource Management</h1>
+        <p className="text-text-muted">Manage facilities, rooms, and equipment</p>
       </div>
 
       <Tabs defaultValue="facilities">
@@ -51,25 +273,59 @@ export default function ResourcesPage() {
 
         <TabsContent value="facilities">
           <Card>
-            <CardHeader>
-              <CardTitle>Facilities</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-text-main">Facilities</CardTitle>
+              <Button
+                onClick={() => openAddResource('FACILITY')}
+                variant="gradient"
+                size="sm"
+                className="btn-ripple"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Facility
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {facilities.map((resource) => (
-                  <div
-                    key={resource._id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div>
-                      <p className="font-medium">{resource.name}</p>
-                      <p className="text-sm text-gray-600">{resource.location}</p>
+              <div className="space-y-3">
+                {facilities.length === 0 ? (
+                  <p className="text-center text-text-muted py-8">No facilities yet. Add one to get started.</p>
+                ) : (
+                  facilities.map((resource) => (
+                    <div
+                      key={resource._id}
+                      className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-text-main">{resource.name}</p>
+                        <p className="text-sm text-text-muted">{resource.location}</p>
+                        {resource.rules?.requiresApproval && (
+                          <p className="text-xs text-yellow-500 mt-1">Requires Approval</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                          {resource.status}
+                        </Badge>
+                        <Button
+                          onClick={() => openEditResource(resource)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => confirmDelete(resource, 'resource')}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:text-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                      {resource.status}
-                    </Badge>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -77,56 +333,363 @@ export default function ResourcesPage() {
 
         <TabsContent value="rooms">
           <Card>
-            <CardHeader>
-              <CardTitle>Rooms</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-text-main">Rooms</CardTitle>
+              <Button
+                onClick={() => openAddResource('ROOM')}
+                variant="gradient"
+                size="sm"
+                className="btn-ripple"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Room
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {rooms.map((resource) => (
-                  <div
-                    key={resource._id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div>
-                      <p className="font-medium">{resource.name}</p>
-                      <p className="text-sm text-gray-600">{resource.location}</p>
+              <div className="space-y-3">
+                {rooms.length === 0 ? (
+                  <p className="text-center text-text-muted py-8">No rooms yet. Add one to get started.</p>
+                ) : (
+                  rooms.map((resource) => (
+                    <div
+                      key={resource._id}
+                      className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-text-main">{resource.name}</p>
+                        <p className="text-sm text-text-muted">
+                          {resource.location} {resource.capacity && `• Capacity: ${resource.capacity}`}
+                        </p>
+                        {resource.rules?.requiresApproval && (
+                          <p className="text-xs text-yellow-500 mt-1">Requires Approval</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                          {resource.status}
+                        </Badge>
+                        <Button
+                          onClick={() => openEditResource(resource)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => confirmDelete(resource, 'resource')}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:text-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                      {resource.status}
-                    </Badge>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="equipment">
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipment Inventory</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {equipment.map((item) => (
-                  <div
-                    key={item._id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-600">
-                        Available: {item.qtyAvailable} / {item.qtyTotal}
-                      </p>
-                    </div>
-                    {item.restricted && <Badge variant="destructive">Restricted</Badge>}
+          <Tabs defaultValue="sports">
+            <TabsList className="mb-4">
+              <TabsTrigger value="sports">Sports Equipment</TabsTrigger>
+              <TabsTrigger value="lab">Lab Equipment</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sports">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-text-main">Sports Equipment</CardTitle>
+                  {sportsEquipmentResource && (
+                    <Button
+                      onClick={() => openAddEquipment(sportsEquipmentResource._id)}
+                      variant="gradient"
+                      size="sm"
+                      className="btn-ripple"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Sports Equipment
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {sportsEquipment.length === 0 ? (
+                      <p className="text-center text-text-muted py-8">No sports equipment yet. Add one to get started.</p>
+                    ) : (
+                      sportsEquipment.map((item) => (
+                        <div
+                          key={item._id}
+                          className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-text-main">{item.name}</p>
+                            <p className="text-sm text-text-muted">
+                              Available: {item.qtyAvailable} / {item.qtyTotal}
+                            </p>
+                            <div className="flex gap-2 mt-1">
+                              {item.safety && <Badge variant="warning">Safety Item</Badge>}
+                              {item.restricted && <Badge variant="destructive">Restricted</Badge>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              onClick={() => openEditEquipment(item)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => confirmDelete(item, 'equipment')}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:text-danger"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="lab">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-text-main">Lab Equipment</CardTitle>
+                  {labEquipmentResource && (
+                    <Button
+                      onClick={() => openAddEquipment(labEquipmentResource._id)}
+                      variant="gradient"
+                      size="sm"
+                      className="btn-ripple"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Lab Equipment
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {labEquipment.length === 0 ? (
+                      <p className="text-center text-text-muted py-8">No lab equipment yet. Add one to get started.</p>
+                    ) : (
+                      labEquipment.map((item) => (
+                        <div
+                          key={item._id}
+                          className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-text-main">{item.name}</p>
+                            <p className="text-sm text-text-muted">
+                              Available: {item.qtyAvailable} / {item.qtyTotal}
+                            </p>
+                            <div className="flex gap-2 mt-1">
+                              {item.safety && <Badge variant="warning">Safety Item</Badge>}
+                              {item.restricted && <Badge variant="destructive">Restricted</Badge>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              onClick={() => openEditEquipment(item)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => confirmDelete(item, 'equipment')}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:text-danger"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
+
+      {/* Resource Add/Edit Modal */}
+      <Modal
+        isOpen={resourceModal}
+        onClose={() => setResourceModal(false)}
+        title={resourceMode === 'add' ? 'Add Resource' : 'Edit Resource'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Name *</label>
+            <Input
+              value={resourceForm.name}
+              onChange={(e) => setResourceForm({ ...resourceForm, name: e.target.value })}
+              placeholder="e.g., Basketball Court"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Location</label>
+            <Input
+              value={resourceForm.location}
+              onChange={(e) => setResourceForm({ ...resourceForm, location: e.target.value })}
+              placeholder="e.g., Ground Floor"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Capacity</label>
+            <Input
+              type="number"
+              value={resourceForm.capacity}
+              onChange={(e) => setResourceForm({ ...resourceForm, capacity: e.target.value })}
+              placeholder="Maximum people"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Slot Duration (minutes)</label>
+            <Input
+              type="number"
+              value={resourceForm.slotMinutes}
+              onChange={(e) => setResourceForm({ ...resourceForm, slotMinutes: e.target.value })}
+              placeholder="e.g., 60"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="requiresApproval"
+              checked={resourceForm.requiresApproval}
+              onChange={(e) => setResourceForm({ ...resourceForm, requiresApproval: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="requiresApproval" className="text-sm text-text-main">Requires Admin Approval</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="studentsOnly"
+              checked={resourceForm.studentsOnly}
+              onChange={(e) => setResourceForm({ ...resourceForm, studentsOnly: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="studentsOnly" className="text-sm text-text-main">Students Only</label>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={handleSaveResource} variant="gradient" className="flex-1 btn-ripple">
+              {resourceMode === 'add' ? 'Add' : 'Save'}
+            </Button>
+            <Button onClick={() => setResourceModal(false)} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Equipment Add/Edit Modal */}
+      <Modal
+        isOpen={equipmentModal}
+        onClose={() => setEquipmentModal(false)}
+        title={equipmentMode === 'add' ? 'Add Equipment' : 'Edit Equipment'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Name *</label>
+            <Input
+              value={equipmentForm.name}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, name: e.target.value })}
+              placeholder="e.g., Basketball"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Total Quantity *</label>
+            <Input
+              type="number"
+              value={equipmentForm.qtyTotal}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, qtyTotal: e.target.value })}
+              placeholder="Total items"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Available Quantity *</label>
+            <Input
+              type="number"
+              value={equipmentForm.qtyAvailable}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, qtyAvailable: e.target.value })}
+              placeholder="Currently available"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="safety"
+              checked={equipmentForm.safety}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, safety: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="safety" className="text-sm text-text-main">Safety Item</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="restricted"
+              checked={equipmentForm.restricted}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, restricted: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="restricted" className="text-sm text-text-main">Restricted (Requires Training)</label>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={handleSaveEquipment} variant="gradient" className="flex-1 btn-ripple">
+              {equipmentMode === 'add' ? 'Add' : 'Save'}
+            </Button>
+            <Button onClick={() => setEquipmentModal(false)} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteModal}
+        onClose={() => setDeleteModal(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-text-main">
+            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <Button
+              onClick={deleteType === 'resource' ? handleDeleteResource : handleDeleteEquipment}
+              variant="outline"
+              className="flex-1 border-danger text-danger hover:bg-danger/10"
+            >
+              Delete
+            </Button>
+            <Button onClick={() => setDeleteModal(false)} variant="gradient" className="flex-1 btn-ripple">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

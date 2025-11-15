@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    if (booking.kind !== 'EQUIPMENT') {
+    if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
       return NextResponse.json(
-        { error: 'This is not an equipment booking' },
+        { error: 'This is not an equipment or library booking' },
         { status: 400 }
       );
     }
@@ -72,17 +72,26 @@ export async function POST(req: NextRequest) {
     let penaltiesApplied: string[] = [];
 
     if (isLate) {
+      // Library books have higher penalty (2 points) vs equipment (1 point)
+      const penaltyPoints = booking.kind === 'LIBRARY'
+        ? POLICIES.PENALTY_BOOK_LATE_RETURN
+        : POLICIES.PENALTY_LATE_RETURN;
+
+      const penaltyReason = booking.kind === 'LIBRARY'
+        ? 'Late book return (payment required)'
+        : 'Late equipment return';
+
       await Penalty.create({
         userId: booking.userId,
         bookingId: booking._id.toString(),
-        points: POLICIES.PENALTY_LATE_RETURN,
-        reason: 'Late equipment return',
+        points: penaltyPoints,
+        reason: penaltyReason,
       });
-      penaltiesApplied.push('Late return penalty');
+      penaltiesApplied.push(`Late return penalty (${penaltyPoints} points)`);
 
       const userDoc = await User.findById(booking.userId);
       if (userDoc) {
-        userDoc.penaltyPoints += POLICIES.PENALTY_LATE_RETURN;
+        userDoc.penaltyPoints += penaltyPoints;
         if (userDoc.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
           userDoc.suspendedUntil = calculateSuspensionDate();
         }

@@ -322,4 +322,4 @@ MIT License - Free for educational and commercial use.
 
 ---
 
-Built with ❤️ for SST by the development team.
+Built with ❤️ for SST.

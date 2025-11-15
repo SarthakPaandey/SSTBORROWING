@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if resource is a team sport
-    if (!POLICIES.GROUP_BOOKING_TEAM_SPORTS.includes(resource.name)) {
+    const teamSports = POLICIES.GROUP_BOOKING_TEAM_SPORTS as readonly string[];
+    if (!teamSports.includes(resource.name)) {
       return NextResponse.json(
         { error: `Group bookings are only available for: ${POLICIES.GROUP_BOOKING_TEAM_SPORTS.join(', ')}` },
         { status: 400 }

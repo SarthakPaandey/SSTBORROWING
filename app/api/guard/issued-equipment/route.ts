@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
     const resources = await Resource.find({ _id: { $in: resourceIds } }).lean();
     const users = await User.find({ _id: { $in: userIds } }).lean();
 
-    const resourceMap = new Map(resources.map((r) => [r._id.toString(), r]));
-    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+    const resourceMap = new Map(resources.map((r) => [r.id, r]));
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
     const enrichedBookings = bookings.map((b) => ({
       ...b,

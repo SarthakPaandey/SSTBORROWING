@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for conflicts with existing bookings for all members (including organizer)
-    const allMemberIds = [organizer._id.toString(), ...members.map(m => m._id.toString())];
+    const allMemberIds = [organizer.id, ...members.map(m => m.id)];
 
     const conflictingBookings = await Booking.findOne({
       userId: { $in: allMemberIds },
@@ -181,11 +181,11 @@ export async function POST(req: NextRequest) {
     expiresAt.setHours(expiresAt.getHours() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS);
 
     const groupBooking = await GroupBooking.create({
-      bookingId: booking._id.toString(),
-      organizerId: organizer._id.toString(),
+      bookingId: booking.id,
+      organizerId: organizer.id,
       organizerEmail: organizer.email,
       members: members.map(m => ({
-        userId: m._id.toString(),
+        userId: m.id,
         email: m.email,
         name: m.name,
         status: 'PENDING',
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Update booking with group reference
-    booking.groupBookingId = groupBooking._id.toString();
+    booking.groupBookingId = groupBooking.id;
     await booking.save();
 
     return NextResponse.json({

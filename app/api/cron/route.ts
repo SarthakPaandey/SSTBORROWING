@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
             // Apply penalty
             await Penalty.create({
                 userId: booking.userId,
-                bookingId: booking._id.toString(),
+                bookingId: booking.id,
                 points: POLICIES.PENALTY_NO_SHOW,
                 reason: 'No-show for booking',
             });

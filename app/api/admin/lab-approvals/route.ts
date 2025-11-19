@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
     // Populate resource names and user details
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
     const resources = await Resource.find({ _id: { $in: resourceIds } });
-    const resourceMap = new Map(resources.map(r => [r._id.toString(), r]));
+    const resourceMap = new Map(resources.map(r => [r.id, r]));
 
     const userIds = [...new Set(bookings.map(b => b.userId))];
     const users = await User.find({ _id: { $in: userIds } });
-    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+    const userMap = new Map(users.map(u => [u.id, u]));
 
     const enrichedBookings = bookings.map(b => {
       const resource = resourceMap.get(b.resourceId);

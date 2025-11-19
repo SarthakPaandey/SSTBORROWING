@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       await Penalty.create({
         userId: booking.userId,
-        bookingId: booking._id.toString(),
+        bookingId: booking.id,
         points: penaltyPoints,
         reason: penaltyReason,
       });
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     if (condition === 'damaged') {
       await Penalty.create({
         userId: booking.userId,
-        bookingId: booking._id.toString(),
+        bookingId: booking.id,
         points: POLICIES.PENALTY_DAMAGE,
         reason: `Equipment returned damaged: ${notes || 'No details provided'}`,
       });

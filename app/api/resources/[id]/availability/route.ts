@@ -53,7 +53,7 @@ export async function GET(
         _id: { $ne: params.id },
       });
 
-      const sharedResourceIds = sharedResources.map(r => r._id.toString());
+      const sharedResourceIds = sharedResources.map(r => r.id);
 
       sharedBookings = await Booking.find({
         resourceId: { $in: sharedResourceIds },

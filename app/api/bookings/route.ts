@@ -55,12 +55,12 @@ export async function GET(req: NextRequest) {
     // Populate resource names
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
     const resources = await Resource.find({ _id: { $in: resourceIds } });
-    const resourceMap = new Map(resources.map(r => [r._id.toString(), r]));
+    const resourceMap = new Map(resources.map(r => [r.id, r]));
 
     // Populate user details
     const userIds = [...new Set(bookings.map(b => b.userId))];
     const users = await User.find({ _id: { $in: userIds } });
-    const userMap = new Map(users.map(u => [u._id.toString(), u]));
+    const userMap = new Map(users.map(u => [u.id, u]));
 
     const enrichedBookings = bookings.map(b => {
       const userData = userMap.get(b.userId);
@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
         _id: { $ne: resourceId },
       }).session(session);
 
-      const sharedResourceIds = sharedResources.map(r => r._id.toString());
+      const sharedResourceIds = sharedResources.map(r => r.id);
 
       const sharedConflict = await Booking.findOne({
         resourceId: { $in: sharedResourceIds },
@@ -302,7 +302,7 @@ export async function POST(req: NextRequest) {
 
       if (sharedConflict) {
         const conflictResource = sharedResources.find(
-          r => r._id.toString() === sharedConflict.resourceId
+          r => r.id === sharedConflict.resourceId
         );
         throw new Error(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
       }

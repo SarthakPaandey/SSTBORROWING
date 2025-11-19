@@ -111,7 +111,7 @@ export async function POST(
 
     // Check for conflicts
     const conflictingBooking = await Booking.findOne({
-      userId: newMember._id.toString(),
+      userId: newMember.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $lt: booking.end },
       end: { $gt: booking.start },
@@ -131,7 +131,7 @@ export async function POST(
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayBookings = await Booking.countDocuments({
-      userId: newMember._id.toString(),
+      userId: newMember.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $gte: today, $lt: tomorrow },
     });
@@ -148,7 +148,7 @@ export async function POST(
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const weekBookings = await Booking.countDocuments({
-      userId: newMember._id.toString(),
+      userId: newMember.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
       start: { $gte: weekAgo },
     });
@@ -162,7 +162,7 @@ export async function POST(
 
     // Add new member to group
     groupBooking.members.push({
-      userId: newMember._id.toString(),
+      userId: newMember.id,
       email: newMember.email,
       name: newMember.name,
       status: 'PENDING',

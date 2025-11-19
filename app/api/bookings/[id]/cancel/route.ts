@@ -84,7 +84,7 @@ export async function PATCH(
 
     // Track the cancellation
     await Cancellation.create({
-      bookingId: booking._id.toString(),
+      bookingId: booking.id,
       userId: booking.userId,
       resourceId: booking.resourceId,
       resourceName: resource?.name || 'Unknown',

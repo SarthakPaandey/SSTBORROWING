@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayBookings = await Booking.countDocuments({
-      userId: user._id.toString(),
+      userId: user.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $gte: today, $lt: tomorrow },
     }).session(session);
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const weekBookings = await Booking.countDocuments({
-      userId: user._id.toString(),
+      userId: user.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
       start: { $gte: weekAgo },
     }).session(session);
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
 
     // Check total active bookings limit
     const totalActiveBookings = await Booking.countDocuments({
-      userId: user._id.toString(),
+      userId: user.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       end: { $gt: new Date() }, // Future bookings only
     }).session(session);
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
     monthEnd.setMonth(monthEnd.getMonth() + 1);
 
     const monthlyBookings = await Booking.find({
-      userId: user._id.toString(),
+      userId: user.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
       start: { $gte: monthStart, $lt: monthEnd },
     }).session(session);
@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
     if (kind === 'LIBRARY') {
       // Check if user already has an active book borrowing
       const activeBookBorrowings = await Booking.countDocuments({
-        userId: user._id.toString(),
+        userId: user.id,
         kind: 'LIBRARY',
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: new Date() },
@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
 
     // Check minimum gap between bookings
     const upcomingBookings = await Booking.find({
-      userId: user._id.toString(),
+      userId: user.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       end: { $gt: new Date() },
     }).session(session);
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
 
           // Send email to all admins
           const emailHTML = generateApprovalEmailHTML(
-            booking._id.toString(),
+            booking.id,
             resource.name,
             user.name || user.email.split('@')[0],
             user.email,

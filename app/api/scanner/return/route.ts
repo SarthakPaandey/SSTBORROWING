@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       // Apply late penalty
       await Penalty.create({
         userId: booking.userId,
-        bookingId: booking._id.toString(),
+        bookingId: booking.id,
         points: POLICIES.PENALTY_LATE_RETURN,
         reason: 'Late equipment return',
       });
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     if (condition === 'damaged') {
       await Penalty.create({
         userId: booking.userId,
-        bookingId: booking._id.toString(),
+        bookingId: booking.id,
         points: POLICIES.PENALTY_DAMAGE,
         reason: 'Equipment returned damaged',
       });

@@ -33,8 +33,8 @@ export default async function FacilitiesPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {facilities.map((facility) => (
           <Link
-            key={facility._id.toString()}
-            href={`/user/facilities/${facility._id.toString()}`}
+            key={facility.id}
+            href={`/user/facilities/${facility.id}`}
           >
             <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
               <CardHeader>

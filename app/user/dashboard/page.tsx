@@ -28,7 +28,7 @@ export default async function UserDashboard() {
 
   // Get upcoming bookings
   const upcomingBookings = await Booking.find({
-    userId: user._id.toString(),
+    userId: user.id,
     status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
     start: { $gte: new Date() },
   })
@@ -39,7 +39,7 @@ export default async function UserDashboard() {
   // Enrich with resource names
   const resourceIds = upcomingBookings.map((b) => b.resourceId);
   const resources = await Resource.find({ _id: { $in: resourceIds } }).lean();
-  const resourceMap = new Map(resources.map((r) => [r._id.toString(), r]));
+  const resourceMap = new Map(resources.map((r) => [r.id, r]));
 
   const enrichedBookings = upcomingBookings.map((b) => ({
     ...b,
@@ -67,8 +67,8 @@ export default async function UserDashboard() {
               {user.suspendedUntil && new Date() < user.suspendedUntil
                 ? `You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}`
                 : user.penaltyPoints >= 5
-                ? 'You have reached the maximum penalty points. Please contact admin.'
-                : 'Avoid no-shows and late returns to prevent suspension.'}
+                  ? 'You have reached the maximum penalty points. Please contact admin.'
+                  : 'Avoid no-shows and late returns to prevent suspension.'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -167,7 +167,7 @@ export default async function UserDashboard() {
             <div className="space-y-4">
               {enrichedBookings.map((booking: any) => (
                 <div
-                  key={booking._id.toString()}
+                  key={booking.id}
                   className="flex items-center justify-between rounded-lg border border-card-border bg-bg-dark/50 p-4 transition-all hover:border-accent-blue/30"
                 >
                   <div>
@@ -184,8 +184,8 @@ export default async function UserDashboard() {
                       booking.status === 'CONFIRMED'
                         ? 'success'
                         : booking.status === 'PENDING'
-                        ? 'warning'
-                        : 'default'
+                          ? 'warning'
+                          : 'default'
                     }
                   >
                     {booking.status}

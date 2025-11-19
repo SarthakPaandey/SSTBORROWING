@@ -32,7 +32,7 @@ export default async function RoomsPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rooms.map((room) => (
-          <Link key={room._id.toString()} href={`/user/rooms/${room._id.toString()}`}>
+          <Link key={room.id} href={`/user/rooms/${room.id}`}>
             <Card className="cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(47,176,255,0.3)] hover:border-accent-blue/40 hover:-translate-y-1 card-scale-hover group">
               <CardHeader>
                 <CardTitle className="group-hover:text-accent-blue transition-colors">{room.name}</CardTitle>

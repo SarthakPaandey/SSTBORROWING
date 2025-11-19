@@ -5,9 +5,10 @@ import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { User } from '@/models/User';
 import { Penalty } from '@/models/Penalty';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Calendar, Users, AlertTriangle, Clock } from 'lucide-react';
 import { AdminNotifications } from '@/components/AdminNotifications';
+import { DashboardCharts } from '@/components/admin/DashboardCharts';
 
 export default async function AdminDashboard() {
   const session = await getServerSession(authOptions);
@@ -93,6 +94,9 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Analytics Charts */}
+      <DashboardCharts />
 
       {/* Notification Settings */}
       <AdminNotifications />

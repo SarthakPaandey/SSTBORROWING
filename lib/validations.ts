@@ -1,0 +1,32 @@
+import { z } from 'zod';
+
+export const bookingSchema = z.object({
+    resourceId: z.string().min(1, "Resource ID is required"),
+    start: z.string().datetime("Invalid start date"),
+    end: z.string().datetime("Invalid end date"),
+    items: z.array(z.object({
+        id: z.string(),
+        qty: z.number().min(1)
+    })).optional(),
+}).refine((data: { start: string; end: string }) => {
+    const start = new Date(data.start);
+    const end = new Date(data.end);
+    return end > start;
+}, {
+    message: "End time must be after start time",
+    path: ["end"],
+});
+
+export const groupBookingSchema = z.object({
+    resourceId: z.string().min(1, "Resource ID is required"),
+    start: z.string().datetime("Invalid start date"),
+    end: z.string().datetime("Invalid end date"),
+    memberEmails: z.array(z.string().email("Invalid email address")).min(1, "At least one member is required"),
+}).refine((data: { start: string; end: string }) => {
+    const start = new Date(data.start);
+    const end = new Date(data.end);
+    return end > start;
+}, {
+    message: "End time must be after start time",
+    path: ["end"],
+});

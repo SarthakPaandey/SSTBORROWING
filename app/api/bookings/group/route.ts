@@ -6,24 +6,38 @@ import { User } from '@/models/User';
 import { GroupBooking } from '@/models/GroupBooking';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, canUserBook, isWithinAdvanceWindow } from '@/lib/policies';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
 
-export async function POST(req: NextRequest) {
+import { groupBookingSchema } from '@/lib/validations';
+
+import { withRateLimit } from '@/lib/ratelimit';
+
+async function postHandler(req: Request) {
   try {
-    const currentUser = await requireAuth(['STUDENT']);
-    await connectDB();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
-    const { resourceId, start, end, memberEmails } = body;
 
-    if (!resourceId || !start || !end || !memberEmails || !Array.isArray(memberEmails)) {
+    // Validate input using Zod
+    const validationResult = groupBookingSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: resourceId, start, end, memberEmails' },
+        { error: 'Validation Error', details: validationResult.error.flatten() },
         { status: 400 }
       );
     }
 
+    const { resourceId, start, end, memberEmails } = validationResult.data;
+    const organizerId = session.user.id;
+
+    await connectDB();
+
     // Get organizer
-    const organizer = await User.findById(currentUser.id);
+    const organizer = await User.findById(session.user.id);
     if (!organizer || organizer.role !== 'STUDENT') {
       return NextResponse.json({ error: 'Only students can create group bookings' }, { status: 403 });
     }
@@ -68,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Remove duplicates and organizer's own email
-    const uniqueEmails = [...new Set(memberEmails)]
+    const uniqueEmails: string[] = [...new Set<string>(memberEmails as string[])]
       .filter((email: string) => email.toLowerCase() !== organizer.email.toLowerCase());
 
     if (uniqueEmails.length !== memberEmails.length) {
@@ -216,3 +230,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withRateLimit(postHandler);

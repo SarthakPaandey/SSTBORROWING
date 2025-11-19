@@ -17,6 +17,9 @@ import {
 } from '@/lib/policies';
 import { sendEmail, generateApprovalEmailHTML } from '@/lib/email';
 import { formatDateTime } from '@/lib/utils';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import { bookingSchema } from '@/lib/validations';
 
 export async function GET(req: NextRequest) {
   try {
@@ -81,42 +84,47 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+import { withRateLimit } from '@/lib/ratelimit';
+
+async function postHandler(req: Request) {
   const conn = await connectDB();
   if (!conn) {
     return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
   }
+  // ... rest of the function
+
   const session = await conn.startSession();
   session.startTransaction();
 
   try {
-    const currentUser = await requireAuth(['STUDENT', 'ADMIN']);
-    await connectDB();
+    const authSession = await getServerSession(authOptions);
+    if (!authSession?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
-    const { resourceId, kind, start, end, items } = body;
 
-    if (!resourceId || !kind || !start || !end) {
-      throw new Error('Missing required fields');
+    // Validate input using Zod
+    const validationResult = bookingSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Validation Error', details: validationResult.error.flatten() },
+        { status: 400 }
+      );
     }
+
+    const { resourceId, start, end, items } = validationResult.data;
+    const userId = authSession.user.id;
 
     const startDate = new Date(start);
     const endDate = new Date(end);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new Error('Invalid date format');
-    }
-
-    if (startDate >= endDate) {
-      throw new Error('Start time must be before end time');
-    }
 
     if (startDate < new Date()) {
       throw new Error('Cannot book in the past');
     }
 
     // Get user with penalty info
-    const user = await User.findById(currentUser.id).session(session);
+    const user = await User.findById(userId).session(session);
     if (!user) {
       throw new Error('User not found');
     }
@@ -136,6 +144,14 @@ export async function POST(req: NextRequest) {
     const resource = await Resource.findById(resourceId).session(session);
     if (!resource || resource.status !== 'ACTIVE') {
       throw new Error('Resource not available');
+    }
+
+    // Map ResourceType to BookingKind
+    let kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
+    if (resource.type === 'LAB_EQUIPMENT' || resource.type === 'SPORTS_EQUIPMENT') {
+      kind = 'EQUIPMENT';
+    } else {
+      kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
     }
 
     // Check students-only restriction
@@ -323,16 +339,16 @@ export async function POST(req: NextRequest) {
       }).session(session);
 
       for (const item of items) {
-        const equipItem = await EquipmentItem.findById(item.itemId).session(session);
+        const equipItem = await EquipmentItem.findById(item.id).session(session);
         if (!equipItem) {
-          throw new Error(`${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.itemId} not found`);
+          throw new Error(`${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.id} not found`);
         }
 
         // Calculate already booked quantity for this item in overlapping bookings
         let bookedQty = 0;
         for (const booking of overlappingBookings) {
           if (booking.items) {
-            const bookedItem = booking.items.find((i: any) => i.itemId === item.itemId);
+            const bookedItem = booking.items.find((i: any) => i.itemId === item.id);
             if (bookedItem) {
               bookedQty += bookedItem.qty;
             }
@@ -346,7 +362,7 @@ export async function POST(req: NextRequest) {
         }
 
         enrichedItems.push({
-          itemId: item.itemId,
+          itemId: item.id,
           name: equipItem.name,
           qty: item.qty,
         });

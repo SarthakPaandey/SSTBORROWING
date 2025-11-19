@@ -42,7 +42,7 @@ export const authOptions: AuthOptions = {
           }
 
           return {
-            id: user._id.toString(),
+            id: user.id,
             name: user.name,
             email: user.email,
             role: user.role,
@@ -82,7 +82,7 @@ export const authOptions: AuthOptions = {
           });
         }
 
-        user.id = dbUser._id.toString();
+        user.id = dbUser.id;
         user.role = dbUser.role;
 
         return true;

@@ -186,7 +186,7 @@ async function seed() {
 
     for (const item of sportsItems) {
       await EquipmentItem.create({
-        resourceId: sportsEquipmentResource._id.toString(),
+        resourceId: sportsEquipmentResource.id,
         ...item,
       });
     }
@@ -218,7 +218,7 @@ async function seed() {
 
     for (const item of labItems) {
       await EquipmentItem.create({
-        resourceId: labEquipmentResource._id.toString(),
+        resourceId: labEquipmentResource.id,
         ...item,
       });
     }
@@ -247,7 +247,7 @@ async function seed() {
 
     for (const book of fictionBooks) {
       await EquipmentItem.create({
-        resourceId: fictionLibrary._id.toString(),
+        resourceId: fictionLibrary.id,
         ...book,
       });
     }
@@ -271,7 +271,7 @@ async function seed() {
 
     for (const book of nonFictionBooks) {
       await EquipmentItem.create({
-        resourceId: nonFictionLibrary._id.toString(),
+        resourceId: nonFictionLibrary.id,
         ...book,
       });
     }
@@ -295,7 +295,7 @@ async function seed() {
 
     for (const book of textbooks) {
       await EquipmentItem.create({
-        resourceId: textbooksLibrary._id.toString(),
+        resourceId: textbooksLibrary.id,
         ...book,
       });
     }

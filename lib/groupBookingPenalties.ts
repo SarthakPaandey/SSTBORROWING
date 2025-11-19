@@ -34,7 +34,7 @@ export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> 
     // Create penalty record
     await Penalty.create({
       userId,
-      bookingId: booking._id.toString(),
+      bookingId: booking.id,
       points: POLICIES.PENALTY_NO_SHOW,
       reason: 'Group booking no-show',
     });
@@ -80,7 +80,7 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
   for (const userId of allMemberIds) {
     await Penalty.create({
       userId,
-      bookingId: booking._id.toString(),
+      bookingId: booking.id,
       points: POLICIES.PENALTY_LATE_RETURN,
       reason: 'Group booking late return',
     });

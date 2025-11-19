@@ -456,3 +456,5 @@ async function postHandler(req: Request) {
     session.endSession();
   }
 }
+
+export const POST = withRateLimit(postHandler);

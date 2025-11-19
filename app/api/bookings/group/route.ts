@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { GroupBooking } from '@/models/GroupBooking';
-import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, canUserBook, isWithinAdvanceWindow } from '@/lib/policies';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
@@ -32,7 +31,6 @@ async function postHandler(req: Request) {
     }
 
     const { resourceId, start, end, memberEmails } = validationResult.data;
-    const organizerId = session.user.id;
 
     await connectDB();
 

@@ -3,7 +3,6 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export type BlockType = 'EVENT' | 'MAINTENANCE';
 
 export interface IBlock extends Document {
-  _id: string;
   resourceId: string;
   start: Date;
   end: Date;

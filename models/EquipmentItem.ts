@@ -1,13 +1,14 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IEquipmentItem extends Document {
-  _id: string;
   resourceId: string;
   name: string;
+  description?: string;
   qtyTotal: number;
   qtyAvailable: number;
-  safety: boolean; // Safety item?
-  restricted: boolean; // Requires special training?
+  imageUrl?: string;
+  safety: boolean;
+  restricted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

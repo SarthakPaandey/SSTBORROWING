@@ -11,26 +11,30 @@ export interface IBookingItem {
 }
 
 export interface IBooking extends Document {
-  _id: string;
   userId: string;
   resourceId: string;
-  kind: BookingKind;
-  items?: IBookingItem[]; // For equipment bookings
+  kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
+  items?: {
+    itemId: string;
+    name: string;
+    qty: number;
+  }[];
   start: Date;
   end: Date;
   status: BookingStatus;
   requiresApproval: boolean;
   approval: ApprovalStatus;
-  qrIssued: boolean;
-  isGroupBooking: boolean; // Whether this is a group booking
-  groupBookingId?: string; // Reference to GroupBooking if applicable
-  approvedBy?: string; // Admin user ID
+  approvedBy?: string;
   approvedAt?: Date;
-  checkedInAt?: Date; // When equipment was checked in by guard
-  returnedAt?: Date; // When equipment was returned
-  returnCondition?: 'excellent' | 'good' | 'fair' | 'damaged'; // Condition on return
-  returnNotes?: string; // Notes about damage or issues
-  returnedBy?: string; // Guard user ID who processed return
+  qrCode?: string;
+  qrIssued?: boolean;
+  isGroupBooking?: boolean;
+  groupBookingId?: string;
+  checkedInAt?: Date;
+  returnedAt?: Date;
+  returnCondition?: string;
+  returnNotes?: string;
+  returnedBy?: string; // Guard ID
   createdAt: Date;
   updatedAt: Date;
 }

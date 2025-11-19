@@ -10,13 +10,14 @@ export interface IResourceRules {
 }
 
 export interface IResource extends Document {
-  _id: string;
-  type: ResourceType;
   name: string;
+  type: 'FACILITY' | 'ROOM' | 'LAB_EQUIPMENT' | 'SPORTS_EQUIPMENT' | 'LIBRARY';
   location?: string;
   capacity?: number;
+  description?: string;
+  imageUrl?: string;
   rules: IResourceRules;
-  sharedGroupId?: string; // For shared turf
+  sharedGroupId?: string;
   status: ResourceStatus;
   createdAt: Date;
   updatedAt: Date;

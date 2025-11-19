@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ApprovalResultPage() {
+function ApprovalResultContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<{
@@ -196,6 +196,18 @@ export default function ApprovalResultPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ApprovalResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-accent-blue" />
+      </div>
+    }>
+      <ApprovalResultContent />
+    </Suspense>
   );
 }
 

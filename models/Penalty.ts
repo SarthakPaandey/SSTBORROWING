@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPenalty extends Document {
-  _id: string;
   userId: string;
   bookingId?: string;
   points: number;

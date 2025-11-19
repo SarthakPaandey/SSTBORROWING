@@ -13,7 +13,6 @@ export interface IGroupMember {
 }
 
 export interface IGroupBooking extends Document {
-  _id: string;
   bookingId: string; // Reference to main Booking
   organizerId: string; // User who created the group booking
   organizerEmail: string;

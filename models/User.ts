@@ -3,7 +3,6 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export type UserRole = 'STUDENT' | 'ADMIN' | 'GUARD';
 
 export interface IUser extends Document {
-  _id: string;
   name: string;
   email: string;
   role: UserRole;

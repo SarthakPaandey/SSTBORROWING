@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IQRToken extends Document {
-  _id: string;
   bookingId: string;
   token: string;
+  userId: string;
   expiresAt: Date;
   used: boolean;
   usedAt?: Date;

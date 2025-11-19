@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ICancellation extends Document {
-  _id: string;
   bookingId: string;
   userId: string;
   resourceId: string;

@@ -15,7 +15,7 @@ export default function GuardReturnsPage() {
     open: boolean;
     booking?: any;
   }>({ open: false });
-  const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
+  const [isDamaged, setIsDamaged] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +38,12 @@ export default function GuardReturnsPage() {
   const handleReturn = async () => {
     if (!returnModal.booking) return;
 
+    // Validate: if damaged, notes are required
+    if (isDamaged && !notes.trim()) {
+      alert('Please provide notes describing the damage');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/guard/return-equipment', {
@@ -45,7 +51,7 @@ export default function GuardReturnsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: returnModal.booking._id,
-          condition,
+          condition: isDamaged ? 'damaged' : 'good',
           notes,
         }),
       });
@@ -53,7 +59,7 @@ export default function GuardReturnsPage() {
       if (res.ok) {
         alert('Equipment marked as returned successfully!');
         setReturnModal({ open: false });
-        setCondition('good');
+        setIsDamaged(false);
         setNotes('');
         fetchIssuedEquipment();
       } else {
@@ -67,20 +73,6 @@ export default function GuardReturnsPage() {
     }
   };
 
-  const getConditionColor = (cond: string) => {
-    switch (cond) {
-      case 'excellent':
-        return 'bg-success text-white';
-      case 'good':
-        return 'bg-badge-blue text-white';
-      case 'fair':
-        return 'bg-yellow-500 text-white';
-      case 'damaged':
-        return 'bg-danger text-white';
-      default:
-        return 'bg-bg-dark text-text-muted';
-    }
-  };
 
   if (loading) {
     return (
@@ -183,7 +175,7 @@ export default function GuardReturnsPage() {
         isOpen={returnModal.open}
         onClose={() => {
           setReturnModal({ open: false });
-          setCondition('good');
+          setIsDamaged(false);
           setNotes('');
         }}
         title="Mark Equipment as Returned"
@@ -209,42 +201,35 @@ export default function GuardReturnsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-main mb-3">
-              Equipment Condition <span className="text-danger">*</span>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isDamaged}
+                onChange={(e) => setIsDamaged(e.target.checked)}
+                className="w-5 h-5 rounded border-card-border text-danger focus:ring-danger focus:ring-offset-0"
+              />
+              <div>
+                <span className="text-sm font-medium text-text-main">
+                  Equipment is damaged
+                </span>
+                <p className="text-xs text-text-muted">
+                  Check this if equipment has any damage or issues
+                </p>
+              </div>
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {(['excellent', 'good', 'fair', 'damaged'] as const).map((cond) => (
-                <button
-                  key={cond}
-                  type="button"
-                  onClick={() => setCondition(cond)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    condition === cond
-                      ? 'border-accent-blue bg-accent-blue/10'
-                      : 'border-card-border hover:border-accent-blue/50'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    {cond === 'excellent' && <CheckCircle className="h-6 w-6 text-success" />}
-                    {cond === 'good' && <CheckCircle className="h-6 w-6 text-badge-blue" />}
-                    {cond === 'fair' && <AlertTriangle className="h-6 w-6 text-yellow-500" />}
-                    {cond === 'damaged' && <AlertTriangle className="h-6 w-6 text-danger" />}
-                    <span className="text-sm font-medium text-text-main capitalize">{cond}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-main mb-2">
-              Notes / Comments (Optional)
+              Notes / Comments {isDamaged && <span className="text-danger">*</span>}
+              {isDamaged && <span className="text-xs text-danger ml-1">(Required for damaged items)</span>}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any damage, missing parts, or observations..."
-              className="w-full px-4 py-3 rounded-lg bg-bg-dark border border-card-border text-text-main placeholder:text-text-muted focus:border-accent-blue focus:outline-none resize-none"
+              placeholder={isDamaged ? "Describe the damage in detail..." : "Any observations or comments..."}
+              className={`w-full px-4 py-3 rounded-lg bg-bg-dark border text-text-main placeholder:text-text-muted focus:border-accent-blue focus:outline-none resize-none ${isDamaged && !notes.trim() ? 'border-danger' : 'border-card-border'
+                }`}
               rows={4}
             />
           </div>
@@ -253,7 +238,7 @@ export default function GuardReturnsPage() {
             <Button
               onClick={() => {
                 setReturnModal({ open: false });
-                setCondition('good');
+                setIsDamaged(false);
                 setNotes('');
               }}
               variant="outline"

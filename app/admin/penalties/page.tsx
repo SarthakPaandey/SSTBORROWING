@@ -74,7 +74,7 @@ export default function PenaltiesPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">
-                        User: {penalty.userId}
+                        {penalty.userName} ({penalty.userEmail})
                       </p>
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
                         {penalty.points} {penalty.points === 1 ? 'point' : 'points'}

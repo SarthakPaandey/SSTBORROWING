@@ -19,9 +19,21 @@ export async function GET(req: NextRequest) {
 
     const penalties = await Penalty.find(query)
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(100)
+      .lean();
 
-    return NextResponse.json({ penalties });
+    // Populate user details
+    const userIds = [...new Set(penalties.map(p => p.userId))];
+    const users = await User.find({ _id: { $in: userIds } }).lean();
+    const userMap = new Map(users.map(u => [(u as any)._id?.toString() || u.id, { name: u.name, email: u.email }]));
+
+    const enrichedPenalties = penalties.map(p => ({
+      ...(p as any),
+      userName: userMap.get(p.userId)?.name || 'Unknown',
+      userEmail: userMap.get(p.userId)?.email || 'N/A',
+    }));
+
+    return NextResponse.json({ penalties: enrichedPenalties });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to fetch penalties' },

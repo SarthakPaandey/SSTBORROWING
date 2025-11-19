@@ -358,7 +358,7 @@ export async function POST(req: NextRequest) {
 
     // Create booking
     const [booking] = await Booking.create([{
-      userId: user._id.toString(),
+      userId: user.id,
       resourceId,
       kind,
       items: enrichedItems,
@@ -391,14 +391,14 @@ export async function POST(req: NextRequest) {
 
           // Create token documents
           await ApprovalToken.create({
-            bookingId: booking._id.toString(),
+            bookingId: booking.id,
             token: approveToken,
             action: 'approve',
             expiresAt,
           });
 
           await ApprovalToken.create({
-            bookingId: booking._id.toString(),
+            bookingId: booking.id,
             token: rejectToken,
             action: 'reject',
             expiresAt,

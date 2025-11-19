@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     for (const member of [...members, organizer]) {
       const todayBookings = await Booking.countDocuments({
-        userId: member._id.toString(),
+        userId: member.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         start: { $gte: today, $lt: tomorrow },
       });
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
 
     for (const member of [...members, organizer]) {
       const weekBookings = await Booking.countDocuments({
-        userId: member._id.toString(),
+        userId: member.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
         start: { $gte: weekAgo },
       });
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
 
     // Create the main booking (PENDING until enough confirmations)
     const booking = await Booking.create({
-      userId: organizer._id.toString(),
+      userId: organizer.id,
       resourceId,
       kind: 'FACILITY',
       start: new Date(start),

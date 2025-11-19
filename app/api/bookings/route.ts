@@ -5,6 +5,7 @@ import { Resource } from '@/models/Resource';
 import { Block } from '@/models/Block';
 import { User } from '@/models/User';
 import { EquipmentItem } from '@/models/EquipmentItem';
+import { ApprovalToken, generateApprovalToken } from '@/models/ApprovalToken';
 import { requireAuth } from '@/lib/auth/guards';
 import {
   POLICIES,
@@ -14,6 +15,8 @@ import {
   hasMinimumGap,
   hasConsecutiveBookings,
 } from '@/lib/policies';
+import { sendEmail, generateApprovalEmailHTML } from '@/lib/email';
+import { formatDateTime } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
   try {
@@ -79,6 +82,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const conn = await connectDB();
+  if (!conn) {
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+  }
+  const session = await conn.startSession();
+  session.startTransaction();
+
   try {
     const currentUser = await requireAuth(['STUDENT', 'ADMIN']);
     await connectDB();
@@ -87,45 +97,50 @@ export async function POST(req: NextRequest) {
     const { resourceId, kind, start, end, items } = body;
 
     if (!resourceId || !kind || !start || !end) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      throw new Error('Missing required fields');
+    }
+
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid date format');
+    }
+
+    if (startDate >= endDate) {
+      throw new Error('Start time must be before end time');
+    }
+
+    if (startDate < new Date()) {
+      throw new Error('Cannot book in the past');
     }
 
     // Get user with penalty info
-    const user = await User.findById(currentUser.id);
+    const user = await User.findById(currentUser.id).session(session);
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new Error('User not found');
     }
 
     // Check if user can book
     const canBook = canUserBook(user);
     if (!canBook.allowed) {
-      return NextResponse.json({ error: canBook.reason }, { status: 403 });
+      throw new Error(canBook.reason || 'Booking not allowed');
     }
 
     // Check advance window
-    const startDate = new Date(start);
     if (!isWithinAdvanceWindow(startDate)) {
-      return NextResponse.json(
-        { error: `Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance` },
-        { status: 400 }
-      );
+      throw new Error(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
     }
 
     // Get resource
-    const resource = await Resource.findById(resourceId);
+    const resource = await Resource.findById(resourceId).session(session);
     if (!resource || resource.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Resource not available' }, { status: 404 });
+      throw new Error('Resource not available');
     }
 
     // Check students-only restriction
     if (resource.rules.studentsOnly && user.role !== 'STUDENT') {
-      return NextResponse.json(
-        { error: 'This resource is only available to students' },
-        { status: 403 }
-      );
+      throw new Error('This resource is only available to students');
     }
 
     // Check daily limit
@@ -138,13 +153,10 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $gte: today, $lt: tomorrow },
-    });
+    }).session(session);
 
     if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-      return NextResponse.json(
-        { error: `You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day` },
-        { status: 400 }
-      );
+      throw new Error(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
     }
 
     // Check weekly limit
@@ -155,13 +167,10 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
       start: { $gte: weekAgo },
-    });
+    }).session(session);
 
     if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-      return NextResponse.json(
-        { error: `You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week` },
-        { status: 400 }
-      );
+      throw new Error(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
     }
 
     // Check total active bookings limit
@@ -169,15 +178,10 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       end: { $gt: new Date() }, // Future bookings only
-    });
+    }).session(session);
 
     if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
-      return NextResponse.json(
-        {
-          error: `You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`,
-        },
-        { status: 400 }
-      );
+      throw new Error(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
     }
 
     // Check monthly limits based on resource type
@@ -192,43 +196,25 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
       start: { $gte: monthStart, $lt: monthEnd },
-    });
+    }).session(session);
 
     if (kind === 'FACILITY') {
       const facilityBookings = monthlyBookings.filter((b: any) => b.kind === 'FACILITY');
       const totalHours = calculateTotalHours(facilityBookings);
-      const newHours = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
+      const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
       if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
-        return NextResponse.json(
-          {
-            error: `Monthly facility limit exceeded. You have used ${totalHours.toFixed(
-              1
-            )} hours out of ${
-              POLICIES.MAX_FACILITY_HOURS_PER_MONTH
-            } hours this month.`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
       }
     }
 
     if (kind === 'ROOM') {
       const roomBookings = monthlyBookings.filter((b: any) => b.kind === 'ROOM');
       const totalHours = calculateTotalHours(roomBookings);
-      const newHours = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
+      const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
       if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
-        return NextResponse.json(
-          {
-            error: `Monthly room limit exceeded. You have used ${totalHours.toFixed(
-              1
-            )} hours out of ${
-              POLICIES.MAX_ROOM_HOURS_PER_MONTH
-            } hours this month.`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
       }
     }
 
@@ -236,12 +222,7 @@ export async function POST(req: NextRequest) {
       const equipmentBookings = monthlyBookings.filter((b: any) => b.kind === 'EQUIPMENT');
 
       if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
-        return NextResponse.json(
-          {
-            error: `Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
       }
     }
 
@@ -253,15 +234,10 @@ export async function POST(req: NextRequest) {
         kind: 'LIBRARY',
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: new Date() },
-      });
+      }).session(session);
 
       if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
-        return NextResponse.json(
-          {
-            error: `You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
       }
     }
 
@@ -270,15 +246,10 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       end: { $gt: new Date() },
-    });
+    }).session(session);
 
-    if (!hasMinimumGap(upcomingBookings, start, end)) {
-      return NextResponse.json(
-        {
-          error: `You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`,
-        },
-        { status: 400 }
-      );
+    if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
+      throw new Error(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
     }
 
     // Check consecutive bookings for same resource
@@ -286,42 +257,31 @@ export async function POST(req: NextRequest) {
       (b: any) => b.resourceId === resourceId
     );
 
-    if (hasConsecutiveBookings(sameResourceBookings, start, end, resourceId)) {
-      return NextResponse.json(
-        {
-          error: `You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`,
-        },
-        { status: 400 }
-      );
+    if (hasConsecutiveBookings(sameResourceBookings, startDate, endDate, resourceId)) {
+      throw new Error(`You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`);
     }
 
     // Check for conflicts with blocks
     const conflictingBlocks = await Block.findOne({
       resourceId,
-      start: { $lt: new Date(end) },
-      end: { $gt: new Date(start) },
-    });
+      start: { $lt: endDate },
+      end: { $gt: startDate },
+    }).session(session);
 
     if (conflictingBlocks) {
-      return NextResponse.json(
-        { error: `Resource is blocked: ${conflictingBlocks.reason}` },
-        { status: 400 }
-      );
+      throw new Error(`Resource is blocked: ${conflictingBlocks.reason}`);
     }
 
     // Check for conflicts with existing bookings
     const conflictingBookings = await Booking.findOne({
       resourceId,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-      start: { $lt: new Date(end) },
-      end: { $gt: new Date(start) },
-    });
+      start: { $lt: endDate },
+      end: { $gt: startDate },
+    }).session(session);
 
     if (conflictingBookings) {
-      return NextResponse.json(
-        { error: 'Time slot already booked' },
-        { status: 400 }
-      );
+      throw new Error('Time slot already booked');
     }
 
     // Check shared turf conflicts
@@ -329,27 +289,22 @@ export async function POST(req: NextRequest) {
       const sharedResources = await Resource.find({
         sharedGroupId: resource.sharedGroupId,
         _id: { $ne: resourceId },
-      });
+      }).session(session);
 
       const sharedResourceIds = sharedResources.map(r => r._id.toString());
 
       const sharedConflict = await Booking.findOne({
         resourceId: { $in: sharedResourceIds },
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $lt: new Date(end) },
-        end: { $gt: new Date(start) },
-      });
+        start: { $lt: endDate },
+        end: { $gt: startDate },
+      }).session(session);
 
       if (sharedConflict) {
         const conflictResource = sharedResources.find(
           r => r._id.toString() === sharedConflict.resourceId
         );
-        return NextResponse.json(
-          {
-            error: `Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`,
-          },
-          { status: 400 }
-        );
+        throw new Error(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
       }
     }
 
@@ -363,17 +318,14 @@ export async function POST(req: NextRequest) {
         resourceId,
         kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $lt: new Date(end) },
-        end: { $gt: new Date(start) },
-      });
+        start: { $lt: endDate },
+        end: { $gt: startDate },
+      }).session(session);
 
       for (const item of items) {
-        const equipItem = await EquipmentItem.findById(item.itemId);
+        const equipItem = await EquipmentItem.findById(item.itemId).session(session);
         if (!equipItem) {
-          return NextResponse.json(
-            { error: `${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.itemId} not found` },
-            { status: 404 }
-          );
+          throw new Error(`${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.itemId} not found`);
         }
 
         // Calculate already booked quantity for this item in overlapping bookings
@@ -390,10 +342,7 @@ export async function POST(req: NextRequest) {
         // Check if enough quantity available (total - already booked)
         const availableQty = equipItem.qtyAvailable - bookedQty;
         if (availableQty < item.qty) {
-          return NextResponse.json(
-            { error: `Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}` },
-            { status: 400 }
-          );
+          throw new Error(`Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}`);
         }
 
         enrichedItems.push({
@@ -408,25 +357,86 @@ export async function POST(req: NextRequest) {
     const requiresApproval = kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
 
     // Create booking
-    const booking = await Booking.create({
+    const [booking] = await Booking.create([{
       userId: user._id.toString(),
       resourceId,
       kind,
       items: enrichedItems,
-      start: new Date(start),
-      end: new Date(end),
+      start: startDate,
+      end: endDate,
       status: requiresApproval ? 'PENDING' : 'CONFIRMED',
       requiresApproval,
       approval: requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
       qrIssued: false,
-    });
+    }], { session });
+
+    await session.commitTransaction();
+
+    // If approval is required, send emails to admins with approve/reject links
+    // Done after transaction commit to avoid side effects if transaction fails
+    if (requiresApproval) {
+      try {
+        // Get all admin users
+        const admins = await User.find({ role: 'ADMIN' });
+        const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+
+        if (adminEmails.length > 0) {
+          // Generate approval and rejection tokens
+          const approveToken = generateApprovalToken();
+          const rejectToken = generateApprovalToken();
+
+          // Set expiration to 7 days from now
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 7);
+
+          // Create token documents
+          await ApprovalToken.create({
+            bookingId: booking._id.toString(),
+            token: approveToken,
+            action: 'approve',
+            expiresAt,
+          });
+
+          await ApprovalToken.create({
+            bookingId: booking._id.toString(),
+            token: rejectToken,
+            action: 'reject',
+            expiresAt,
+          });
+
+          // Send email to all admins
+          const emailHTML = generateApprovalEmailHTML(
+            booking._id.toString(),
+            resource.name,
+            user.name || user.email.split('@')[0],
+            user.email,
+            formatDateTime(startDate),
+            formatDateTime(endDate),
+            approveToken,
+            rejectToken
+          );
+
+          await sendEmail({
+            to: adminEmails,
+            subject: `Booking Approval Required: ${resource.name}`,
+            html: emailHTML,
+          });
+        }
+      } catch (emailError) {
+        // Log error but don't fail the booking creation
+        console.error('Failed to send approval email:', emailError);
+      }
+    }
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error: any) {
+    await session.abortTransaction();
     console.error('Booking error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create booking' },
-      { status: 500 }
+      { status: error.message === 'User not found' ? 404 : 400 }
     );
+  } finally {
+    session.endSession();
   }
 }

@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
     booking.returnNotes = notes || '';
     booking.returnedBy = user.id;
 
-    // Return equipment items to inventory
-    if (booking.items && booking.items.length > 0) {
+    // Return equipment items to inventory (only for equipment bookings)
+    if (booking.kind === 'EQUIPMENT' && booking.items && booking.items.length > 0) {
       for (const item of booking.items) {
         const equipItem = await EquipmentItem.findById(item.itemId);
         if (equipItem) {
@@ -121,10 +121,11 @@ export async function POST(req: NextRequest) {
 
     await booking.save();
 
+    const itemType = booking.kind === 'LIBRARY' ? 'Book' : 'Equipment';
     return NextResponse.json({
       message: penaltiesApplied.length > 0
-        ? `Equipment returned. Penalties applied: ${penaltiesApplied.join(', ')}`
-        : 'Equipment returned successfully',
+        ? `${itemType} returned. Penalties applied: ${penaltiesApplied.join(', ')}`
+        : `${itemType} returned successfully`,
       booking,
       penaltiesApplied,
     });

@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 import QRCode from 'qrcode';
 
-const QR_SECRET = process.env.QR_HMAC_SECRET || 'change-me-in-production';
+const envSecret = process.env.QR_HMAC_SECRET;
+
+if (!envSecret) {
+  throw new Error('QR_HMAC_SECRET environment variable is not defined');
+}
+
+const QR_SECRET: string = envSecret;
 
 export interface QRPayload {
   bid: string; // booking ID

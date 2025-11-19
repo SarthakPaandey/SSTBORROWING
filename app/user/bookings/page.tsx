@@ -183,7 +183,7 @@ export default function BookingsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {booking.status === 'CONFIRMED' && booking.kind === 'EQUIPMENT' && (
+                    {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
                       <Button
                         size="sm"
                         onClick={() => handleGenerateQR(booking._id)}
@@ -265,7 +265,7 @@ export default function BookingsPage() {
             <div className="text-center space-y-2">
               <p className="font-medium text-text-main">{qrModal.booking?.resourceName}</p>
               <p className="text-sm text-text-muted">
-                Show this QR code to the guard for equipment pickup
+                Show this QR code to the guard for {qrModal.booking?.kind === 'LIBRARY' ? 'book pickup' : 'equipment pickup'}
               </p>
               <p className="text-xs text-danger">
                 ⚠️ QR code expires in 10 minutes. You can generate QR code maximum 2 times per booking.

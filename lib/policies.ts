@@ -32,7 +32,7 @@ export const POLICIES = {
 
   // Slot durations (minutes)
   FACILITY_SLOT_MINUTES: 60,
-  ROOM_SLOT_MINUTES: 120,
+  ROOM_SLOT_MINUTES: 60,
   SPORTS_EQUIPMENT_BORROW_MINUTES: 75, // 75 minutes for sports equipment
   LAB_EQUIPMENT_BORROW_MINUTES: 1440, // 24 hours (1 day) for lab equipment
   LIBRARY_BOOK_BORROW_MINUTES: 20160, // 14 days for library books

@@ -74,19 +74,19 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     );
   }
 
-  // Generate 2-hour slots (8am - 8pm)
+  // Generate 1-hour slots (8am - 8pm)
   const generateSlots = () => {
     const slots = [];
-    for (let hour = 8; hour < 20; hour += 2) {
+    for (let hour = 8; hour < 20; hour += 1) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(start);
-      end.setHours(hour + 2, 0, 0, 0);
+      end.setHours(hour + 1, 0, 0, 0);
 
       slots.push({
         start: start.toISOString(),
         end: end.toISOString(),
-        label: `${hour}:00 - ${hour + 2}:00`,
+        label: `${hour}:00 - ${hour + 1}:00`,
       });
     }
     return slots;

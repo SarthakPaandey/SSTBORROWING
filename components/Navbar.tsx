@@ -45,7 +45,8 @@ export function Navbar() {
     if (role === 'GUARD') {
       return [
         { href: '/guard/scanner', label: 'Scanner' },
-        { href: '/guard/returns', label: 'Returns' },
+        { href: '/guard/returns', label: 'Equipment Returns' },
+        { href: '/guard/library-returns', label: 'Library Returns' },
         { href: '/guard/history', label: 'History' },
       ];
     }

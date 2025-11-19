@@ -1,28 +1,51 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, CalendarEvent } from '@/components/ui/Calendar';
 import { Modal } from '@/components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
-import { CalendarDays, Clock, MapPin, Package, X } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, Package, Filter } from 'lucide-react';
+
+// Define types for better type safety
+interface Booking {
+  _id: string;
+  resourceName: string;
+  start: string | Date;
+  end: string | Date;
+  kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT';
+  status: string;
+  items?: Array<{ name: string; qty: number }>;
+}
 
 export default function CalendarPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Booking | null>(null);
   const [eventModal, setEventModal] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  // Filters
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async (date: Date) => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/bookings');
+      // Calculate start and end of the month
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month + 1, 0);
+
+      // Add buffer days for calendar grid (previous/next month days)
+      start.setDate(start.getDate() - 7);
+      end.setDate(end.getDate() + 7);
+
+      const res = await fetch(`/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}&me=true`);
       const data = await res.json();
       setBookings(data.bookings || []);
     } catch (error) {
@@ -30,10 +53,28 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchBookings(currentMonth);
+  }, [fetchBookings, currentMonth]);
+
+  const handleMonthChange = (date: Date) => {
+    setCurrentMonth(date);
   };
 
+  // Filter bookings
+  const filteredBookings = bookings.filter(booking => {
+    if (typeFilter !== 'ALL' && booking.kind !== typeFilter) return false;
+    if (statusFilter !== 'ALL') {
+      if (statusFilter === 'ACTIVE' && booking.status !== 'CHECKED_IN') return false;
+      if (statusFilter !== 'ACTIVE' && booking.status !== statusFilter) return false;
+    }
+    return true;
+  });
+
   // Convert bookings to calendar events
-  const calendarEvents: CalendarEvent[] = bookings.map((booking) => ({
+  const calendarEvents: CalendarEvent[] = filteredBookings.map((booking) => ({
     id: booking._id,
     title: booking.resourceName || 'Booking',
     date: new Date(booking.start),
@@ -81,28 +122,61 @@ export default function CalendarPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-12 w-64 animate-pulse rounded bg-card"></div>
-        <div className="h-[600px] animate-pulse rounded-lg bg-card"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-accent-blue">Calendar View</h1>
-        <p className="text-text-muted">View all your bookings in a calendar</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-accent-blue">Calendar View</h1>
+          <p className="text-text-muted">View all your bookings in a calendar</p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
+            <Filter className="h-4 w-4 text-text-muted ml-2" />
+            <select
+              className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="ALL">All Types</option>
+              <option value="FACILITY">Facilities</option>
+              <option value="ROOM">Rooms</option>
+              <option value="EQUIPMENT">Equipment</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
+            <select
+              className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Status</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="PENDING">Pending</option>
+              <option value="ACTIVE">Active (Checked In)</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <Calendar
-        events={calendarEvents}
-        onDateClick={setSelectedDate}
-        onEventClick={handleEventClick}
-        selectedDate={selectedDate}
-      />
+      {loading ? (
+        <div className="space-y-6">
+          <div className="h-12 w-64 animate-pulse rounded bg-card"></div>
+          <div className="h-[600px] animate-pulse rounded-lg bg-card"></div>
+        </div>
+      ) : (
+        <Calendar
+          events={calendarEvents}
+          onDateClick={setSelectedDate}
+          onEventClick={handleEventClick}
+          onMonthChange={handleMonthChange}
+          selectedDate={selectedDate}
+        />
+      )}
 
       {/* Event Details Modal */}
       <Modal
@@ -160,7 +234,7 @@ export default function CalendarPage() {
                 <div>
                   <p className="text-sm text-text-muted mb-2">Items:</p>
                   <div className="space-y-1">
-                    {selectedEvent.items.map((item: any, idx: number) => (
+                    {selectedEvent.items.map((item, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between text-sm bg-bg-very-dark rounded px-3 py-2"
@@ -177,7 +251,7 @@ export default function CalendarPage() {
             {selectedEvent.status === 'CONFIRMED' && selectedEvent.kind === 'EQUIPMENT' && (
               <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3">
                 <p className="text-sm text-text-main">
-                  <span className="font-medium">Next step:</span> Generate QR code from "My Bookings" to pick up equipment
+                  <span className="font-medium">Next step:</span> Generate QR code from &quot;My Bookings&quot; to pick up equipment
                 </p>
               </div>
             )}

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './Button';
-import { Badge } from './Badge';
 import { cn } from '@/lib/utils';
 
 export type CalendarEvent = {
@@ -18,10 +17,11 @@ export interface CalendarProps {
   events?: CalendarEvent[];
   onDateClick?: (date: Date) => void;
   onEventClick?: (event: CalendarEvent) => void;
+  onMonthChange?: (date: Date) => void;
   selectedDate?: Date;
 }
 
-export function Calendar({ events = [], onDateClick, onEventClick, selectedDate }: CalendarProps) {
+export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange, selectedDate }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const monthNames = [
@@ -74,15 +74,21 @@ export function Calendar({ events = [], onDateClick, onEventClick, selectedDate 
 
   // Navigate months
   const goToPreviousMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
+    const newDate = new Date(year, month - 1, 1);
+    setCurrentDate(newDate);
+    onMonthChange?.(newDate);
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
+    const newDate = new Date(year, month + 1, 1);
+    setCurrentDate(newDate);
+    onMonthChange?.(newDate);
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    const newDate = new Date();
+    setCurrentDate(newDate);
+    onMonthChange?.(newDate);
   };
 
   // Generate calendar days
@@ -204,7 +210,7 @@ export function Calendar({ events = [], onDateClick, onEventClick, selectedDate 
 
                   {/* Event indicators */}
                   <div className="flex-1 space-y-0.5 overflow-hidden">
-                    {dayEvents.slice(0, 3).map((event, idx) => (
+                    {dayEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
                         onClick={(e) => {

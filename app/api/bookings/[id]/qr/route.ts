@@ -90,12 +90,13 @@ export async function POST(
       }
     }
 
-    // Check if already has valid QR
+    // Check if already has valid QR for THIS specific booking
+    // This prevents confusion when user has multiple bookings
     const existingToken = await QRToken.findOne({
       bookingId: params.id,
       used: false,
       expiresAt: { $gt: new Date() },
-    });
+    }).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {
       const qrImage = await generateQRCodeImage(existingToken.token);

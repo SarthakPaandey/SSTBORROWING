@@ -7,7 +7,14 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Public routes
-  if (path === '/login' || path.startsWith('/api/auth')) {
+  // Note: /api/approve uses email token auth, /api/cron uses Bearer token auth
+  // Both should be accessible without NextAuth session
+  if (
+    path === '/login' ||
+    path.startsWith('/api/auth') ||
+    path.startsWith('/api/approve') ||
+    path === '/api/cron'
+  ) {
     return NextResponse.next();
   }
 

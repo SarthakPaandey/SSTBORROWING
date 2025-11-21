@@ -7,13 +7,13 @@ import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
-    // Verify cron secret to prevent unauthorized access
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        throw new AuthorizationError();
-    }
-
     try {
+        // Verify cron secret to prevent unauthorized access
+        const authHeader = req.headers.get('authorization');
+        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            throw new AuthorizationError('Invalid cron secret');
+        }
+
         await connectDB();
 
         const now = new Date();

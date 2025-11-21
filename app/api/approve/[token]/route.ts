@@ -28,6 +28,12 @@ export async function GET(
       throw new ValidationError('Token expired');
     }
 
+    // SECURITY FIX: Verify that the URL action matches the token's stored action
+    // This prevents an approve token from being used to reject (and vice versa)
+    if (action !== approvalToken.action) {
+      throw new ValidationError(`Token action mismatch. This token is for ${approvalToken.action}, not ${action}`);
+    }
+
     // Optional: Check if user is logged in and is admin (extra security layer)
     const session = await getServerSession(authOptions);
     const approvedBy = session?.user?.id;

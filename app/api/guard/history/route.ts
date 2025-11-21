@@ -22,12 +22,12 @@ export async function GET(req: NextRequest) {
         // Populate resource names
         const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
         const resources = await Resource.find({ _id: { $in: resourceIds } }).lean();
-        const resourceMap = new Map(resources.map(r => [(r as any)._id?.toString() || r.id, r.name]));
+        const resourceMap = new Map(resources.map(r => [(r as any)._id.toString(), r.name]));
 
         // Populate user details
         const userIds = [...new Set(bookings.map(b => b.userId))];
         const users = await User.find({ _id: { $in: userIds } }).lean();
-        const userMap = new Map(users.map(u => [(u as any)._id?.toString() || u.id, u.name || u.email]));
+        const userMap = new Map(users.map(u => [(u as any)._id.toString(), u.name || u.email]));
 
         const enrichedBookings = bookings.map(b => ({
             ...(b as any),

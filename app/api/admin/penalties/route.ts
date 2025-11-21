@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     // Populate user details
     const userIds = [...new Set(penalties.map(p => p.userId))];
     const users = await User.find({ _id: { $in: userIds } }).lean();
-    const userMap = new Map(users.map(u => [(u as any)._id?.toString() || u.id, { name: u.name, email: u.email }]));
+    const userMap = new Map(users.map(u => [(u as any)._id.toString(), { name: u.name, email: u.email }]));
 
     const enrichedPenalties = penalties.map(p => ({
       ...(p as any),

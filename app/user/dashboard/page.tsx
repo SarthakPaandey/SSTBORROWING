@@ -39,7 +39,7 @@ export default async function UserDashboard() {
   // Enrich with resource names
   const resourceIds = upcomingBookings.map((b) => b.resourceId);
   const resources = await Resource.find({ _id: { $in: resourceIds } }).lean();
-  const resourceMap = new Map(resources.map((r) => [r.id, r]));
+  const resourceMap = new Map(resources.map((r) => [r._id.toString(), r]));
 
   const enrichedBookings = upcomingBookings.map((b) => ({
     ...b,
@@ -167,7 +167,7 @@ export default async function UserDashboard() {
             <div className="space-y-4">
               {enrichedBookings.map((booking: any) => (
                 <div
-                  key={booking.id}
+                  key={booking._id.toString()}
                   className="flex items-center justify-between rounded-lg border border-card-border bg-bg-dark/50 p-4 transition-all hover:border-accent-blue/30"
                 >
                   <div>

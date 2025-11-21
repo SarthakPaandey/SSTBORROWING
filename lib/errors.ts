@@ -104,6 +104,17 @@ export class ExternalServiceError extends AppError {
 }
 
 /**
+ * 409 Conflict - Transaction write conflict (concurrent booking attempts)
+ * Used when MongoDB detects overlapping transactions trying to modify the same data
+ */
+export class TransactionConflictError extends AppError {
+    constructor(message: string = 'This resource was just booked by someone else. Please try again.') {
+        super(message, 409);
+        Object.setPrototypeOf(this, TransactionConflictError.prototype);
+    }
+}
+
+/**
  * Type guard to check if an error is an operational error
  */
 export function isOperationalError(error: unknown): boolean {
@@ -148,9 +159,9 @@ export function handleApiError(error: unknown): NextResponse {
         );
     }
 
-    // Handle Mongoose validation errors
+    // Handle Mongoose validation errors and MongoDB errors
     if (error && typeof error === 'object' && 'name' in error) {
-        const err = error as { name: string; message: string };
+        const err = error as { name: string; message: string; code?: number };
 
         if (err.name === 'ValidationError' || err.name === 'CastError') {
             return NextResponse.json(
@@ -160,10 +171,26 @@ export function handleApiError(error: unknown): NextResponse {
         }
 
         if (err.name === 'MongoServerError') {
+            // Handle duplicate key error (from unique index)
+            if (err.code === 11000) {
+                return NextResponse.json(
+                    { error: 'Time slot already booked. Please choose another time.' },
+                    { status: 409 }
+                );
+            }
+
             console.error('MongoDB Server Error:', err);
             return NextResponse.json(
                 { error: 'Database operation failed' },
                 { status: 500 }
+            );
+        }
+
+        // Handle MongoDB transaction errors
+        if (err.name === 'MongoError' && err.message?.includes('TransientTransactionError')) {
+            return NextResponse.json(
+                { error: 'This resource was just booked by someone else. Please try again.' },
+                { status: 409 }
             );
         }
     }

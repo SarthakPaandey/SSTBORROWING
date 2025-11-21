@@ -101,4 +101,20 @@ BookingSchema.index({ resourceId: 1, start: 1, end: 1 });
 BookingSchema.index({ status: 1, start: 1 });
 BookingSchema.index({ approval: 1 });
 
+// Unique index to prevent overlapping bookings (race condition protection)
+// Only applies to active bookings (PENDING, CONFIRMED, CHECKED_IN)
+// This ensures database-level enforcement even if application logic has race conditions
+BookingSchema.index(
+  { resourceId: 1, start: 1, end: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
+      // Group bookings can overlap with individual bookings on same resource
+      isGroupBooking: { $ne: true }
+    },
+    name: 'unique_active_booking_slot'
+  }
+);
+
 export const Booking: Model<IBooking> = mongoose.models.Booking || mongoose.model<IBooking>('Booking', BookingSchema);

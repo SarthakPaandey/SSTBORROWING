@@ -85,372 +85,370 @@ export async function GET(req: NextRequest) {
 }
 
 import { withRateLimit } from '@/lib/ratelimit';
+import { withTransaction } from '@/lib/transaction';
 
 async function postHandler(req: Request) {
   const conn = await connectDB();
   if (!conn) {
     return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
   }
-  // ... rest of the function
-
-  const session = await conn.startSession();
-  session.startTransaction();
 
   try {
-    const authSession = await getServerSession(authOptions);
-    if (!authSession?.user) {
-      throw new AuthenticationError();
-    }
-
-    const body = await req.json();
-
-    // Validate input using Zod
-    const validationResult = bookingSchema.safeParse(body);
-    if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Validation Error', details: validationResult.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    const { resourceId, start, end, items } = validationResult.data;
-    const userId = authSession.user.id;
-
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-
-    if (startDate < new Date()) {
-      throw new ValidationError('Cannot book in the past');
-    }
-
-    // Get user with penalty info
-    const user = await User.findById(userId).session(session);
-    if (!user) {
-      throw new NotFoundError('User');
-    }
-
-    // Check if user can book
-    const canBook = canUserBook(user);
-    if (!canBook.allowed) {
-      throw new ValidationError(canBook.reason || 'Booking not allowed');
-    }
-
-    // Check advance window
-    if (!isWithinAdvanceWindow(startDate)) {
-      throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
-    }
-
-    // Get resource
-    const resource = await Resource.findById(resourceId).session(session);
-    if (!resource || resource.status !== 'ACTIVE') {
-      throw new NotFoundError('Resource');
-    }
-
-    // Map ResourceType to BookingKind
-    let kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
-    if (resource.type === 'LAB_EQUIPMENT' || resource.type === 'SPORTS_EQUIPMENT') {
-      kind = 'EQUIPMENT';
-    } else {
-      kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
-    }
-
-    // Check students-only restriction
-    if (resource.rules.studentsOnly && user.role !== 'STUDENT') {
-      throw new ValidationError('This resource is only available to students');
-    }
-
-    // Check daily limit
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const todayBookings = await Booking.countDocuments({
-      userId: user.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-      start: { $gte: today, $lt: tomorrow },
-    }).session(session);
-
-    if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-      throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
-    }
-
-    // Check weekly limit
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const weekBookings = await Booking.countDocuments({
-      userId: user.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-      start: { $gte: weekAgo },
-    }).session(session);
-
-    if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-      throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
-    }
-
-    // Check total active bookings limit
-    const totalActiveBookings = await Booking.countDocuments({
-      userId: user.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-      end: { $gt: new Date() }, // Future bookings only
-    }).session(session);
-
-    if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
-      throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
-    }
-
-    // Check monthly limits based on resource type
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-
-    const monthEnd = new Date(monthStart);
-    monthEnd.setMonth(monthEnd.getMonth() + 1);
-
-    const monthlyBookings = await Booking.find({
-      userId: user.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-      start: { $gte: monthStart, $lt: monthEnd },
-    }).session(session);
-
-    if (kind === 'FACILITY') {
-      const facilityBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'FACILITY');
-      const totalHours = calculateTotalHours(facilityBookings);
-      const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-
-      if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
-        throw new ValidationError(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
+    return await withTransaction(conn, async (session) => {
+      const authSession = await getServerSession(authOptions);
+      if (!authSession?.user) {
+        throw new AuthenticationError();
       }
-    }
 
-    if (kind === 'ROOM') {
-      const roomBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'ROOM');
-      const totalHours = calculateTotalHours(roomBookings);
-      const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      const body = await req.json();
 
-      if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
-        throw new ValidationError(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
+      // Validate input using Zod
+      const validationResult = bookingSchema.safeParse(body);
+      if (!validationResult.success) {
+        return NextResponse.json(
+          { error: 'Validation Error', details: validationResult.error.flatten() },
+          { status: 400 }
+        );
       }
-    }
 
-    if (kind === 'EQUIPMENT') {
-      const equipmentBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'EQUIPMENT');
+      const { resourceId, start, end, items } = validationResult.data;
+      const userId = authSession.user.id;
 
-      if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
-        throw new ValidationError(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+
+      if (startDate < new Date()) {
+        throw new ValidationError('Cannot book in the past');
       }
-    }
 
-    // Check library book limits
-    if (kind === 'LIBRARY') {
-      // Check if user already has an active book borrowing
-      const activeBookBorrowings = await Booking.countDocuments({
+      // Get user with penalty info
+      const user = await User.findById(userId).session(session);
+      if (!user) {
+        throw new NotFoundError('User');
+      }
+
+      // Check if user can book
+      const canBook = canUserBook(user);
+      if (!canBook.allowed) {
+        throw new ValidationError(canBook.reason || 'Booking not allowed');
+      }
+
+      // Check advance window
+      if (!isWithinAdvanceWindow(startDate)) {
+        throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+      }
+
+      // Get resource
+      const resource = await Resource.findById(resourceId).session(session);
+      if (!resource || resource.status !== 'ACTIVE') {
+        throw new NotFoundError('Resource');
+      }
+
+      // Map ResourceType to BookingKind
+      let kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
+      if (resource.type === 'LAB_EQUIPMENT' || resource.type === 'SPORTS_EQUIPMENT') {
+        kind = 'EQUIPMENT';
+      } else {
+        kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
+      }
+
+      // Check students-only restriction
+      if (resource.rules.studentsOnly && user.role !== 'STUDENT') {
+        throw new ValidationError('This resource is only available to students');
+      }
+
+      // Check daily limit
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todayBookings = await Booking.countDocuments({
         userId: user.id,
-        kind: 'LIBRARY',
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        start: { $gte: today, $lt: tomorrow },
+      }).session(session);
+
+      if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
+        throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
+      }
+
+      // Check weekly limit
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const weekBookings = await Booking.countDocuments({
+        userId: user.id,
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
+        start: { $gte: weekAgo },
+      }).session(session);
+
+      if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
+        throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
+      }
+
+      // Check total active bookings limit
+      const totalActiveBookings = await Booking.countDocuments({
+        userId: user.id,
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        end: { $gt: new Date() }, // Future bookings only
+      }).session(session);
+
+      if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+        throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
+      }
+
+      // Check monthly limits based on resource type
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const monthEnd = new Date(monthStart);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+      const monthlyBookings = await Booking.find({
+        userId: user.id,
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
+        start: { $gte: monthStart, $lt: monthEnd },
+      }).session(session);
+
+      if (kind === 'FACILITY') {
+        const facilityBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'FACILITY');
+        const totalHours = calculateTotalHours(facilityBookings);
+        const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+        if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
+          throw new ValidationError(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
+        }
+      }
+
+      if (kind === 'ROOM') {
+        const roomBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'ROOM');
+        const totalHours = calculateTotalHours(roomBookings);
+        const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+        if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
+          throw new ValidationError(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
+        }
+      }
+
+      if (kind === 'EQUIPMENT') {
+        const equipmentBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'EQUIPMENT');
+
+        if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
+          throw new ValidationError(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
+        }
+      }
+
+      // Check library book limits
+      if (kind === 'LIBRARY') {
+        // Check if user already has an active book borrowing
+        const activeBookBorrowings = await Booking.countDocuments({
+          userId: user.id,
+          kind: 'LIBRARY',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          end: { $gt: new Date() },
+        }).session(session);
+
+        if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
+          throw new ValidationError(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
+        }
+      }
+
+      // Check minimum gap between bookings
+      const upcomingBookings = await Booking.find({
+        userId: user.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: new Date() },
       }).session(session);
 
-      if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
-        throw new ValidationError(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
+      if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
+        throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
       }
-    }
 
-    // Check minimum gap between bookings
-    const upcomingBookings = await Booking.find({
-      userId: user.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-      end: { $gt: new Date() },
-    }).session(session);
+      // Check consecutive bookings for same resource
+      const sameResourceBookings = upcomingBookings.filter(
+        (b: IBooking) => b.resourceId === resourceId
+      );
 
-    if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
-      throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
-    }
-
-    // Check consecutive bookings for same resource
-    const sameResourceBookings = upcomingBookings.filter(
-      (b: IBooking) => b.resourceId === resourceId
-    );
-
-    if (hasConsecutiveBookings(sameResourceBookings, startDate, endDate, resourceId)) {
-      throw new ValidationError(`You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`);
-    }
-
-    // Check for conflicts with blocks
-    const conflictingBlocks = await Block.findOne({
-      resourceId,
-      start: { $lt: endDate },
-      end: { $gt: startDate },
-    }).session(session);
-
-    if (conflictingBlocks) {
-      throw new ConflictError(`Resource is blocked: ${conflictingBlocks.reason}`);
-    }
-
-    // Check for conflicts with existing bookings
-    const conflictingBookings = await Booking.findOne({
-      resourceId,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-      start: { $lt: endDate },
-      end: { $gt: startDate },
-    }).session(session);
-
-    if (conflictingBookings) {
-      throw new ConflictError('Time slot already booked');
-    }
-
-    // Check shared turf conflicts
-    if (resource.sharedGroupId) {
-      const sharedResources = await Resource.find({
-        sharedGroupId: resource.sharedGroupId,
-        _id: { $ne: resourceId },
-      }).session(session);
-
-      const sharedResourceIds = sharedResources.map(r => r.id);
-
-      const sharedConflict = await Booking.findOne({
-        resourceId: { $in: sharedResourceIds },
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $lt: endDate },
-        end: { $gt: startDate },
-      }).session(session);
-
-      if (sharedConflict) {
-        const conflictResource = sharedResources.find(
-          r => r.id === sharedConflict.resourceId
-        );
-        throw new ConflictError(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
+      if (hasConsecutiveBookings(sameResourceBookings, startDate, endDate, resourceId)) {
+        throw new ValidationError(`You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`);
       }
-    }
 
-    // Handle equipment and library bookings
-    let enrichedItems: BookingItem[] | undefined;
-    if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
-      enrichedItems = [];
-
-      // Find all overlapping bookings to check reserved quantities
-      const overlappingBookings = await Booking.find({
+      // Check for conflicts with blocks
+      const conflictingBlocks = await Block.findOne({
         resourceId,
-        kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+        start: { $lt: endDate },
+        end: { $gt: startDate },
+      }).session(session);
+
+      if (conflictingBlocks) {
+        throw new ConflictError(`Resource is blocked: ${conflictingBlocks.reason}`);
+      }
+
+      // Check for conflicts with existing bookings
+      const conflictingBookings = await Booking.findOne({
+        resourceId,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         start: { $lt: endDate },
         end: { $gt: startDate },
       }).session(session);
 
-      for (const item of items) {
-        const equipItem = await EquipmentItem.findById(item.id).session(session);
-        if (!equipItem) {
-          throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
-        }
-
-        // Calculate already booked quantity for this item in overlapping bookings
-        let bookedQty = 0;
-        for (const booking of overlappingBookings) {
-          if (booking.items) {
-            const bookedItem = booking.items.find((i: BookingItem) => i.itemId === item.id);
-            if (bookedItem) {
-              bookedQty += bookedItem.qty;
-            }
-          }
-        }
-
-        // Check if enough quantity available (total - already booked)
-        const availableQty = equipItem.qtyAvailable - bookedQty;
-        if (availableQty < item.qty) {
-          throw new ConflictError(`Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}`);
-        }
-
-        enrichedItems.push({
-          itemId: item.id,
-          name: equipItem.name,
-          qty: item.qty,
-        });
+      if (conflictingBookings) {
+        throw new ConflictError('Time slot already booked');
       }
-    }
 
-    // Determine if approval required (library books never require approval)
-    const requiresApproval = kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
+      // Check shared turf conflicts
+      if (resource.sharedGroupId) {
+        const sharedResources = await Resource.find({
+          sharedGroupId: resource.sharedGroupId,
+          _id: { $ne: resourceId },
+        }).session(session);
 
-    // Create booking
-    const [booking] = await Booking.create([{
-      userId: user.id,
-      resourceId,
-      kind,
-      items: enrichedItems,
-      start: startDate,
-      end: endDate,
-      status: requiresApproval ? 'PENDING' : 'CONFIRMED',
-      requiresApproval,
-      approval: requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
-      qrIssued: false,
-    }], { session });
+        const sharedResourceIds = sharedResources.map(r => r.id);
 
-    await session.commitTransaction();
+        const sharedConflict = await Booking.findOne({
+          resourceId: { $in: sharedResourceIds },
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
 
-    // If approval is required, send emails to admins with approve/reject links
-    // Done after transaction commit to avoid side effects if transaction fails
-    if (requiresApproval) {
-      try {
-        // Get all admin users
-        const admins = await User.find({ role: 'ADMIN' });
-        const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+        if (sharedConflict) {
+          const conflictResource = sharedResources.find(
+            r => r.id === sharedConflict.resourceId
+          );
+          throw new ConflictError(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
+        }
+      }
 
-        if (adminEmails.length > 0) {
-          // Generate approval and rejection tokens
-          const approveToken = generateApprovalToken();
-          const rejectToken = generateApprovalToken();
+      // Handle equipment and library bookings with atomic reservation
+      let enrichedItems: BookingItem[] | undefined;
+      if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
+        enrichedItems = [];
 
-          // Set expiration to 7 days from now
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + 7);
-
-          // Create token documents
-          await ApprovalToken.create({
-            bookingId: booking.id,
-            token: approveToken,
-            action: 'approve',
-            expiresAt,
-          });
-
-          await ApprovalToken.create({
-            bookingId: booking.id,
-            token: rejectToken,
-            action: 'reject',
-            expiresAt,
-          });
-
-          // Send email to all admins
-          const emailHTML = generateApprovalEmailHTML(
-            booking.id,
-            resource.name,
-            user.name || user.email.split('@')[0],
-            user.email,
-            formatDateTime(startDate),
-            formatDateTime(endDate),
-            approveToken,
-            rejectToken
+        // Use atomic operations to reserve equipment quantities
+        // This prevents race conditions by updating qtyReserved atomically
+        for (const item of items) {
+          // Atomically increment qtyReserved, but only if enough quantity is available
+          const equipItem = await EquipmentItem.findOneAndUpdate(
+            {
+              _id: item.id,
+              // Ensure available - reserved >= requested quantity
+              $expr: {
+                $gte: [
+                  { $subtract: ['$qtyAvailable', '$qtyReserved'] },
+                  item.qty
+                ]
+              }
+            },
+            {
+              // Atomically increment reserved quantity
+              $inc: { qtyReserved: item.qty }
+            },
+            {
+              session,
+              new: true, // Return updated document
+            }
           );
 
-          await sendEmail({
-            to: adminEmails,
-            subject: `Booking Approval Required: ${resource.name}`,
-            html: emailHTML,
+          if (!equipItem) {
+            // Either item doesn't exist or not enough quantity available
+            const checkItem = await EquipmentItem.findById(item.id).session(session);
+            if (!checkItem) {
+              throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
+            }
+            const available = checkItem.qtyAvailable - (checkItem.qtyReserved || 0);
+            throw new ConflictError(`Not enough ${checkItem.name} available. Available: ${available}, Requested: ${item.qty}`);
+          }
+
+          enrichedItems.push({
+            itemId: item.id,
+            name: equipItem.name,
+            qty: item.qty,
           });
         }
-      } catch (emailError) {
-        // Log error but don't fail the booking creation
-        console.error('Failed to send approval email:', emailError);
       }
-    }
 
-    return NextResponse.json({ booking }, { status: 201 });
+      // Determine if approval required (library books never require approval)
+      const requiresApproval = kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
+
+      // Create booking
+      const [booking] = await Booking.create([{
+        userId: user.id,
+        resourceId,
+        kind,
+        items: enrichedItems,
+        start: startDate,
+        end: endDate,
+        status: requiresApproval ? 'PENDING' : 'CONFIRMED',
+        requiresApproval,
+        approval: requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
+        qrIssued: false,
+      }], { session });
+
+      await session.commitTransaction();
+
+      // If approval is required, send emails to admins with approve/reject links
+      // Done after transaction commit to avoid side effects if transaction fails
+      if (requiresApproval) {
+        try {
+          // Get all admin users
+          const admins = await User.find({ role: 'ADMIN' });
+          const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+
+          if (adminEmails.length > 0) {
+            // Generate approval and rejection tokens
+            const approveToken = generateApprovalToken();
+            const rejectToken = generateApprovalToken();
+
+            // Set expiration to 7 days from now
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 7);
+
+            // Create token documents
+            await ApprovalToken.create({
+              bookingId: booking.id,
+              token: approveToken,
+              action: 'approve',
+              expiresAt,
+            });
+
+            await ApprovalToken.create({
+              bookingId: booking.id,
+              token: rejectToken,
+              action: 'reject',
+              expiresAt,
+            });
+
+            // Send email to all admins
+            const emailHTML = generateApprovalEmailHTML(
+              booking.id,
+              resource.name,
+              user.name || user.email.split('@')[0],
+              user.email,
+              formatDateTime(startDate),
+              formatDateTime(endDate),
+              approveToken,
+              rejectToken
+            );
+
+            await sendEmail({
+              to: adminEmails,
+              subject: `Booking Approval Required: ${resource.name}`,
+              html: emailHTML,
+            });
+          }
+        } catch (emailError) {
+          // Log error but don't fail the booking creation
+          console.error('Failed to send approval email:', emailError);
+        }
+      }
+
+      return NextResponse.json({ booking }, { status: 201 });
+    }); // End of withTransaction
   } catch (error) {
-    await session.abortTransaction();
-    console.error('Booking error:', error);
     return handleApiError(error);
-  } finally {
-    session.endSession();
   }
 }
 

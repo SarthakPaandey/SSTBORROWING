@@ -6,6 +6,7 @@ export interface IEquipmentItem extends Document {
   description?: string;
   qtyTotal: number;
   qtyAvailable: number;
+  qtyReserved: number; // Tracks quantity currently reserved by active bookings
   imageUrl?: string;
   safety: boolean;
   restricted: boolean;
@@ -23,6 +24,7 @@ const EquipmentItemSchema = new Schema<IEquipmentItem>(
     name: { type: String, required: true },
     qtyTotal: { type: Number, required: true, min: 0 },
     qtyAvailable: { type: Number, required: true, min: 0 },
+    qtyReserved: { type: Number, default: 0, min: 0 }, // Currently reserved by active bookings
     safety: { type: Boolean, default: false },
     restricted: { type: Boolean, default: false },
   },

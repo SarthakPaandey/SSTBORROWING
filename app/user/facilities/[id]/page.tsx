@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { ArrowLeft, Users, X } from 'lucide-react';
 import Link from 'next/link';
+import { POLICIES } from '@/lib/policies';
 
 interface Params {
   id: string;
 }
 
-const TEAM_SPORTS = ['Main Turf', 'Basketball Court', 'Volleyball Court'];
+const TEAM_SPORTS = POLICIES.GROUP_BOOKING_TEAM_SPORTS;
 
 export default function FacilityBookingPage({ params }: { params: Params }) {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
       const today = new Date().toISOString().split('T')[0];
       const slotStart = new Date(selectedSlot.start);
       const now = new Date();
-      
+
       if (date === today && slotStart < now) {
         setSelectedSlot(null);
       }
@@ -52,7 +53,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     const data = await res.json();
     const found = data.resources.find((r: any) => r._id === params.id);
     setResource(found);
-    
+
     // Automatically set group booking to true for team sports
     const isTeamSport = found && TEAM_SPORTS.includes(found.name);
     if (isTeamSport) {
@@ -67,7 +68,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     const today = new Date().toISOString().split('T')[0];
     const slotStart = new Date(selectedSlot.start);
     const now = new Date();
-    
+
     if (date === today && slotStart < now) {
       setError('Cannot book a time slot in the past');
       return;
@@ -166,6 +167,11 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     const updated = [...memberEmails];
     updated[index] = value;
     setMemberEmails(updated);
+
+    // Auto-add new field if this is the last field and has content
+    if (index === memberEmails.length - 1 && value.trim() !== '') {
+      setMemberEmails([...updated, '']);
+    }
   };
 
   const isTeamSport = resource && TEAM_SPORTS.includes(resource.name);
@@ -184,7 +190,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     const slots = [];
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    
+
     for (let hour = 6; hour < 20; hour++) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);
@@ -192,8 +198,18 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
       end.setHours(hour + 1, 0, 0, 0);
 
       // Filter out past slots if date is today
-      if (date === today && start < now) {
-        continue;
+      if (date === today) {
+        if (start < now) {
+          continue;
+        }
+
+        // For group bookings, enforce 3-hour advance notice
+        if (isTeamSport) {
+          const minAdvanceMs = (POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS) * 60 * 60 * 1000;
+          if (start.getTime() - now.getTime() < minAdvanceMs) {
+            continue;
+          }
+        }
       }
 
       slots.push({
@@ -238,7 +254,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                     Group Booking Required (Minimum 6 people)
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
-                    Team sports require at least 6 participants. Invite 5 friends below - they'll have 2 hours to confirm. All members share penalties for no-shows.
+                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 3 hours in advance. Friends have 2 hours to confirm. All members share penalties for no-shows.
                   </p>
                 </div>
               </div>
@@ -258,7 +274,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
           <div>
             <label className="mb-2 block text-sm font-medium">Available Slots</label>
             {date === new Date().toISOString().split('T')[0] && (
-              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown</p>
+              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown {isTeamSport && '(Group bookings require 3 hours advance notice)'}</p>
             )}
             {slots.length === 0 ? (
               <p className="text-sm text-text-muted py-4">No available slots for this date</p>
@@ -287,18 +303,33 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                 Friend Emails (minimum 5, you'll be the 6th)
               </label>
               {memberEmails.map((email, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
-                    value={email}
-                    onChange={(e) => updateEmail(index, e.target.value)}
-                  />
+                <div key={index} className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <Input
+                      type="email"
+                      placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
+                      value={email}
+                      onChange={(e) => updateEmail(index, e.target.value)}
+                      onKeyDown={(e) => {
+                        // Move to next field on Enter
+                        if (e.key === 'Enter' && email.trim() !== '') {
+                          e.preventDefault();
+                          const nextInput = document.querySelector<HTMLInputElement>(
+                            `input[placeholder="Friend ${index + 2} email (@sst.scaler.com)"]`
+                          );
+                          if (nextInput) {
+                            nextInput.focus();
+                          }
+                        }
+                      }}
+                    />
+                  </div>
                   {memberEmails.length > 5 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeEmailField(index)}
+                      className="flex-shrink-0"
                     >
                       <X className="h-4 w-4" />
                     </Button>

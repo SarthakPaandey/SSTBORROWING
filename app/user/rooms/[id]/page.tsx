@@ -25,6 +25,20 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     fetchResource();
   }, [params.id]);
 
+  // Reset selected slot if it becomes invalid when date changes
+  useEffect(() => {
+    if (selectedSlot) {
+      const today = new Date().toISOString().split('T')[0];
+      const slotStart = new Date(selectedSlot.start);
+      const now = new Date();
+      
+      if (date === today && slotStart < now) {
+        setSelectedSlot(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
   const fetchResource = async () => {
     const res = await fetch(`/api/resources?type=ROOM`);
     const data = await res.json();
@@ -34,6 +48,16 @@ export default function RoomBookingPage({ params }: { params: Params }) {
 
   const handleBook = async () => {
     if (!selectedSlot) return;
+
+    // Validate that slot is not in the past
+    const today = new Date().toISOString().split('T')[0];
+    const slotStart = new Date(selectedSlot.start);
+    const now = new Date();
+    
+    if (date === today && slotStart < now) {
+      setError('Cannot book a time slot in the past');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -77,11 +101,19 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   // Generate 1-hour slots (8am - 8pm)
   const generateSlots = () => {
     const slots = [];
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    
     for (let hour = 8; hour < 20; hour += 1) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);
       const end = new Date(start);
       end.setHours(hour + 1, 0, 0, 0);
+
+      // Filter out past slots if date is today
+      if (date === today && start < now) {
+        continue;
+      }
 
       slots.push({
         start: start.toISOString(),
@@ -120,18 +152,26 @@ export default function RoomBookingPage({ params }: { params: Params }) {
 
           <div>
             <label className="mb-2 block text-sm font-medium">Available Slots</label>
-            <div className="grid grid-cols-2 gap-2">
-              {slots.map((slot, idx) => (
-                <Button
-                  key={idx}
-                  variant={selectedSlot?.start === slot.start ? 'default' : 'outline'}
-                  onClick={() => setSelectedSlot(slot)}
-                  size="sm"
-                >
-                  {slot.label}
-                </Button>
-              ))}
-            </div>
+            {date === new Date().toISOString().split('T')[0] && (
+              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown</p>
+            )}
+            {slots.length === 0 ? (
+              <p className="text-sm text-text-muted py-4">No available slots for this date</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {slots.map((slot, idx) => (
+                  <Button
+                    key={idx}
+                    variant={selectedSlot?.start === slot.start ? 'default' : 'outline'}
+                    onClick={() => setSelectedSlot(slot)}
+                    size="sm"
+                    className={selectedSlot?.start === slot.start ? 'shadow-lg shadow-accent-blue/30' : ''}
+                  >
+                    {slot.label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (

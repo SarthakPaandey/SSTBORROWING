@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { TimePicker } from '@/components/ui/TimePicker';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -24,6 +25,36 @@ export default function LibraryPage() {
   useEffect(() => {
     fetchResources();
   }, []);
+
+  // Reset time if it becomes invalid when date changes
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date === today) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const selectedTime = new Date();
+      selectedTime.setHours(hours, minutes, 0, 0);
+      const now = new Date();
+      
+      // If selected time is in the past, reset to next available time slot
+      if (selectedTime < now) {
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const roundedMinutes = Math.ceil(currentMinutes / 15) * 15; // Round up to next 15-minute slot
+        const nextHour = Math.floor(roundedMinutes / 60);
+        const nextMinute = roundedMinutes % 60;
+        const nextTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
+        
+        // Ensure it's within allowed hours (9 AM - 8 PM)
+        if (nextHour >= 9 && nextHour < 20) {
+          setStartTime(nextTime);
+        } else if (nextHour < 9) {
+          setStartTime('09:00');
+        } else {
+          setStartTime('09:00'); // If past 8 PM, reset to start of next day's window
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
 
   const fetchResources = async () => {
     try {
@@ -66,6 +97,14 @@ export default function LibraryPage() {
     try {
       const start = new Date(`${date}T${startTime}`);
       const startHour = start.getHours();
+      const today = new Date().toISOString().split('T')[0];
+
+      // Check if booking is in the past for today
+      if (date === today && start < new Date()) {
+        setError('Pickup time must be in the future for today');
+        setLoading(false);
+        return;
+      }
 
       // Book borrowing only allowed between 9am and 8pm
       if (startHour < 9 || startHour >= 20) {
@@ -107,25 +146,22 @@ export default function LibraryPage() {
   const renderBookList = (books: any[], resourceId: string) => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Pickup Date & Time</label>
-        <p className="text-xs text-text-muted">
-          Available between 9:00 AM - 8:00 PM • 14-day borrowing period
-        </p>
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
-          />
-          <Input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            min="09:00"
-            max="20:00"
-          />
-        </div>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          min={new Date().toISOString().split('T')[0]}
+          className="mb-2"
+        />
+        <TimePicker
+          date={date}
+          value={startTime}
+          onChange={setStartTime}
+          minTime="09:00"
+          maxTime="20:00"
+          label="Pickup Time"
+          helperText="Only remaining pickup times for today are shown. Available between 9:00 AM - 8:00 PM • 14-day borrowing period"
+        />
       </div>
 
       <div className="space-y-2">

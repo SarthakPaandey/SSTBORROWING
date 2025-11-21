@@ -2,99 +2,102 @@
 
 A production-ready unified booking system for SST facilities, rooms, and equipment. Built with Next.js 14, TypeScript, MongoDB, and NextAuth.
 
+![SST Booking System](https://github.com/user-attachments/assets/0822e1a3-5ec0-4894-beed-b06d6e4501bb)
+
 ## Features
 
 ### Core Functionality
 - **Facility Booking**: Sports facilities (turf, courts) with slot-based scheduling
 - **Room Booking**: Meeting and study rooms with 2-hour slots
 - **Equipment Management**: Sports and lab equipment with quantity tracking
-- **QR Code Check-in**: Secure check-in/checkout via QR codes
+- **Group Bookings**: Create and manage group bookings with invitations
+- **QR Code Check-in**: Secure check-in/checkout via QR codes with HMAC signing
 - **Penalty System**: Automated no-show detection and penalty tracking
-- **Lab Approvals**: Admin approval workflow for lab equipment
+- **Lab Approvals**: Admin approval workflow for lab equipment requests
+- **Analytics Dashboard**: Real-time statistics and charts for admins
 
 ### User Roles
-- **Students**: Book facilities, rooms, and equipment via Google OAuth (@sst.scaler.com)
-- **Admins**: Manage resources, approve lab requests, create blocks (@scaler.com)
+- **Students**: Book facilities, rooms, and equipment via Google OAuth (`@sst.scaler.com`)
+- **Admins**: Manage resources, approve lab requests, create blocks (`@scaler.com`)
 - **Guards**: Scan QR codes for check-in/checkout with local credentials
 
 ### Key Features
 - Domain-restricted Google OAuth authentication
-- Real-time availability checking
+- Real-time availability checking with conflict detection
 - Shared resource mutex (football/cricket turf)
 - Automatic suspension after 5 penalty points
 - Booking limits (2/day, 6/week)
 - 7-day advance booking window
-- QR code generation with HMAC signing
-
-## UI Preview
-   <img width="1807" height="971" alt="image" src="https://github.com/user-attachments/assets/0822e1a3-5ec0-4894-beed-b06d6e4501bb" />
+- Email notifications for bookings and approvals
+- Rate limiting on API endpoints
+- Zod schema validation
 
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
-- **Database**: MongoDB Atlas
+- **Database**: MongoDB Atlas with Mongoose ODM
 - **Auth**: NextAuth.js with Google OAuth + Credentials
 - **Styling**: Tailwind CSS
-- **QR Codes**: qrcode npm package
-- **Deployment**: Vercel (free tier)
+- **Charts**: Recharts for analytics
+- **QR Codes**: qrcode npm package with HMAC security
+- **Validation**: Zod schemas
+- **Email**: Nodemailer
+- **Deployment**: Vercel (free tier compatible)
 
-## Prerequisites
+## Quick Start
 
-- Node.js 18+ and npm
+Get the system running locally in 5 minutes!
+
+### Prerequisites
+
+- Node.js 18+ and npm (or pnpm)
 - MongoDB Atlas account (free tier)
 - Google Cloud Console account for OAuth
 
-## Setup Instructions
-
-### 1. Clone and Install
+### 1. Install Dependencies
 
 ```bash
 git clone <repository-url>
-cd SST-Borrowing\ equipments
+cd SST-Borrowing-equipments
 npm install
 ```
 
 ### 2. Set Up MongoDB Atlas
 
-1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a free cluster
-3. Create a database user
-4. Get your connection string (should look like: `mongodb+srv://username:password@cluster.mongodb.net/sst-booking`)
-5. Whitelist your IP (or use `0.0.0.0/0` for development)
+1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register)
+2. Create a free M0 cluster
+3. Create a database user with read/write permissions
+4. Whitelist IP: `0.0.0.0/0` (for development only)
+5. Click "Connect" → "Connect your application"
+6. Copy the connection string (should look like: `mongodb+srv://username:password@cluster.mongodb.net/sst-booking`)
 
 ### 3. Set Up Google OAuth
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Google+ API
-4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. Application type: Web application
-6. Authorized redirect URIs:
-   - `http://localhost:3000/api/auth/callback/google` (development)
-   - `https://yourdomain.com/api/auth/callback/google` (production)
-7. Copy Client ID and Client Secret
+2. Create a new project or select an existing one
+3. Enable "Google+ API" (or "Google Identity")
+4. Navigate to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+5. Application type: **Web application**
+6. Add authorized redirect URI:
+   - Development: `http://localhost:3000/api/auth/callback/google`
+   - Production: `https://yourdomain.com/api/auth/callback/google`
+7. Copy the **Client ID** and **Client Secret**
 
 ### 4. Configure Environment Variables
 
-Copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
-```
-
-Update `.env` with your values:
+Create a `.env` file in the root directory:
 
 ```env
-# Next.js
+# Next.js & NextAuth
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
+NEXTAUTH_SECRET=your-secret-here-generate-with-openssl
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# Domain restrictions
+# Domain Restrictions
 ALLOWED_STUDENT_DOMAIN=sst.scaler.com
 ALLOWED_ADMIN_DOMAIN=scaler.com
 
@@ -102,16 +105,25 @@ ALLOWED_ADMIN_DOMAIN=scaler.com
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/sst-booking?retryWrites=true&w=majority
 
 # QR Security
-QR_HMAC_SECRET=<generate-with-openssl-rand-base64-32>
+QR_HMAC_SECRET=your-qr-secret-generate-with-openssl
 
-# Guard Password (bcrypt hash of "123456")
+# Guard Authentication
 GUARD_DEFAULT_PASSWORD_HASH=$2a$10$rKzVmCk7HF.6bGGvqGhYWOqWJ5M0aZ5qLxQxZpGvXFVJYtRYJMGVO
+
+# Email Configuration (Optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+EMAIL_FROM=noreply@sst.scaler.com
 ```
 
-Generate secrets:
+**Generate secrets:**
 ```bash
 openssl rand -base64 32
 ```
+
+> **Note**: The default guard password hash is for `123456`. Change this in production!
 
 ### 5. Seed the Database
 
@@ -119,11 +131,11 @@ openssl rand -base64 32
 npm run seed
 ```
 
-This will create:
+This creates:
 - 1 admin user: `admin@scaler.com`
 - 2 guards: `guard-1` and `guard-2` (password: `123456`)
 - 5 facilities (turf, courts)
-- 6 rooms (meeting and study rooms)
+- 6 rooms (meeting and study rooms)  
 - 10 sports equipment items
 - 6 lab equipment items
 
@@ -139,56 +151,165 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### As a Student
 
-1. **Sign In**: Use Google OAuth with your `@sst.scaler.com` email
-2. **Browse**: Navigate to Facilities, Rooms, or Equipment
-3. **Book**: Select date/time and confirm booking
-4. **Get QR**: Generate QR code for confirmed bookings
-5. **Check-in**: Show QR to guard for check-in
+1. **Sign In**: Click "Sign In" and use Google OAuth with your `@sst.scaler.com` email
+2. **Browse Resources**: Navigate to Facilities, Rooms, or Equipment
+3. **Make a Booking**: 
+   - Select a resource
+   - Choose date and time slot
+   - Confirm booking (lab equipment requires admin approval)
+4. **Generate QR Code**: Once confirmed, generate a QR code from your bookings page
+5. **Check-in**: Show the QR code to the guard for check-in at the facility
 
 **Booking Limits**:
-- 2 bookings per day
-- 6 bookings per week
-- Maximum 7 days in advance
+- Maximum 2 bookings per day
+- Maximum 6 bookings per week
+- Book up to 7 days in advance
 - Facility slots: 60 minutes
 - Room slots: 120 minutes
-- Equipment: 120 minutes
+- Equipment duration: 120 minutes
 
 ### As a Guard
 
-1. **Sign In**: Use username `guard-1` or `guard-2` with password `123456`
-2. **Scan**: Enter QR token or scan with camera
-3. **Validate**: System checks booking and issues equipment/facility access
-4. **Return**: Process equipment returns (good/damaged condition)
+1. **Sign In**: Navigate to guard login and use credentials:
+   - Username: `guard-1` or `guard-2`
+   - Password: `123456`
+2. **Scan QR Code**: 
+   - Enter the QR token manually or scan with camera
+   - System validates the booking and time window
+3. **Issue Equipment**: For equipment bookings, mark items as issued
+4. **Process Returns**:
+   - Navigate to "Library Returns" or "Equipment Returns"
+   - Check equipment condition
+   - Mark as damaged if necessary (assigns penalty)
 
 ### As an Admin
 
 1. **Sign In**: Use Google OAuth with your `@scaler.com` email
-2. **Dashboard**: View system statistics
-3. **Approvals**: Review and approve lab equipment requests
-4. **Blocks**: Create maintenance/event blocks
-5. **Penalties**: View and waive user penalties
-6. **Resources**: Manage facilities, rooms, and equipment inventory
+2. **View Dashboard**: See real-time statistics and charts
+3. **Manage Approvals**: Review and approve/reject lab equipment requests
+4. **Create Blocks**: Block resources for maintenance or events
+5. **Manage Penalties**: View user penalties and waive if necessary
+6. **Resource Management**: 
+   - Add/edit facilities, rooms, and equipment
+   - Update equipment inventory
+   - View booking history
 
 ## System Policies
 
 ### Booking Rules
-- **Advance Window**: 7 days
-- **Daily Limit**: 2 bookings
-- **Weekly Limit**: 6 bookings
-- **Facility Duration**: 60 minutes
-- **Room Duration**: 120 minutes
-- **Equipment Duration**: 120 minutes
+| Rule | Value |
+|------|-------|
+| Advance booking window | 7 days |
+| Daily booking limit | 2 bookings |
+| Weekly booking limit | 6 bookings |
+| Facility slot duration | 60 minutes |
+| Room slot duration | 120 minutes |
+| Equipment duration | 120 minutes |
 
-### Penalties
-- **No-show**: +1 point (auto-applied after 15 min grace)
-- **Late Return**: +1 point
-- **Damage**: +2 points
-- **Suspension**: 5+ points = 7-day suspension
+### Penalty System
+| Violation | Points | Notes |
+|-----------|--------|-------|
+| No-show | +1 | Auto-applied after 15 min grace period |
+| Late return | +1 | Equipment not returned on time |
+| Equipment damage | +2 | Marked by guard during return |
+| **Suspension threshold** | **5 points** | **7-day automatic suspension** |
 
 ### Special Rules
-- **Shared Turf**: Football and cricket share the same ground (mutex)
-- **Lab Equipment**: Students only, requires admin approval
-- **QR Validity**: 10 min before to 15 min after start time
+- **Shared Turf**: Football and cricket facilities share the same ground (mutex lock)
+- **Lab Equipment**: Students only, requires admin approval before confirmation
+- **QR Validity Window**: Valid from 10 minutes before to 15 minutes after start time
+- **Group Bookings**: Support for multiple participants with invitation system
+
+## Project Structure
+
+```
+SST-Booking-equipments/
+├── app/
+│   ├── api/                    # API routes
+│   │   ├── auth/              # NextAuth endpoints
+│   │   ├── bookings/          # Booking CRUD operations
+│   │   ├── resources/         # Resource management
+│   │   ├── admin/             # Admin endpoints
+│   │   ├── scanner/           # QR validation & returns
+│   │   └── group-bookings/    # Group booking management
+│   ├── user/                  # Student pages
+│   ├── guard/                 # Guard pages
+│   ├── admin/                 # Admin pages
+│   └── login/                 # Authentication page
+├── components/                # React components
+│   ├── ui/                    # Reusable UI components
+│   └── admin/                 # Admin-specific components
+├── lib/
+│   ├── auth/                  # Auth configuration
+│   ├── db.ts                  # MongoDB connection
+│   ├── policies.ts            # Business rules & policies
+│   ├── qr.ts                  # QR generation & validation
+│   ├── email.ts               # Email notifications
+│   ├── ratelimit.ts           # API rate limiting
+│   ├── validations.ts         # Zod schemas
+│   ├── errors.ts              # Custom error classes
+│   └── utils.ts               # Utility functions
+├── models/                    # Mongoose schemas
+│   ├── User.ts
+│   ├── Booking.ts
+│   ├── Resource.ts
+│   ├── Penalty.ts
+│   ├── Block.ts
+│   ├── GroupBooking.ts
+│   └── ...
+├── seed/                      # Database seeding scripts
+├── types/                     # TypeScript type definitions
+├── middleware.ts              # Route protection middleware
+└── .env                       # Environment variables (not committed)
+```
+
+## API Endpoints
+
+### Authentication
+- `GET/POST /api/auth/[...nextauth]` - NextAuth.js endpoints
+
+### Resources
+- `GET /api/resources` - List all available resources
+- `GET /api/resources/[id]/availability` - Check resource availability
+
+### Bookings
+- `GET /api/bookings` - List user bookings
+- `POST /api/bookings` - Create new booking
+- `PATCH /api/bookings/[id]/cancel` - Cancel booking
+- `POST /api/bookings/[id]/qr` - Generate QR code for booking
+
+### Group Bookings
+- `POST /api/bookings/group` - Create group booking
+- `POST /api/group-bookings/[id]/invite` - Send invitation to user
+- `GET /api/group-bookings/invitations` - Get user's invitations
+
+### QR & Scanner (Guard Only)
+- `POST /api/qr/validate` - Validate QR token
+- `POST /api/scanner/return` - Process equipment return
+- `GET /api/scanner/issued` - Get issued equipment list
+
+### Admin
+- `GET /api/admin/stats` - Get dashboard statistics
+- `POST /api/admin/approvals/[id]` - Approve/reject lab booking
+- `GET/POST /api/admin/blocks` - Manage resource blocks
+- `GET /api/admin/penalties` - List all penalties
+- `PATCH /api/admin/penalties/[id]/waive` - Waive penalty
+- `GET/POST/PATCH /api/admin/equipment` - Manage equipment inventory
+
+## Testing
+
+The project includes unit tests using Vitest.
+
+```bash
+# Run tests
+npm run test
+
+# Run tests with UI
+npm run test:ui
+
+# Run tests with coverage
+npm run test:coverage
+```
 
 ## Deployment to Vercel
 
@@ -202,119 +323,108 @@ git remote add origin <your-github-repo>
 git push -u origin main
 ```
 
-### 2. Deploy to Vercel
+### 2. Deploy on Vercel
 
-1. Go to [Vercel](https://vercel.com)
+1. Go to [Vercel](https://vercel.com) and sign in
 2. Click "Import Project"
 3. Select your GitHub repository
-4. Add all environment variables from `.env`
-5. Update `NEXTAUTH_URL` to your Vercel domain
-6. Add Vercel domain to Google OAuth authorized redirects
-7. Deploy!
+4. Configure project:
+   - Framework Preset: **Next.js**
+   - Root Directory: `./`
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+5. Add **all environment variables** from your `.env` file
+6. Update `NEXTAUTH_URL` to your Vercel domain (e.g., `https://your-app.vercel.app`)
+7. Click "Deploy"
 
-### 3. Run Seed Script on Production
+### 3. Post-Deployment
 
-After first deployment:
-
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link project: `vercel link`
-3. Run seed remotely or use a one-time serverless function
-
-## Project Structure
-
-```
-├── app/
-│   ├── api/              # API routes
-│   ├── user/             # Student pages
-│   ├── guard/            # Guard pages
-│   ├── admin/            # Admin pages
-│   └── login/            # Login page
-├── components/           # React components
-│   └── ui/               # UI components
-├── lib/
-│   ├── auth/             # Auth configuration
-│   ├── db.ts             # MongoDB connection
-│   ├── policies.ts       # Business rules
-│   ├── qr.ts             # QR generation/validation
-│   └── utils.ts          # Utilities
-├── models/               # Mongoose models
-├── seed/                 # Database seeding
-├── middleware.ts         # Route protection
-└── types/                # TypeScript types
-```
-
-## API Endpoints
-
-### Authentication
-- `GET/POST /api/auth/[...nextauth]` - NextAuth endpoints
-
-### Resources
-- `GET /api/resources` - List resources
-- `GET /api/resources/[id]/availability` - Check availability
-
-### Bookings
-- `GET /api/bookings` - List bookings
-- `POST /api/bookings` - Create booking
-- `PATCH /api/bookings/[id]/cancel` - Cancel booking
-- `POST /api/bookings/[id]/qr` - Generate QR code
-
-### QR & Scanner
-- `POST /api/qr/validate` - Validate QR token (Guard)
-- `POST /api/scanner/return` - Process equipment return (Guard)
-
-### Admin
-- `POST /api/admin/approvals/[id]` - Approve/reject lab booking
-- `GET/POST /api/admin/blocks` - Manage resource blocks
-- `GET/POST /api/admin/penalties` - Manage penalties
-- `GET/POST/PATCH /api/admin/equipment` - Manage equipment inventory
+1. Add your Vercel domain to Google OAuth authorized redirect URIs:
+   - `https://your-app.vercel.app/api/auth/callback/google`
+2. Run the seed script on production (one-time):
+   - Option A: Use Vercel CLI to run seed remotely
+   - Option B: Create a temporary API endpoint that runs the seed
+3. Test the deployment with all user roles
 
 ## Troubleshooting
 
 ### Database Connection Issues
-- Verify MongoDB connection string
-- Check IP whitelist in MongoDB Atlas
-- Ensure database name is correct
+- ✅ Verify `MONGODB_URI` is correct in environment variables
+- ✅ Check IP whitelist in MongoDB Atlas (use `0.0.0.0/0` for dev)
+- ✅ Ensure database name matches in connection string
+- ✅ Verify database user has read/write permissions
 
 ### OAuth Issues
-- Verify Google OAuth credentials
-- Check authorized redirect URIs
-- Ensure correct domain restrictions
+- ✅ Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+- ✅ Check authorized redirect URIs in Google Console
+- ✅ Ensure correct domain restrictions (`@sst.scaler.com` for students)
+- ✅ Try signing in with an incognito window
 
 ### QR Code Issues
-- Verify `QR_HMAC_SECRET` is set
-- Check token expiration times
-- Ensure booking is confirmed before QR generation
+- ✅ Verify `QR_HMAC_SECRET` is set and consistent
+- ✅ Check that booking is confirmed before generating QR
+- ✅ Verify time window (10 min before to 15 min after start)
+- ✅ Ensure system clocks are synchronized
 
 ### Build Errors
-- Clear `.next` folder: `rm -rf .next`
-- Clear node_modules: `rm -rf node_modules && npm install`
-- Check TypeScript errors: `npm run lint`
+```bash
+# Clear Next.js cache
+rm -rf .next
+
+# Reinstall dependencies
+rm -rf node_modules
+npm install
+
+# Check for TypeScript errors
+npm run lint
+```
+
+### "Unauthorized" Errors
+- ✅ Verify email domain matches allowed domains in `.env`
+  - Students: `@sst.scaler.com`
+  - Admins: `@scaler.com`
+- ✅ Check that `ALLOWED_STUDENT_DOMAIN` and `ALLOWED_ADMIN_DOMAIN` are set correctly
+
+## Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| Cannot connect to MongoDB | Check connection string and IP whitelist |
+| OAuth error on login | Verify redirect URI matches exactly |
+| QR code "already used" | Each QR is single-use; generate a new one |
+| Booking limit exceeded | Users can only book 2/day, 6/week |
+| Resource unavailable | Check for conflicts or admin blocks |
+
+## Security Features
+
+- 🔒 Domain-restricted OAuth (students and admins from specific domains)
+- 🔒 HMAC-signed QR codes to prevent forgery
+- 🔒 Bcrypt password hashing for guard accounts
+- 🔒 API rate limiting on critical endpoints
+- 🔒 Zod schema validation on all inputs
+- 🔒 Role-based access control via middleware
+- 🔒 Environment-based configuration (no hardcoded secrets)
 
 ## Future Enhancements
 
-### Phase 2 (Optional)
-- Email notifications via Nodemailer
-- WhatsApp notifications (Twilio/similar)
-- Advanced analytics dashboard
-- Calendar view with drag-and-drop
-- Recurring bookings
-- Equipment damage tracking
-- Tournament scheduling
+### Planned Features
+- [ ] Push notifications for mobile devices
+- [ ] WhatsApp notifications via Twilio
+- [ ] Recurring bookings (weekly/monthly)
+- [ ] Advanced calendar view with drag-and-drop
+- [ ] Equipment damage history tracking
+- [ ] Tournament scheduling system
+- [ ] Payment integration for fines
+- [ ] Offline PWA support
+- [ ] Mobile app (React Native)
 
-### Phase 3 (Optional)
-- Mobile app (React Native)
-- Offline-first PWA
-- Real-time notifications
-- Payment integration for damages
-- Advanced reporting
-
-## Support
+## Support & Contact
 
 For issues or questions:
-1. Check troubleshooting section
-2. Review API documentation
-3. Check MongoDB and Vercel logs
-4. Contact system administrator
+1. Check the **Troubleshooting** section above
+2. Review the **API Endpoints** documentation
+3. Check MongoDB and Vercel logs for errors
+4. Contact the system administrator
 
 ## License
 
@@ -322,4 +432,4 @@ MIT License - Free for educational and commercial use.
 
 ---
 
-Built with ❤️ for SST.
+**Built with ❤️ for SST**

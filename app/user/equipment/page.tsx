@@ -57,7 +57,7 @@ export default function EquipmentPage() {
   const handleBook = async (resourceId: string, kind: string) => {
     const items = Object.entries(selectedItems)
       .filter(([_, qty]) => qty > 0)
-      .map(([itemId, qty]) => ({ itemId, qty }));
+      .map(([itemId, qty]) => ({ id: itemId, qty }));
 
     if (items.length === 0) {
       setError('Please select at least one item');
@@ -116,6 +116,26 @@ export default function EquipmentPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Handle validation errors with details
+        if (data.details) {
+          const fieldErrors = data.details.fieldErrors;
+          const formErrors = data.details.formErrors;
+          const errorMessages = [];
+          
+          if (fieldErrors) {
+            Object.entries(fieldErrors).forEach(([field, errors]) => {
+              if (Array.isArray(errors) && errors.length > 0) {
+                errorMessages.push(`${field}: ${errors.join(', ')}`);
+              }
+            });
+          }
+          
+          if (formErrors && formErrors.length > 0) {
+            errorMessages.push(...formErrors);
+          }
+          
+          throw new Error(errorMessages.length > 0 ? errorMessages.join('; ') : data.error);
+        }
         throw new Error(data.error || 'Failed to create booking');
       }
 

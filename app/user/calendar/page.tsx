@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import { Calendar, CalendarEvent } from '@/components/ui/Calendar';
 import { Modal } from '@/components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
-import { CalendarDays, Clock, MapPin, Package, Filter } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, Package, Filter, Users, User } from 'lucide-react';
 
 // Define types for better type safety
 interface Booking {
@@ -21,6 +22,7 @@ interface Booking {
 }
 
 export default function CalendarPage() {
+  const { data: session } = useSession();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -31,6 +33,9 @@ export default function CalendarPage() {
   // Filters
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Toggle for showing all bookings
+  const [showAllBookings, setShowAllBookings] = useState(false);
 
   const fetchBookings = useCallback(async (date: Date) => {
     setLoading(true);
@@ -45,7 +50,8 @@ export default function CalendarPage() {
       start.setDate(start.getDate() - 7);
       end.setDate(end.getDate() + 7);
 
-      const res = await fetch(`/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}&me=true`);
+      const meParam = showAllBookings ? '' : '&me=true';
+      const res = await fetch(`/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}${meParam}`);
       const data = await res.json();
       setBookings(data.bookings || []);
     } catch (error) {
@@ -57,10 +63,15 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchBookings(currentMonth);
-  }, [fetchBookings, currentMonth]);
+  }, [fetchBookings, currentMonth, showAllBookings]);
 
   const handleMonthChange = (date: Date) => {
     setCurrentMonth(date);
+  };
+
+  // Helper to check if booking belongs to current user
+  const isMyBooking = (booking: Booking) => {
+    return session?.user?.id === (booking as any).userId;
   };
 
   // Filter bookings
@@ -127,11 +138,33 @@ export default function CalendarPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-accent-blue">Calendar View</h1>
-          <p className="text-text-muted">View all your bookings in a calendar</p>
+          <p className="text-text-muted">
+            {showAllBookings ? 'View all bookings' : 'View your bookings'}
+          </p>
         </div>
 
-        {/* Filters */}
+        {/* Toggle and Filters */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Show All Toggle */}
+          <Button
+            variant={showAllBookings ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowAllBookings(!showAllBookings)}
+            className="flex items-center gap-2"
+          >
+            {showAllBookings ? (
+              <>
+                <Users className="h-4 w-4" />
+                All Bookings
+              </>
+            ) : (
+              <>
+                <User className="h-4 w-4" />
+                My Bookings
+              </>
+            )}
+          </Button>
+
           <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
             <Filter className="h-4 w-4 text-text-muted ml-2" />
             <select
@@ -185,11 +218,20 @@ export default function CalendarPage() {
           setEventModal(false);
           setSelectedEvent(null);
         }}
-        title="Booking Details"
+        title={isMyBooking(selectedEvent!) ? "My Booking Details" : "Booking Details"}
         size="md"
       >
         {selectedEvent && (
           <div className="space-y-4">
+            {/* Privacy Notice for Other Users' Bookings */}
+            {!isMyBooking(selectedEvent) && (
+              <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3 flex items-start gap-2">
+                <Users className="h-4 w-4 text-accent-blue mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-text-main">
+                  This booking belongs to another user. Personal details are hidden for privacy.
+                </p>
+              </div>
+            )}
             <div className="flex items-start gap-3">
               <div className="icon-circle w-12 h-12">
                 {getKindIcon(selectedEvent.kind)}
@@ -198,9 +240,15 @@ export default function CalendarPage() {
                 <h3 className="text-lg font-semibold text-text-main">
                   {selectedEvent.resourceName}
                 </h3>
-                <p className="text-sm text-text-muted">
-                  Booking ID: {selectedEvent._id.slice(-8)}
-                </p>
+                {isMyBooking(selectedEvent) ? (
+                  <p className="text-sm text-text-muted">
+                    Booking ID: {selectedEvent._id.slice(-8)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-text-muted">
+                    Booked by another user
+                  </p>
+                )}
               </div>
               {getStatusBadge(selectedEvent.status)}
             </div>
@@ -230,7 +278,7 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              {selectedEvent.kind === 'EQUIPMENT' && selectedEvent.items && (
+              {selectedEvent.kind === 'EQUIPMENT' && selectedEvent.items && isMyBooking(selectedEvent) && (
                 <div>
                   <p className="text-sm text-text-muted mb-2">Items:</p>
                   <div className="space-y-1">
@@ -246,9 +294,16 @@ export default function CalendarPage() {
                   </div>
                 </div>
               )}
+
+              {/* Hide items for non-owned bookings */}
+              {selectedEvent.kind === 'EQUIPMENT' && !isMyBooking(selectedEvent) && (
+                <div className="bg-bg-dark rounded px-3 py-2">
+                  <p className="text-sm text-text-muted">Equipment borrowed (details hidden)</p>
+                </div>
+              )}
             </div>
 
-            {selectedEvent.status === 'CONFIRMED' && selectedEvent.kind === 'EQUIPMENT' && (
+            {selectedEvent.status === 'CONFIRMED' && selectedEvent.kind === 'EQUIPMENT' && isMyBooking(selectedEvent) && (
               <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3">
                 <p className="text-sm text-text-main">
                   <span className="font-medium">Next step:</span> Generate QR code from &quot;My Bookings&quot; to pick up equipment
@@ -256,7 +311,7 @@ export default function CalendarPage() {
               </div>
             )}
 
-            {selectedEvent.status === 'PENDING' && (
+            {selectedEvent.status === 'PENDING' && isMyBooking(selectedEvent) && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                 <p className="text-sm text-text-main">
                   <span className="font-medium">Awaiting approval</span> from lab admin

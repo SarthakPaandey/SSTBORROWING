@@ -27,7 +27,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
   // Group booking state
   const [isGroupBooking, setIsGroupBooking] = useState(false);
-  const [memberEmails, setMemberEmails] = useState<string[]>(['', '', '', '', '']);
+  const [memberEmails, setMemberEmails] = useState<string[]>(['']); // Start with just one field
   const [emailInput, setEmailInput] = useState('');
 
   useEffect(() => {
@@ -168,8 +168,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     updated[index] = value;
     setMemberEmails(updated);
 
-    // Auto-add new field if this is the last field and has content
-    if (index === memberEmails.length - 1 && value.trim() !== '') {
+    // Auto-add new field if this field has content and it's the last field
+    if (value.trim() !== '' && index === memberEmails.length - 1) {
       setMemberEmails([...updated, '']);
     }
   };
@@ -302,48 +302,50 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
               <label className="block text-sm font-medium">
                 Friend Emails (minimum 5, you'll be the 6th)
               </label>
-              {memberEmails.map((email, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <div className="flex-1">
-                    <Input
-                      type="email"
-                      placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
-                      value={email}
-                      onChange={(e) => updateEmail(index, e.target.value)}
-                      onKeyDown={(e) => {
-                        // Move to next field on Enter
-                        if (e.key === 'Enter' && email.trim() !== '') {
-                          e.preventDefault();
-                          const nextInput = document.querySelector<HTMLInputElement>(
-                            `input[placeholder="Friend ${index + 2} email (@sst.scaler.com)"]`
-                          );
-                          if (nextInput) {
-                            nextInput.focus();
+              {memberEmails.map((email, index) => {
+                // Only show this field if:
+                // 1. It's the first field, OR
+                // 2. The previous field has content
+                const shouldShow = index === 0 || memberEmails[index - 1].trim() !== '';
+
+                if (!shouldShow) return null;
+
+                return (
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <Input
+                        type="email"
+                        placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
+                        value={email}
+                        onChange={(e) => updateEmail(index, e.target.value)}
+                        onKeyDown={(e) => {
+                          // Move to next field on Enter
+                          if (e.key === 'Enter' && email.trim() !== '') {
+                            e.preventDefault();
+                            const nextInput = document.querySelector<HTMLInputElement>(
+                              `input[placeholder="Friend ${index + 2} email (@sst.scaler.com)"]`
+                            );
+                            if (nextInput) {
+                              nextInput.focus();
+                            }
                           }
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                    </div>
+                    {index > 4 && email.trim() === '' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEmailField(index)}
+                        className="flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {memberEmails.length > 5 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeEmailField(index)}
-                      className="flex-shrink-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addEmailField}
-                className="w-full"
-              >
-                + Add More Friends
-              </Button>
+                );
+              })}
+
               <p className="text-xs text-muted-foreground">
                 Total: {memberEmails.filter(e => e.trim()).length + 1} people
                 (including you)

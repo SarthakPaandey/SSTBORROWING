@@ -34,7 +34,7 @@ export default function EquipmentPage() {
       const selectedTime = new Date();
       selectedTime.setHours(hours, minutes, 0, 0);
       const now = new Date();
-      
+
       // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -42,7 +42,7 @@ export default function EquipmentPage() {
         const nextHour = Math.floor(roundedMinutes / 60);
         const nextMinute = roundedMinutes % 60;
         const nextTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
-        
+
         // Ensure it's within allowed hours (9 AM - 8 PM)
         if (nextHour >= 9 && nextHour < 20) {
           setStartTime(nextTime);
@@ -125,9 +125,9 @@ export default function EquipmentPage() {
         return;
       }
 
-      // Equipment bookings only allowed between 9am and 8pm
+      // Equipment pickup time must be between 9am and 8pm
       if (startHour < 9 || startHour >= 20) {
-        setError('Equipment bookings are only available between 9:00 AM and 8:00 PM');
+        setError('Equipment pickup time must be between 9:00 AM and 8:00 PM');
         setLoading(false);
         return;
       }
@@ -160,7 +160,7 @@ export default function EquipmentPage() {
           const fieldErrors = data.details.fieldErrors;
           const formErrors = data.details.formErrors;
           const errorMessages = [];
-          
+
           if (fieldErrors) {
             Object.entries(fieldErrors).forEach(([field, errors]) => {
               if (Array.isArray(errors) && errors.length > 0) {
@@ -168,11 +168,11 @@ export default function EquipmentPage() {
               }
             });
           }
-          
+
           if (formErrors && formErrors.length > 0) {
             errorMessages.push(...formErrors);
           }
-          
+
           throw new Error(errorMessages.length > 0 ? errorMessages.join('; ') : data.error);
         }
         throw new Error(data.error || 'Failed to create booking');
@@ -224,7 +224,7 @@ export default function EquipmentPage() {
                   minTime="09:00"
                   maxTime="20:00"
                   label="Pickup Time"
-                  helperText="Only remaining pickup times for today are shown. Bookings are allowed between 9:00 AM and 8:00 PM."
+                  helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />
               </div>
 
@@ -316,7 +316,7 @@ export default function EquipmentPage() {
                   minTime="09:00"
                   maxTime="20:00"
                   label="Pickup Time"
-                  helperText="Only remaining pickup times for today are shown. Bookings are allowed between 9:00 AM and 8:00 PM."
+                  helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />
               </div>
 

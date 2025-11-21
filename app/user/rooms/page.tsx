@@ -47,7 +47,7 @@ export default async function RoomsPage() {
                 <div className="text-sm text-text-muted space-y-2">
                   <div className="flex items-center">
                     <Clock className="mr-2 h-4 w-4 text-accent-blue" />
-                    <span>Slot: {room.rules.slotMinutes || 120} minutes</span>
+                    <span>{((room.rules.slotMinutes || 120) / 60)} hour slots</span>
                   </div>
                   {room.capacity && (
                     <div className="flex items-center">

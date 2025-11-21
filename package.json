@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx --env-file=.env seed/seed.ts"
+    "seed": "tsx --env-file=.env seed/seed.ts",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -34,12 +37,14 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/recharts": "^2.0.1",
+    "@vitest/ui": "^1.6.1",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "^14.2.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.7.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^1.6.1"
   }
 }

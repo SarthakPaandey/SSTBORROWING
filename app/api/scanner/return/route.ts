@@ -6,6 +6,7 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,26 +16,20 @@ export async function POST(req: NextRequest) {
     const { bookingId, items, condition } = await req.json();
 
     if (!bookingId) {
-      return NextResponse.json({ error: 'Booking ID required' }, { status: 400 });
+      throw new ValidationError('Booking ID required');
     }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     if (booking.kind !== 'EQUIPMENT') {
-      return NextResponse.json(
-        { error: 'Only equipment bookings can be returned' },
-        { status: 400 }
-      );
+      throw new ValidationError('Only equipment bookings can be returned');
     }
 
     if (booking.status !== 'CHECKED_IN') {
-      return NextResponse.json(
-        { error: 'Booking must be checked in to return' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking must be checked in to return');
     }
 
     // Restore equipment quantities (only if checked in)
@@ -112,11 +107,8 @@ export async function POST(req: NextRequest) {
         ? 'Equipment returned with penalty applied'
         : 'Equipment returned successfully',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Return error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process return' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

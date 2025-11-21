@@ -11,6 +11,7 @@ import { AlertCircle, Calendar, Clock, MapPin, Package, DoorOpen, Users, Calenda
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { EnrichedBooking } from '@/types/booking';
 
 export default async function UserDashboard() {
   const session = await getServerSession(authOptions);
@@ -65,7 +66,7 @@ export default async function UserDashboard() {
             </div>
             <CardDescription className="text-text-muted">
               {user.suspendedUntil && new Date() < user.suspendedUntil
-                ? `You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}`
+                ? `You are suspended until ${ new Date(user.suspendedUntil).toLocaleDateString() } `
                 : user.penaltyPoints >= 5
                   ? 'You have reached the maximum penalty points. Please contact admin.'
                   : 'Avoid no-shows and late returns to prevent suspension.'}

@@ -5,6 +5,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
   try {
@@ -71,11 +72,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ groupBookings: enriched });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Fetch group bookings error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch group bookings' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

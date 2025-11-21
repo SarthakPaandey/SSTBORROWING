@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Resource } from '@/models/Resource';
-import { Booking } from '@/models/Booking';
+import { Booking, IBooking } from '@/models/Booking';
 import { Block } from '@/models/Block';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 
 export async function GET(
   req: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     const dateStr = searchParams.get('date');
 
     if (!dateStr) {
-      return NextResponse.json({ error: 'Date parameter required' }, { status: 400 });
+      throw new ValidationError('Date parameter required');
     }
 
     const date = new Date(dateStr);
@@ -28,7 +29,7 @@ export async function GET(
 
     const resource = await Resource.findById(params.id);
     if (!resource) {
-      return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
+      throw new NotFoundError('Resource');
     }
 
     // Get existing bookings
@@ -46,7 +47,7 @@ export async function GET(
     });
 
     // If shared turf, get bookings from other resources in the group
-    let sharedBookings: any[] = [];
+    let sharedBookings: IBooking[] = [];
     if (resource.sharedGroupId) {
       const sharedResources = await Resource.find({
         sharedGroupId: resource.sharedGroupId,
@@ -68,10 +69,7 @@ export async function GET(
       blocks,
       sharedBookings,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch availability' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, NotFoundError } from '@/lib/errors';
 
 export async function PUT(
   req: NextRequest,
@@ -23,11 +24,8 @@ export async function PUT(
     }
 
     return NextResponse.json({ resource });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to update resource' },
-      { status: error.message === 'Forbidden' ? 403 : 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -46,10 +44,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: 'Resource deleted' });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete resource' },
-      { status: error.message === 'Forbidden' ? 403 : 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

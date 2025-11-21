@@ -5,9 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Users, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { GroupInvitation } from '@/types/booking';
+
+interface InvitationsResponse {
+  pending: GroupInvitation[];
+  confirmed: GroupInvitation[];
+}
 
 export default function GroupInvitationsPage() {
-  const [invitations, setInvitations] = useState<any>({ pending: [], confirmed: [] });
+  const [invitations, setInvitations] = useState<InvitationsResponse>({ pending: [], confirmed: [] });
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -48,13 +54,13 @@ export default function GroupInvitationsPage() {
       // Refresh invitations
       await fetchInvitations();
     } catch (err: any) {
-      setError(err.message);
+      setError((err as Error).message);
     } finally {
       setResponding(null);
     }
   };
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | Date) => {
     return new Date(date).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -63,7 +69,7 @@ export default function GroupInvitationsPage() {
     });
   };
 
-  const getTimeRemaining = (expiresAt: string) => {
+  const getTimeRemaining = (expiresAt: string | Date) => {
     const now = new Date().getTime();
     const expiry = new Date(expiresAt).getTime();
     const diff = expiry - now;
@@ -112,7 +118,7 @@ export default function GroupInvitationsPage() {
             </CardContent>
           </Card>
         ) : (
-          invitations.pending.map((inv: any) => (
+          invitations.pending.map((inv) => (
             <Card key={inv._id} className="border-blue-200">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -199,7 +205,7 @@ export default function GroupInvitationsPage() {
             </CardContent>
           </Card>
         ) : (
-          invitations.confirmed.map((inv: any) => (
+          invitations.confirmed.map((inv) => (
             <Card key={inv._id} className="border-green-200">
               <CardHeader>
                 <div className="flex items-start justify-between">

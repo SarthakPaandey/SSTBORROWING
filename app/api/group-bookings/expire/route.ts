@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { expireGroupBookings } from '@/lib/groupBookingPenalties';
+import { handleApiError } from '@/lib/errors';
 
 /**
  * This endpoint checks for expired group bookings and either confirms or cancels them
@@ -17,11 +18,8 @@ export async function POST(req: NextRequest) {
       expiredCount,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Expire group bookings error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to expire group bookings' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

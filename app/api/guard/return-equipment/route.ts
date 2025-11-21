@@ -6,6 +6,7 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { handleApiError, AuthorizationError, ValidationError, NotFoundError } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     // Only guards can access this
     if (user.role !== 'GUARD') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      throw new AuthorizationError();
     }
 
     await connectDB();
@@ -21,31 +22,22 @@ export async function POST(req: NextRequest) {
     const { bookingId, condition, notes } = await req.json();
 
     if (!bookingId || !condition) {
-      return NextResponse.json(
-        { error: 'Booking ID and condition are required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking ID and condition are required');
     }
 
     // Find the booking
     const booking = await Booking.findById(bookingId);
 
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
-      return NextResponse.json(
-        { error: 'This is not an equipment or library booking' },
-        { status: 400 }
-      );
+      throw new ValidationError('This is not an equipment or library booking');
     }
 
     if (booking.status !== 'CHECKED_IN') {
-      return NextResponse.json(
-        { error: 'Equipment has not been checked in yet' },
-        { status: 400 }
-      );
+      throw new ValidationError('Equipment has not been checked in yet');
     }
 
     // Update booking status
@@ -129,11 +121,8 @@ export async function POST(req: NextRequest) {
       booking,
       penaltiesApplied,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Return equipment error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process return' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

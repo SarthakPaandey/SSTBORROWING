@@ -7,6 +7,7 @@ import { User } from '@/models/User';
 import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES } from '@/lib/policies';
+import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 
 export async function PATCH(
   req: NextRequest,
@@ -19,27 +20,21 @@ export async function PATCH(
     const booking = await Booking.findById(params.id);
 
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     // Check ownership or admin
     if (booking.userId !== user.id && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      throw new AuthorizationError();
     }
 
     // Check if can cancel
     if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
-      return NextResponse.json(
-        { error: 'Cannot cancel booking in current state' },
-        { status: 400 }
-      );
+      throw new ValidationError('Cannot cancel booking in current state');
     }
 
     if (new Date() > booking.start) {
-      return NextResponse.json(
-        { error: 'Cannot cancel past bookings' },
-        { status: 400 }
-      );
+      throw new ValidationError('Cannot cancel past bookings');
     }
 
     // Check weekly cancellation limit
@@ -52,12 +47,7 @@ export async function PATCH(
     });
 
     if (weeklyCancellations >= POLICIES.MAX_CANCELLATIONS_PER_WEEK) {
-      return NextResponse.json(
-        {
-          error: `You have reached the maximum cancellation limit of ${POLICIES.MAX_CANCELLATIONS_PER_WEEK} cancellations per week.`,
-        },
-        { status: 400 }
-      );
+      throw new ConflictError(`You have reached the maximum cancellation limit of ${POLICIES.MAX_CANCELLATIONS_PER_WEEK} cancellations per week.`);
     }
 
     // Check if cancellation is late (within 2 hours of start)
@@ -109,10 +99,7 @@ export async function PATCH(
         ? `Booking cancelled. ${penaltyApplied} penalty points applied for late cancellation.`
         : 'Booking cancelled successfully.',
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to cancel booking' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

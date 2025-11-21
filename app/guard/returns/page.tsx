@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Package, CheckCircle, AlertTriangle, Clock, User } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { EnrichedBooking, BookingItem } from '@/types/booking';
 
 export default function GuardReturnsPage() {
-  const [issuedEquipment, setIssuedEquipment] = useState<any[]>([]);
+  const [issuedEquipment, setIssuedEquipment] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [returnModal, setReturnModal] = useState<{
     open: boolean;
-    booking?: any;
+    booking?: EnrichedBooking;
   }>({ open: false });
   const [isDamaged, setIsDamaged] = useState(false);
   const [notes, setNotes] = useState('');
@@ -107,7 +108,7 @@ export default function GuardReturnsPage() {
       ) : (
         <div className="grid gap-4">
           {issuedEquipment.map((booking) => (
-            <Card key={booking._id} className="transition-all hover:shadow-[0_0_20px_rgba(47,176,255,0.2)]">
+            <Card key={String(booking._id)} className="transition-all hover:shadow-[0_0_20px_rgba(47,176,255,0.2)]">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -117,7 +118,7 @@ export default function GuardReturnsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-text-main">{booking.resourceName}</h3>
-                        <p className="text-sm text-text-muted">Booking ID: {booking._id.slice(-8)}</p>
+                        <p className="text-sm text-text-muted">Booking ID: {String(booking._id).slice(-8)}</p>
                       </div>
                     </div>
 
@@ -136,7 +137,7 @@ export default function GuardReturnsPage() {
                       <div>
                         <p className="text-sm text-text-muted mb-1">Items:</p>
                         <div className="space-y-1">
-                          {booking.items?.map((item: any, idx: number) => (
+                          {booking.items?.map((item: BookingItem, idx: number) => (
                             <div key={idx} className="flex items-center text-sm">
                               <span className="font-medium text-text-main">
                                 {item.name} <span className="text-text-muted">×{item.qty}</span>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { Booking } from '@/models/Booking';
+import { Booking, IBooking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { Block } from '@/models/Block';
 import { User } from '@/models/User';
@@ -20,6 +20,9 @@ import { formatDateTime } from '@/lib/utils';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { bookingSchema } from '@/lib/validations';
+import { handleApiError, ValidationError, AuthenticationError, NotFoundError, ConflictError } from '@/lib/errors';
+import { BookingQuery } from '@/types/api';
+import { BookingItem } from '@/types/booking';
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    const query: any = {};
+    const query: BookingQuery = {};
 
     if (me) {
       query.userId = user.id;
@@ -76,11 +79,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ bookings: enrichedBookings });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch bookings' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -99,7 +99,7 @@ async function postHandler(req: Request) {
   try {
     const authSession = await getServerSession(authOptions);
     if (!authSession?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await req.json();
@@ -120,30 +120,30 @@ async function postHandler(req: Request) {
     const endDate = new Date(end);
 
     if (startDate < new Date()) {
-      throw new Error('Cannot book in the past');
+      throw new ValidationError('Cannot book in the past');
     }
 
     // Get user with penalty info
     const user = await User.findById(userId).session(session);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundError('User');
     }
 
     // Check if user can book
     const canBook = canUserBook(user);
     if (!canBook.allowed) {
-      throw new Error(canBook.reason || 'Booking not allowed');
+      throw new ValidationError(canBook.reason || 'Booking not allowed');
     }
 
     // Check advance window
     if (!isWithinAdvanceWindow(startDate)) {
-      throw new Error(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+      throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
     }
 
     // Get resource
     const resource = await Resource.findById(resourceId).session(session);
     if (!resource || resource.status !== 'ACTIVE') {
-      throw new Error('Resource not available');
+      throw new NotFoundError('Resource');
     }
 
     // Map ResourceType to BookingKind
@@ -156,7 +156,7 @@ async function postHandler(req: Request) {
 
     // Check students-only restriction
     if (resource.rules.studentsOnly && user.role !== 'STUDENT') {
-      throw new Error('This resource is only available to students');
+      throw new ValidationError('This resource is only available to students');
     }
 
     // Check daily limit
@@ -172,7 +172,7 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-      throw new Error(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
+      throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
     }
 
     // Check weekly limit
@@ -186,7 +186,7 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-      throw new Error(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
+      throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
     }
 
     // Check total active bookings limit
@@ -197,7 +197,7 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
-      throw new Error(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
+      throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
     }
 
     // Check monthly limits based on resource type
@@ -215,30 +215,30 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (kind === 'FACILITY') {
-      const facilityBookings = monthlyBookings.filter((b: any) => b.kind === 'FACILITY');
+      const facilityBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'FACILITY');
       const totalHours = calculateTotalHours(facilityBookings);
       const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
       if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
-        throw new Error(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
+        throw new ValidationError(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
       }
     }
 
     if (kind === 'ROOM') {
-      const roomBookings = monthlyBookings.filter((b: any) => b.kind === 'ROOM');
+      const roomBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'ROOM');
       const totalHours = calculateTotalHours(roomBookings);
       const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
       if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
-        throw new Error(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
+        throw new ValidationError(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
       }
     }
 
     if (kind === 'EQUIPMENT') {
-      const equipmentBookings = monthlyBookings.filter((b: any) => b.kind === 'EQUIPMENT');
+      const equipmentBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'EQUIPMENT');
 
       if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
-        throw new Error(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
+        throw new ValidationError(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
       }
     }
 
@@ -253,7 +253,7 @@ async function postHandler(req: Request) {
       }).session(session);
 
       if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
-        throw new Error(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
+        throw new ValidationError(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
       }
     }
 
@@ -265,16 +265,16 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
-      throw new Error(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
+      throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
     }
 
     // Check consecutive bookings for same resource
     const sameResourceBookings = upcomingBookings.filter(
-      (b: any) => b.resourceId === resourceId
+      (b: IBooking) => b.resourceId === resourceId
     );
 
     if (hasConsecutiveBookings(sameResourceBookings, startDate, endDate, resourceId)) {
-      throw new Error(`You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`);
+      throw new ValidationError(`You can only book ${POLICIES.MAX_CONSECUTIVE_SLOTS} consecutive slots for the same resource.`);
     }
 
     // Check for conflicts with blocks
@@ -285,7 +285,7 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (conflictingBlocks) {
-      throw new Error(`Resource is blocked: ${conflictingBlocks.reason}`);
+      throw new ConflictError(`Resource is blocked: ${conflictingBlocks.reason}`);
     }
 
     // Check for conflicts with existing bookings
@@ -297,7 +297,7 @@ async function postHandler(req: Request) {
     }).session(session);
 
     if (conflictingBookings) {
-      throw new Error('Time slot already booked');
+      throw new ConflictError('Time slot already booked');
     }
 
     // Check shared turf conflicts
@@ -320,12 +320,12 @@ async function postHandler(req: Request) {
         const conflictResource = sharedResources.find(
           r => r.id === sharedConflict.resourceId
         );
-        throw new Error(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
+        throw new ConflictError(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
       }
     }
 
     // Handle equipment and library bookings
-    let enrichedItems;
+    let enrichedItems: BookingItem[] | undefined;
     if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
       enrichedItems = [];
 
@@ -341,14 +341,14 @@ async function postHandler(req: Request) {
       for (const item of items) {
         const equipItem = await EquipmentItem.findById(item.id).session(session);
         if (!equipItem) {
-          throw new Error(`${kind === 'LIBRARY' ? 'Book' : 'Equipment item'} ${item.id} not found`);
+          throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
         }
 
         // Calculate already booked quantity for this item in overlapping bookings
         let bookedQty = 0;
         for (const booking of overlappingBookings) {
           if (booking.items) {
-            const bookedItem = booking.items.find((i: any) => i.itemId === item.id);
+            const bookedItem = booking.items.find((i: BookingItem) => i.itemId === item.id);
             if (bookedItem) {
               bookedQty += bookedItem.qty;
             }
@@ -358,7 +358,7 @@ async function postHandler(req: Request) {
         // Check if enough quantity available (total - already booked)
         const availableQty = equipItem.qtyAvailable - bookedQty;
         if (availableQty < item.qty) {
-          throw new Error(`Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}`);
+          throw new ConflictError(`Not enough ${equipItem.name} available. Available: ${availableQty}, Requested: ${item.qty}`);
         }
 
         enrichedItems.push({
@@ -445,13 +445,10 @@ async function postHandler(req: Request) {
     }
 
     return NextResponse.json({ booking }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     await session.abortTransaction();
     console.error('Booking error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create booking' },
-      { status: error.message === 'User not found' ? 404 : 400 }
-    );
+    return handleApiError(error);
   } finally {
     session.endSession();
   }

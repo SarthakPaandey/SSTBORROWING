@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 
 export async function POST(
   req: NextRequest,
@@ -14,19 +15,16 @@ export async function POST(
     const { action } = await req.json(); // 'approve' or 'reject'
 
     if (!['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+      throw new ValidationError('Invalid action');
     }
 
     const booking = await Booking.findById(params.id);
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     if (booking.approval !== 'PENDING') {
-      return NextResponse.json(
-        { error: 'Booking does not require approval' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking does not require approval');
     }
 
     if (action === 'approve') {
@@ -42,10 +40,7 @@ export async function POST(
     await booking.save();
 
     return NextResponse.json({ booking });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to process approval' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

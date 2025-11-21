@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Block } from '@/models/Block';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, NotFoundError } from '@/lib/errors';
 
 export async function DELETE(
   req: NextRequest,
@@ -14,7 +15,7 @@ export async function DELETE(
     const block = await Block.findById(params.id);
 
     if (!block) {
-      return NextResponse.json({ error: 'Block not found' }, { status: 404 });
+      throw new NotFoundError('Block');
     }
 
     await Block.findByIdAndDelete(params.id);
@@ -22,11 +23,8 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Block deleted successfully',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Delete block error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete block' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

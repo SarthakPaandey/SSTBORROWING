@@ -5,6 +5,7 @@ import { Booking } from '@/models/Booking';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { canUserBook, POLICIES } from '@/lib/policies';
+import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 
 export async function POST(
   req: NextRequest,
@@ -17,32 +18,23 @@ export async function POST(
     const { email } = await req.json();
 
     if (!email) {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      );
+      throw new ValidationError('Email is required');
     }
 
     // Find group booking
     const groupBooking = await GroupBooking.findById(params.id);
     if (!groupBooking) {
-      return NextResponse.json({ error: 'Group booking not found' }, { status: 404 });
+      throw new NotFoundError('Group booking');
     }
 
     // Check if current user is the organizer
     if (groupBooking.organizerId !== currentUser.id) {
-      return NextResponse.json(
-        { error: 'Only the organizer can invite replacements' },
-        { status: 403 }
-      );
+      throw new AuthorizationError('Only the organizer can invite replacements');
     }
 
     // Check if booking is still pending confirmations
     if (groupBooking.status !== 'PENDING_CONFIRMATIONS') {
-      return NextResponse.json(
-        { error: `Cannot invite to a ${groupBooking.status.toLowerCase()} booking` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Cannot invite to a ${groupBooking.status.toLowerCase()} booking`);
     }
 
     // Check if expired
@@ -56,10 +48,7 @@ export async function POST(
         await booking.save();
       }
 
-      return NextResponse.json(
-        { error: 'This group booking has expired' },
-        { status: 400 }
-      );
+      throw new ValidationError('This group booking has expired');
     }
 
     // Check if email is already in the group
@@ -67,18 +56,12 @@ export async function POST(
       m => m.email.toLowerCase() === email.toLowerCase()
     );
     if (alreadyMember) {
-      return NextResponse.json(
-        { error: 'This person is already invited to this booking' },
-        { status: 400 }
-      );
+      throw new ConflictError('This person is already invited to this booking');
     }
 
     // Check if it's the organizer's email
     if (groupBooking.organizerEmail.toLowerCase() === email.toLowerCase()) {
-      return NextResponse.json(
-        { error: 'Cannot invite yourself' },
-        { status: 400 }
-      );
+      throw new ValidationError('Cannot invite yourself');
     }
 
     // Find the new member
@@ -88,25 +71,19 @@ export async function POST(
     });
 
     if (!newMember) {
-      return NextResponse.json(
-        { error: `${email} is not a registered student` },
-        { status: 400 }
-      );
+      throw new NotFoundError(`${email} is not a registered student`);
     }
 
     // Check if new member can book
     const memberCanBook = canUserBook(newMember);
     if (!memberCanBook.allowed) {
-      return NextResponse.json(
-        { error: `${email} cannot join: ${memberCanBook.reason}` },
-        { status: 400 }
-      );
+      throw new ValidationError(`${email} cannot join: ${memberCanBook.reason}`);
     }
 
     // Get the booking to check conflicts
     const booking = await Booking.findById(groupBooking.bookingId);
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     // Check for conflicts
@@ -118,10 +95,7 @@ export async function POST(
     });
 
     if (conflictingBooking) {
-      return NextResponse.json(
-        { error: `${email} has a conflicting booking at this time` },
-        { status: 400 }
-      );
+      throw new ConflictError(`${email} has a conflicting booking at this time`);
     }
 
     // Check daily limit
@@ -137,10 +111,7 @@ export async function POST(
     });
 
     if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-      return NextResponse.json(
-        { error: `${email} has reached their daily booking limit` },
-        { status: 400 }
-      );
+      throw new ConflictError(`${email} has reached their daily booking limit`);
     }
 
     // Check weekly limit
@@ -154,10 +125,7 @@ export async function POST(
     });
 
     if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-      return NextResponse.json(
-        { error: `${email} has reached their weekly booking limit` },
-        { status: 400 }
-      );
+      throw new ConflictError(`${email} has reached their weekly booking limit`);
     }
 
     // Add new member to group
@@ -176,11 +144,8 @@ export async function POST(
       groupBooking,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Invite replacement error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to invite replacement' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

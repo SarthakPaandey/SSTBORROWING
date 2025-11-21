@@ -5,6 +5,7 @@ import { QRToken } from '@/models/QRToken';
 import { requireAuth } from '@/lib/auth/guards';
 import { generateQRToken, generateQRCodeImage } from '@/lib/qr';
 import { POLICIES } from '@/lib/policies';
+import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 
 export async function POST(
   req: NextRequest,
@@ -17,7 +18,7 @@ export async function POST(
     const booking = await Booking.findById(params.id);
 
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     // Check ownership - for group bookings, only organizer can generate QR
@@ -26,56 +27,38 @@ export async function POST(
       const groupBooking = await GroupBooking.findById(booking.groupBookingId);
 
       if (!groupBooking || groupBooking.organizerId !== user.id) {
-        return NextResponse.json(
-          { error: 'Only the organizer can generate QR code for group bookings' },
-          { status: 403 }
-        );
+        throw new AuthorizationError('Only the organizer can generate QR code for group bookings');
       }
 
       // Check if group booking is confirmed
       if (groupBooking.status !== 'CONFIRMED') {
-        return NextResponse.json(
-          { error: `Group booking is ${groupBooking.status}. Cannot generate QR until confirmed.` },
-          { status: 400 }
-        );
+        throw new ValidationError(`Group booking is ${groupBooking.status}. Cannot generate QR until confirmed.`);
       }
     } else {
       // Regular booking - check ownership
       if (booking.userId !== user.id) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        throw new AuthorizationError();
       }
     }
 
     // Restrict QR to equipment and library bookings only
     if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
-      return NextResponse.json(
-        { error: 'QR codes are only available for equipment/book pickup' },
-        { status: 400 }
-      );
+      throw new ValidationError('QR codes are only available for equipment/book pickup');
     }
 
     // Check if booking is confirmed or approved
     if (booking.status === 'PENDING' && booking.approval !== 'APPROVED') {
-      return NextResponse.json(
-        { error: 'Booking requires approval before QR can be issued' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking requires approval before QR can be issued');
     }
 
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
-      return NextResponse.json(
-        { error: 'Booking must be confirmed to generate QR' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking must be confirmed to generate QR');
     }
 
     // Check if booking time has passed
     const now = new Date();
     if (now > booking.end) {
-      return NextResponse.json(
-        { error: 'Cannot generate QR for past bookings' },
-        { status: 400 }
-      );
+      throw new ValidationError('Cannot generate QR for past bookings');
     }
 
     // Check if too early (before pickup window) - only in production
@@ -83,10 +66,7 @@ export async function POST(
       const pickupWindow = new Date(booking.start);
       pickupWindow.setMinutes(pickupWindow.getMinutes() - POLICIES.QR_VALIDITY_BEFORE_START);
       if (now < pickupWindow) {
-        return NextResponse.json(
-          { error: `QR code can only be generated ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before booking start time` },
-          { status: 400 }
-        );
+        throw new ValidationError(`QR code can only be generated ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before booking start time`);
       }
     }
 
@@ -117,10 +97,7 @@ export async function POST(
     });
 
     if (generatedTodayCount >= 2) {
-      return NextResponse.json(
-        { error: 'QR code generation limit reached. Maximum 2 QR codes per day per booking.' },
-        { status: 400 }
-      );
+      throw new ConflictError('QR code generation limit reached. Maximum 2 QR codes per day per booking.');
     }
 
     // Generate new QR token (equipment only)
@@ -155,11 +132,8 @@ export async function POST(
       qrImage,
       expiresAt,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('QR generation error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to generate QR code' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

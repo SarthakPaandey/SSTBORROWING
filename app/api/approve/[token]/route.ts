@@ -4,6 +4,7 @@ import { Booking } from '@/models/Booking';
 import { ApprovalToken } from '@/models/ApprovalToken';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
+import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 
 export async function GET(
   req: NextRequest,
@@ -20,11 +21,11 @@ export async function GET(
     const approvalToken = await ApprovalToken.findOne({ token });
 
     if (!approvalToken) {
-      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 404 });
+      throw new NotFoundError('Invalid or expired token');
     }
 
     if (approvalToken.expiresAt < new Date()) {
-      return NextResponse.json({ error: 'Token expired' }, { status: 400 });
+      throw new ValidationError('Token expired');
     }
 
     // Optional: Check if user is logged in and is admin (extra security layer)
@@ -34,14 +35,11 @@ export async function GET(
     // Find booking
     const booking = await Booking.findById(approvalToken.bookingId);
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     if (booking.approval !== 'PENDING') {
-      return NextResponse.json(
-        { error: `Booking is already ${booking.approval.toLowerCase()}` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Booking is already ${booking.approval.toLowerCase()}`);
     }
 
     // Perform action
@@ -75,10 +73,7 @@ export async function GET(
       headers: { 'Content-Type': 'text/html' },
     });
 
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to process request' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

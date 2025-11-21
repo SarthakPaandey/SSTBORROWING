@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { QrCode, CheckCircle, XCircle, Camera, X, Keyboard } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { QRValidationResult } from '@/types/booking';
 
 export default function ScannerPage() {
   const [token, setToken] = useState('');
   const [bookingId, setBookingId] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<QRValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'camera' | 'manual'>('camera');
@@ -47,7 +48,7 @@ export default function ScannerPage() {
           stopScanner();
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setError('Failed to validate QR code');
     } finally {
       setLoading(false);
@@ -95,7 +96,7 @@ export default function ScannerPage() {
       } catch (err: any) {
         console.error('Camera error:', err);
         setCameraError(
-          err.message || 'Failed to start camera. Please check permissions and try again.'
+          (err as Error).message || 'Failed to start camera. Please check permissions and try again.'
         );
         setIsScanning(false);
       }
@@ -247,7 +248,7 @@ export default function ScannerPage() {
                     <div className="bg-bg-dark rounded-lg p-3">
                       <p className="text-text-muted mb-2 font-medium">Items Issued:</p>
                       <div className="space-y-1">
-                        {result.booking.items.map((item: any, idx: number) => (
+                        {result.booking.items.map((item, idx) => (
                           <div
                             key={idx}
                             className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
@@ -332,7 +333,7 @@ export default function ScannerPage() {
                     <div className="bg-bg-dark rounded-lg p-3">
                       <p className="text-text-muted mb-2 font-medium">Items Issued:</p>
                       <div className="space-y-1">
-                        {result.booking.items.map((item: any, idx: number) => (
+                        {result.booking.items.map((item, idx) => (
                           <div
                             key={idx}
                             className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"

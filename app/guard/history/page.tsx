@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Clock, User, Package, CheckCircle, AlertTriangle } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { EnrichedBooking } from '@/types/booking';
 
 export default function HistoryPage() {
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -76,9 +77,9 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {history.map((booking: any) => (
+              {history.map((booking) => (
                 <div
-                  key={booking._id}
+                  key={String(booking._id)}
                   className="flex flex-col rounded-lg border border-card-border bg-bg-dark/50 p-4 transition-all hover:border-accent-blue/30"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -127,7 +128,7 @@ export default function HistoryPage() {
                     <div className="mt-3">
                       <p className="text-xs text-text-muted mb-2">Items:</p>
                       <div className="flex flex-wrap gap-2">
-                        {booking.items.map((item: any, idx: number) => (
+                        {booking.items?.map((item, idx) => (
                           <span key={idx} className="text-xs bg-card-border/50 text-text-main px-2 py-1 rounded">
                             {item.name} ×{item.qty}
                           </span>

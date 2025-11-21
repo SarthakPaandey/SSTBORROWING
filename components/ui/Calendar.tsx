@@ -9,7 +9,7 @@ export type CalendarEvent = {
   id: string;
   title: string;
   date: Date;
-  type: 'FACILITY' | 'ROOM' | 'EQUIPMENT';
+  type: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
   status: string;
 };
 
@@ -113,6 +113,8 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
         return 'bg-accent-purple-1';
       case 'EQUIPMENT':
         return 'bg-success';
+      case 'LIBRARY':
+        return 'bg-warning';
       default:
         return 'bg-badge-blue';
     }
@@ -251,6 +253,10 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-success" />
           <span className="text-text-muted">Equipment</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-warning" />
+          <span className="text-text-muted">Library</span>
         </div>
       </div>
     </div>

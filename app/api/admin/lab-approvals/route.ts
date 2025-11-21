@@ -4,6 +4,8 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError } from '@/lib/errors';
+import { BookingQuery } from '@/types/api';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,7 +16,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
 
     // Fetch bookings that require approval
-    const query: any = {
+    const query: BookingQuery = {
       requiresApproval: true,
       approval: 'PENDING',
     };
@@ -48,10 +50,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ bookings: enrichedBookings });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch pending approvals' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

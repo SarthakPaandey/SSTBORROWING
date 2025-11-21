@@ -5,6 +5,7 @@ import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
 import { verifyQRToken } from '@/lib/qr';
+import { handleApiError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,63 +15,48 @@ export async function POST(req: NextRequest) {
     const { token } = await req.json();
 
     if (!token) {
-      return NextResponse.json({ error: 'Token required' }, { status: 400 });
+      throw new ValidationError('Token required');
     }
 
     // Verify token signature and expiry
     const verification = verifyQRToken(token);
     if (!verification.valid || !verification.payload) {
-      return NextResponse.json(
-        { error: verification.error || 'Invalid token' },
-        { status: 400 }
-      );
+      throw new ValidationError(verification.error || 'Invalid token');
     }
 
     // Check DB for token
     const dbToken = await QRToken.findOne({ token });
     if (!dbToken) {
-      return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+      throw new NotFoundError('Token');
     }
 
     if (dbToken.used) {
-      return NextResponse.json(
-        { error: 'Token already used' },
-        { status: 400 }
-      );
+      throw new ConflictError('Token already used');
     }
 
     if (new Date() > dbToken.expiresAt) {
-      return NextResponse.json({ error: 'Token expired' }, { status: 400 });
+      throw new ValidationError('Token expired');
     }
 
     // Get booking
     const booking = await Booking.findById(dbToken.bookingId);
     if (!booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      throw new NotFoundError('Booking');
     }
 
     // Only equipment and library bookings can be validated via QR
     if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
-      return NextResponse.json(
-        { error: 'QR validation is only allowed for equipment/book pickup' },
-        { status: 400 }
-      );
+      throw new ValidationError('QR validation is only allowed for equipment/book pickup');
     }
 
     // Check if already checked in (prevent double check-in)
     if (booking.status === 'CHECKED_IN') {
-      return NextResponse.json(
-        { error: 'Equipment already checked in' },
-        { status: 400 }
-      );
+      throw new ConflictError('Equipment already checked in');
     }
 
     // Check if booking is in valid state
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
-      return NextResponse.json(
-        { error: 'Booking is not in a valid state for check-in' },
-        { status: 400 }
-      );
+      throw new ValidationError('Booking is not in a valid state for check-in');
     }
 
     // Mark token as used
@@ -85,10 +71,7 @@ export async function POST(req: NextRequest) {
         if (equipItem) {
           // Safety check: prevent negative inventory
           if (equipItem.qtyAvailable < item.qty) {
-            return NextResponse.json(
-              { error: `Insufficient inventory for ${equipItem.name}. Available: ${equipItem.qtyAvailable}, Required: ${item.qty}` },
-              { status: 400 }
-            );
+            throw new ConflictError(`Insufficient inventory for ${equipItem.name}. Available: ${equipItem.qtyAvailable}, Required: ${item.qty}`);
           }
           equipItem.qtyAvailable -= item.qty;
           await equipItem.save();
@@ -110,11 +93,8 @@ export async function POST(req: NextRequest) {
         items: booking.items,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('QR validation error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to validate QR code' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

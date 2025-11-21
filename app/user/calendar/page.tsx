@@ -10,23 +10,14 @@ import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
 import { CalendarDays, Clock, MapPin, Package, Filter, Users, User } from 'lucide-react';
 
-// Define types for better type safety
-interface Booking {
-  _id: string;
-  resourceName: string;
-  start: string | Date;
-  end: string | Date;
-  kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT';
-  status: string;
-  items?: Array<{ name: string; qty: number }>;
-}
+import { EnrichedBooking } from '@/types/booking';
 
 export default function CalendarPage() {
   const { data: session } = useSession();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedEvent, setSelectedEvent] = useState<Booking | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EnrichedBooking | null>(null);
   const [eventModal, setEventModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -70,8 +61,8 @@ export default function CalendarPage() {
   };
 
   // Helper to check if booking belongs to current user
-  const isMyBooking = (booking: Booking) => {
-    return session?.user?.id === (booking as any).userId;
+  const isMyBooking = (booking: EnrichedBooking) => {
+    return session?.user?.id === booking.userId;
   };
 
   // Filter bookings
@@ -86,7 +77,7 @@ export default function CalendarPage() {
 
   // Convert bookings to calendar events
   const calendarEvents: CalendarEvent[] = filteredBookings.map((booking) => ({
-    id: booking._id,
+    id: String(booking._id),
     title: booking.resourceName || 'Booking',
     date: new Date(booking.start),
     type: booking.kind,
@@ -94,7 +85,7 @@ export default function CalendarPage() {
   }));
 
   const handleEventClick = (event: CalendarEvent) => {
-    const booking = bookings.find(b => b._id === event.id);
+    const booking = bookings.find(b => String(b._id) === event.id);
     if (booking) {
       setSelectedEvent(booking);
       setEventModal(true);
@@ -242,7 +233,7 @@ export default function CalendarPage() {
                 </h3>
                 {isMyBooking(selectedEvent) ? (
                   <p className="text-sm text-text-muted">
-                    Booking ID: {selectedEvent._id.slice(-8)}
+                    Booking ID: {String(selectedEvent._id).slice(-8)}
                   </p>
                 ) : (
                   <p className="text-sm text-text-muted">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, NotFoundError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,12 +21,9 @@ export async function GET(req: NextRequest) {
     const items = await EquipmentItem.find(query).sort({ name: 1 });
 
     return NextResponse.json({ items });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Equipment fetch error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch equipment' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
@@ -38,11 +36,8 @@ export async function POST(req: NextRequest) {
     const item = await EquipmentItem.create(body);
 
     return NextResponse.json({ item }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to create equipment item' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -55,7 +50,7 @@ export async function PATCH(req: NextRequest) {
 
     const item = await EquipmentItem.findById(id);
     if (!item) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+      throw new NotFoundError('Item');
     }
 
     if (qtyTotal !== undefined) item.qtyTotal = qtyTotal;
@@ -64,10 +59,7 @@ export async function PATCH(req: NextRequest) {
     await item.save();
 
     return NextResponse.json({ item });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to update equipment' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

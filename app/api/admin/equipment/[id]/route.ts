@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, NotFoundError } from '@/lib/errors';
 
 export async function PUT(
   req: NextRequest,
@@ -19,15 +20,12 @@ export async function PUT(
     );
 
     if (!item) {
-      return NextResponse.json({ error: 'Equipment item not found' }, { status: 404 });
+      throw new NotFoundError('Equipment item');
     }
 
     return NextResponse.json({ item });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to update equipment item' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -42,14 +40,11 @@ export async function DELETE(
     const item = await EquipmentItem.findByIdAndDelete(params.id);
 
     if (!item) {
-      return NextResponse.json({ error: 'Equipment item not found' }, { status: 404 });
+      throw new NotFoundError('Equipment item');
     }
 
     return NextResponse.json({ success: true, message: 'Equipment item deleted' });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete equipment item' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

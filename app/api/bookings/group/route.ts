@@ -7,16 +7,15 @@ import { GroupBooking } from '@/models/GroupBooking';
 import { POLICIES, canUserBook, isWithinAdvanceWindow } from '@/lib/policies';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
-
 import { groupBookingSchema } from '@/lib/validations';
-
 import { withRateLimit } from '@/lib/ratelimit';
+import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
 
 async function postHandler(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw new AuthenticationError();
     }
 
     const body = await req.json();
@@ -37,46 +36,37 @@ async function postHandler(req: Request) {
     // Get organizer
     const organizer = await User.findById(session.user.id);
     if (!organizer || organizer.role !== 'STUDENT') {
-      return NextResponse.json({ error: 'Only students can create group bookings' }, { status: 403 });
+      throw new AuthorizationError('Only students can create group bookings');
     }
 
     // Check if organizer can book
     const canBook = canUserBook(organizer);
     if (!canBook.allowed) {
-      return NextResponse.json({ error: canBook.reason }, { status: 403 });
+      throw new ValidationError(canBook.reason || 'Booking not allowed');
     }
 
     // Get resource
     const resource = await Resource.findById(resourceId);
     if (!resource || resource.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Resource not available' }, { status: 404 });
+      throw new NotFoundError('Resource');
     }
 
     // Check if resource is a team sport
     const teamSports = POLICIES.GROUP_BOOKING_TEAM_SPORTS as readonly string[];
     if (!teamSports.includes(resource.name)) {
-      return NextResponse.json(
-        { error: `Group bookings are only available for: ${POLICIES.GROUP_BOOKING_TEAM_SPORTS.join(', ')}` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Group bookings are only available for: ${POLICIES.GROUP_BOOKING_TEAM_SPORTS.join(', ')}`);
     }
 
     // Check advance window
     const startDate = new Date(start);
     if (!isWithinAdvanceWindow(startDate)) {
-      return NextResponse.json(
-        { error: `Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
     }
 
     // Validate minimum members (organizer + friends = 6+)
     const totalMembers = 1 + memberEmails.length;
     if (totalMembers < POLICIES.GROUP_BOOKING_MIN_MEMBERS) {
-      return NextResponse.json(
-        { error: `Group bookings require at least ${POLICIES.GROUP_BOOKING_MIN_MEMBERS} people. You have ${totalMembers}.` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Group bookings require at least ${POLICIES.GROUP_BOOKING_MIN_MEMBERS} people. You have ${totalMembers}.`);
     }
 
     // Remove duplicates and organizer's own email
@@ -84,10 +74,7 @@ async function postHandler(req: Request) {
       .filter((email: string) => email.toLowerCase() !== organizer.email.toLowerCase());
 
     if (uniqueEmails.length !== memberEmails.length) {
-      return NextResponse.json(
-        { error: 'Duplicate emails or your own email detected. Please provide unique friend emails.' },
-        { status: 400 }
-      );
+      throw new ValidationError('Duplicate emails or your own email detected. Please provide unique friend emails.');
     }
 
     // Validate all member emails exist and are students
@@ -99,20 +86,14 @@ async function postHandler(req: Request) {
     if (members.length !== uniqueEmails.length) {
       const foundEmails = members.map(m => m.email.toLowerCase());
       const notFound = uniqueEmails.filter((e: string) => !foundEmails.includes(e.toLowerCase()));
-      return NextResponse.json(
-        { error: `These emails are not registered students: ${notFound.join(', ')}` },
-        { status: 400 }
-      );
+      throw new NotFoundError(`These emails are not registered students: ${notFound.join(', ')}`);
     }
 
     // Check all members can book (penalties, suspension)
     for (const member of members) {
       const memberCanBook = canUserBook(member);
       if (!memberCanBook.allowed) {
-        return NextResponse.json(
-          { error: `${member.email} cannot join: ${memberCanBook.reason}` },
-          { status: 400 }
-        );
+        throw new ValidationError(`${member.email} cannot join: ${memberCanBook.reason}`);
       }
     }
 
@@ -128,10 +109,7 @@ async function postHandler(req: Request) {
 
     if (conflictingBookings) {
       const conflictUser = await User.findById(conflictingBookings.userId);
-      return NextResponse.json(
-        { error: `${conflictUser?.email || 'A member'} has a conflicting booking at this time` },
-        { status: 400 }
-      );
+      throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
     }
 
     // Check daily limits for all members
@@ -148,10 +126,7 @@ async function postHandler(req: Request) {
       });
 
       if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-        return NextResponse.json(
-          { error: `${member.email} has reached their daily booking limit (${POLICIES.MAX_BOOKINGS_PER_DAY}/day)` },
-          { status: 400 }
-        );
+        throw new ValidationError(`${member.email} has reached their daily booking limit (${POLICIES.MAX_BOOKINGS_PER_DAY}/day)`);
       }
     }
 
@@ -167,10 +142,7 @@ async function postHandler(req: Request) {
       });
 
       if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-        return NextResponse.json(
-          { error: `${member.email} has reached their weekly booking limit (${POLICIES.MAX_BOOKINGS_PER_WEEK}/week)` },
-          { status: 400 }
-        );
+        throw new ValidationError(`${member.email} has reached their weekly booking limit (${POLICIES.MAX_BOOKINGS_PER_WEEK}/week)`);
       }
     }
 
@@ -220,12 +192,9 @@ async function postHandler(req: Request) {
       expiresIn: `${POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS} hours`,
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Group booking creation error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create group booking' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 

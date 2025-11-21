@@ -4,12 +4,13 @@ import { Booking } from '@/models/Booking';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { handleApiError, AuthorizationError } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
     // Verify cron secret to prevent unauthorized access
     const authHeader = req.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        throw new AuthorizationError();
     }
 
     try {
@@ -76,11 +77,8 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true, results });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Cron job error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Cron job failed' },
-            { status: 500 }
-        );
+        return handleApiError(error);
     }
 }

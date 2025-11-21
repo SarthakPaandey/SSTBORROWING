@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { NotificationSettings } from './NotificationSettings';
 import { areNotificationsEnabled, notifyApprovalNeeded } from '@/lib/notifications';
+import { EnrichedBooking } from '@/types/booking';
 
 /**
  * Admin Notifications Component
@@ -28,9 +29,9 @@ export function AdminNotifications() {
           const newBookings = data.bookings.slice(0, currentCount - lastCount);
 
           // Show notification for each new booking
-          newBookings.forEach((booking: any) => {
+          newBookings.forEach((booking: EnrichedBooking) => {
             const userName = booking.userName || booking.userEmail?.split('@')[0] || 'Someone';
-            notifyApprovalNeeded(booking.resourceName, userName, booking._id);
+            notifyApprovalNeeded(booking.resourceName, userName, String(booking._id));
           });
         }
 

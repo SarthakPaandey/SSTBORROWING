@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { GroupBooking } from '@/models/GroupBooking';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
 
 export async function PATCH(
   req: NextRequest,
@@ -14,35 +15,26 @@ export async function PATCH(
 
     const { response } = await req.json(); // 'ACCEPT' or 'REJECT'
 
-    if (!['ACCEPT', 'REJECT'].includes(response)) {
-      return NextResponse.json(
-        { error: 'Response must be ACCEPT or REJECT' },
-        { status: 400 }
-      );
+    if (!response || !['ACCEPT', 'REJECT'].includes(response)) {
+      throw new ValidationError('Invalid response');
     }
 
     // Find group booking
     const groupBooking = await GroupBooking.findById(params.id);
     if (!groupBooking) {
-      return NextResponse.json({ error: 'Group booking not found' }, { status: 404 });
+      throw new NotFoundError('Group booking');
     }
 
     // Check if user is a member
     const memberIndex = groupBooking.members.findIndex(m => m.userId === user.id);
     if (memberIndex === -1) {
-      return NextResponse.json(
-        { error: 'You are not a member of this group booking' },
-        { status: 403 }
-      );
+      throw new AuthorizationError('You are not invited to this group booking');
     }
 
     // Check if already responded
     const member = groupBooking.members[memberIndex];
     if (member.status !== 'PENDING') {
-      return NextResponse.json(
-        { error: `You have already ${member.status.toLowerCase()} this invitation` },
-        { status: 400 }
-      );
+      throw new ValidationError(`You have already ${member.status.toLowerCase()} this invitation`);
     }
 
     // Check if expired
@@ -65,10 +57,7 @@ export async function PATCH(
 
     // Check if booking is still pending
     if (groupBooking.status !== 'PENDING_CONFIRMATIONS') {
-      return NextResponse.json(
-        { error: `This group booking is already ${groupBooking.status.toLowerCase()}` },
-        { status: 400 }
-      );
+      throw new ValidationError('This booking is no longer accepting responses');
     }
 
     // Update member status
@@ -130,11 +119,8 @@ export async function PATCH(
       });
     }
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Respond to invitation error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to respond to invitation' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

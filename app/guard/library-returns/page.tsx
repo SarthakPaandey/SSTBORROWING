@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { BookOpen, CheckCircle, AlertTriangle, Clock, User } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { EnrichedBooking } from '@/types/booking';
 
 export default function GuardLibraryReturnsPage() {
-  const [issuedBooks, setIssuedBooks] = useState<any[]>([]);
+  const [issuedBooks, setIssuedBooks] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [returnModal, setReturnModal] = useState<{
     open: boolean;
-    booking?: any;
+    booking?: EnrichedBooking;
   }>({ open: false });
   const [condition, setCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [notes, setNotes] = useState('');
@@ -115,7 +116,7 @@ export default function GuardLibraryReturnsPage() {
       ) : (
         <div className="grid gap-4">
           {issuedBooks.map((booking) => (
-            <Card key={booking._id} className="transition-all hover:shadow-[0_0_20px_rgba(47,176,255,0.2)]">
+            <Card key={String(booking._id)} className="transition-all hover:shadow-[0_0_20px_rgba(47,176,255,0.2)]">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -125,7 +126,7 @@ export default function GuardLibraryReturnsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-text-main">{booking.resourceName}</h3>
-                        <p className="text-sm text-text-muted">Booking ID: {booking._id.slice(-8)}</p>
+                        <p className="text-sm text-text-muted">Booking ID: {String(booking._id).slice(-8)}</p>
                       </div>
                     </div>
 
@@ -148,7 +149,7 @@ export default function GuardLibraryReturnsPage() {
                       <div>
                         <p className="text-sm text-text-muted mb-1">Books:</p>
                         <div className="space-y-1">
-                          {booking.items?.map((item: any, idx: number) => (
+                          {booking.items?.map((item, idx) => (
                             <div key={idx} className="flex items-center text-sm">
                               <span className="font-medium text-text-main">
                                 {item.name} <span className="text-text-muted">×{item.qty}</span>
@@ -204,7 +205,7 @@ export default function GuardLibraryReturnsPage() {
               <p className="text-sm">
                 <span className="text-text-muted">Books:</span>
               </p>
-              {returnModal.booking?.items?.map((item: any, idx: number) => (
+              {returnModal.booking?.items?.map((item, idx) => (
                 <div key={idx} className="ml-4 text-sm text-text-main">
                   • {item.name} ×{item.qty}
                 </div>
@@ -222,11 +223,10 @@ export default function GuardLibraryReturnsPage() {
                   key={cond}
                   type="button"
                   onClick={() => setCondition(cond)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    condition === cond
-                      ? 'border-accent-blue bg-accent-blue/10'
-                      : 'border-card-border hover:border-accent-blue/50'
-                  }`}
+                  className={`p-4 rounded-lg border-2 transition-all ${condition === cond
+                    ? 'border-accent-blue bg-accent-blue/10'
+                    : 'border-card-border hover:border-accent-blue/50'
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-2">
                     {cond === 'excellent' && <CheckCircle className="h-6 w-6 text-success" />}

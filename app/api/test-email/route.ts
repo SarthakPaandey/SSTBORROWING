@@ -8,6 +8,13 @@ export async function GET() {
     // Require authentication
     const user = await requireAuth(['ADMIN']);
 
+    if (!user.email) {
+      return NextResponse.json(
+        { success: false, error: 'User email not found' },
+        { status: 400 }
+      );
+    }
+
     // Send test email
     await sendEmail({
       to: user.email,

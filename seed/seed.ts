@@ -110,7 +110,7 @@ async function seed() {
       name: 'Meeting Room A',
       location: 'Building B - Floor 2',
       capacity: 10,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -119,7 +119,7 @@ async function seed() {
       name: 'Meeting Room B',
       location: 'Building B - Floor 2',
       capacity: 8,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -128,7 +128,7 @@ async function seed() {
       name: 'Meeting Room C',
       location: 'Building B - Floor 3',
       capacity: 12,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -137,7 +137,7 @@ async function seed() {
       name: 'Meeting Room D',
       location: 'Building B - Floor 3',
       capacity: 6,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -146,7 +146,7 @@ async function seed() {
       name: 'Study Room 1',
       location: 'Library - Floor 1',
       capacity: 4,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 
@@ -155,7 +155,7 @@ async function seed() {
       name: 'Study Room 2',
       location: 'Library - Floor 1',
       capacity: 4,
-      rules: { slotMinutes: 120 },
+      rules: { slotMinutes: 60 },
       status: 'ACTIVE',
     });
 

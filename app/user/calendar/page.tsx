@@ -218,7 +218,7 @@ export default function CalendarPage() {
           setEventModal(false);
           setSelectedEvent(null);
         }}
-        title={isMyBooking(selectedEvent!) ? "My Booking Details" : "Booking Details"}
+        title={selectedEvent && isMyBooking(selectedEvent) ? "My Booking Details" : "Booking Details"}
         size="md"
       >
         {selectedEvent && (

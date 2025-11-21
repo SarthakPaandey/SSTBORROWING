@@ -4,7 +4,7 @@ import { GroupBooking } from '@/models/GroupBooking';
 import { Booking } from '@/models/Booking';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
-import { canUserBook, POLICIES } from '@/lib/policies';
+import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 
 export async function POST(
@@ -37,13 +37,18 @@ export async function POST(
       throw new ValidationError(`Cannot invite to a ${groupBooking.status.toLowerCase()} booking`);
     }
 
-    // Check if expired
-    if (new Date() > groupBooking.expiresAt) {
+    // Get booking to check start time
+    const booking = await Booking.findById(groupBooking.bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking');
+    }
+
+    // Check if expired (either expiresAt passed OR booking start time passed)
+    if (isGroupBookingExpired(groupBooking.expiresAt, booking.start)) {
       groupBooking.status = 'EXPIRED';
       await groupBooking.save();
 
-      const booking = await Booking.findById(groupBooking.bookingId);
-      if (booking && booking.status === 'PENDING') {
+      if (booking.status === 'PENDING') {
         booking.status = 'CANCELLED';
         await booking.save();
       }
@@ -80,13 +85,7 @@ export async function POST(
       throw new ValidationError(`${email} cannot join: ${memberCanBook.reason}`);
     }
 
-    // Get the booking to check conflicts
-    const booking = await Booking.findById(groupBooking.bookingId);
-    if (!booking) {
-      throw new NotFoundError('Booking');
-    }
-
-    // Check for conflicts
+    // Booking already fetched above, check for conflicts
     const conflictingBooking = await Booking.findOne({
       userId: newMember.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },

@@ -4,7 +4,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { GroupBooking } from '@/models/GroupBooking';
-import { POLICIES, canUserBook, isWithinAdvanceWindow } from '@/lib/policies';
+import { POLICIES, canUserBook, isWithinAdvanceWindow, calculateGroupBookingExpiration, canCreateGroupBooking } from '@/lib/policies';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { groupBookingSchema } from '@/lib/validations';
@@ -61,6 +61,12 @@ async function postHandler(req: Request) {
     const startDate = new Date(start);
     if (!isWithinAdvanceWindow(startDate)) {
       throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+    }
+
+    // Check if group booking can be created (enough time before start)
+    const canCreate = canCreateGroupBooking(startDate);
+    if (!canCreate.allowed) {
+      throw new ValidationError(canCreate.reason || 'Cannot create group booking');
     }
 
     // Validate minimum members (organizer + friends = 6+)
@@ -160,9 +166,10 @@ async function postHandler(req: Request) {
       isGroupBooking: true,
     });
 
-    // Create group booking with expiry
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS);
+    // Create group booking with dynamic expiry
+    // Expiration is the earlier of: creation + 2h OR start - 1h
+    const createdAt = new Date();
+    const expiresAt = calculateGroupBookingExpiration(startDate, createdAt);
 
     const groupBooking = await GroupBooking.create({
       bookingId: booking.id,
@@ -173,7 +180,7 @@ async function postHandler(req: Request) {
         email: m.email,
         name: m.name,
         status: 'PENDING',
-        invitedAt: new Date(),
+        invitedAt: createdAt,
       })),
       requiredMinimum: POLICIES.GROUP_BOOKING_MIN_MEMBERS,
       confirmedCount: 1, // Organizer is auto-confirmed
@@ -185,11 +192,19 @@ async function postHandler(req: Request) {
     booking.groupBookingId = groupBooking.id;
     await booking.save();
 
+    // Calculate time until expiration for response message
+    const now = new Date();
+    const expiresInMs = expiresAt.getTime() - now.getTime();
+    const expiresInHours = Math.round((expiresInMs / (1000 * 60 * 60)) * 10) / 10; // Round to 1 decimal
+
     return NextResponse.json({
       message: 'Group booking created. Invitations sent to members.',
       booking,
       groupBooking,
-      expiresIn: `${POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS} hours`,
+      expiresAt,
+      expiresIn: expiresInHours >= 1 
+        ? `${expiresInHours} hours` 
+        : `${Math.round(expiresInMs / (1000 * 60))} minutes`,
     }, { status: 201 });
 
   } catch (error) {

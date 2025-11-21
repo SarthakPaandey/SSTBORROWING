@@ -68,6 +68,7 @@ export const POLICIES = {
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
   GROUP_BOOKING_INVITATION_EXPIRY_HOURS: 2, // Friends must confirm within 2 hours
+  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 1, // Group must be finalized at least 1 hour before booking start
   GROUP_BOOKING_TEAM_SPORTS: ['Main Turf', 'Basketball Court', 'Volleyball Court'], // Sports that require groups
 } as const;
 
@@ -187,4 +188,74 @@ export function hasConsecutiveBookings(
   }
 
   return consecutiveCount > POLICIES.MAX_CONSECUTIVE_SLOTS;
+}
+
+/**
+ * Calculate dynamic expiration time for group bookings
+ * Expiration is the earlier of:
+ * 1. Creation time + invitation window (2 hours)
+ * 2. Booking start time - cutoff period (1 hour before start)
+ * 
+ * This ensures:
+ * - Bookings far in future: Get full 2 hours to confirm
+ * - Bookings starting soon: Must be finalized before start time
+ */
+export function calculateGroupBookingExpiration(
+  bookingStart: Date,
+  createdAt: Date = new Date()
+): Date {
+  const startDate = new Date(bookingStart);
+  const createdDate = new Date(createdAt);
+  const now = new Date();
+
+  // Calculate expiration based on invitation window (from creation)
+  const invitationWindowEnd = new Date(
+    createdDate.getTime() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000
+  );
+
+  // Calculate expiration based on cutoff before booking start
+  const cutoffBeforeStart = new Date(
+    startDate.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000
+  );
+
+  // Return the earlier of the two
+  return new Date(Math.min(invitationWindowEnd.getTime(), cutoffBeforeStart.getTime()));
+}
+
+/**
+ * Check if a group booking can be created for the given start time
+ * Requires at least (cutoff + invitation window) time before booking start
+ */
+export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; reason?: string } {
+  const startDate = new Date(bookingStart);
+  const now = new Date();
+
+  // Minimum time required = cutoff + invitation window
+  const minRequiredHours = 
+    POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + 
+    POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS;
+
+  const minRequiredMs = minRequiredHours * 60 * 60 * 1000;
+  const timeUntilStart = startDate.getTime() - now.getTime();
+
+  if (timeUntilStart < minRequiredMs) {
+    return {
+      allowed: false,
+      reason: `Group bookings must be created at least ${minRequiredHours} hours before the booking start time (${POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS}h cutoff + ${POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS}h invitation window)`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if a group booking has expired
+ * Expired if: expiresAt has passed OR booking start time has passed
+ */
+export function isGroupBookingExpired(expiresAt: Date, bookingStart: Date): boolean {
+  const now = new Date();
+  const expiresDate = new Date(expiresAt);
+  const startDate = new Date(bookingStart);
+
+  return now > expiresDate || now >= startDate;
 }

@@ -2,7 +2,7 @@ import { Booking } from '@/models/Booking';
 import { GroupBooking } from '@/models/GroupBooking';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
-import { POLICIES, calculateSuspensionDate } from './policies';
+import { POLICIES, calculateSuspensionDate, isGroupBookingExpired } from './policies';
 
 /**
  * Apply no-show penalty to all confirmed members of a group booking
@@ -97,42 +97,46 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
 }
 
 /**
- * Check and expire group bookings that haven't been confirmed within 2 hours
+ * Check and expire group bookings that haven't been confirmed
+ * Expires if: expiresAt has passed OR booking start time has passed
  */
 export async function expireGroupBookings(): Promise<number> {
   const now = new Date();
 
-  const expiredBookings = await GroupBooking.find({
+  // Find all pending group bookings
+  const pendingBookings = await GroupBooking.find({
     status: 'PENDING_CONFIRMATIONS',
-    expiresAt: { $lt: now },
   });
 
   let expiredCount = 0;
 
-  for (const gb of expiredBookings) {
-    // Check if minimum is met
-    if (gb.confirmedCount >= gb.requiredMinimum) {
-      // Enough confirmations - mark as confirmed
-      gb.status = 'CONFIRMED';
-      await gb.save();
+  for (const gb of pendingBookings) {
+    // Get booking to check start time
+    const booking = await Booking.findById(gb.bookingId);
+    if (!booking) {
+      continue; // Skip if booking not found
+    }
 
-      const booking = await Booking.findById(gb.bookingId);
-      if (booking) {
+    // Check if expired (either expiresAt passed OR booking start time passed)
+    if (isGroupBookingExpired(gb.expiresAt, booking.start)) {
+      // Check if minimum is met
+      if (gb.confirmedCount >= gb.requiredMinimum) {
+        // Enough confirmations - mark as confirmed
+        gb.status = 'CONFIRMED';
+        await gb.save();
+
         booking.status = 'CONFIRMED';
         await booking.save();
-      }
-    } else {
-      // Not enough confirmations - cancel
-      gb.status = 'EXPIRED';
-      await gb.save();
+      } else {
+        // Not enough confirmations - cancel
+        gb.status = 'EXPIRED';
+        await gb.save();
 
-      const booking = await Booking.findById(gb.bookingId);
-      if (booking) {
         booking.status = 'CANCELLED';
         await booking.save();
-      }
 
-      expiredCount++;
+        expiredCount++;
+      }
     }
   }
 

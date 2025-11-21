@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { GroupBooking } from '@/models/GroupBooking';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
+import { isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
 
 export async function PATCH(
@@ -37,14 +38,19 @@ export async function PATCH(
       throw new ValidationError(`You have already ${member.status.toLowerCase()} this invitation`);
     }
 
-    // Check if expired
-    if (new Date() > groupBooking.expiresAt) {
+    // Get booking to check start time
+    const booking = await Booking.findById(groupBooking.bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking');
+    }
+
+    // Check if expired (either expiresAt passed OR booking start time passed)
+    if (isGroupBookingExpired(groupBooking.expiresAt, booking.start)) {
       groupBooking.status = 'EXPIRED';
       await groupBooking.save();
 
-      // Cancel the booking
-      const booking = await Booking.findById(groupBooking.bookingId);
-      if (booking && booking.status === 'PENDING') {
+      // Cancel the booking if still pending
+      if (booking.status === 'PENDING') {
         booking.status = 'CANCELLED';
         await booking.save();
       }
@@ -70,12 +76,9 @@ export async function PATCH(
       if (groupBooking.confirmedCount >= groupBooking.requiredMinimum) {
         groupBooking.status = 'CONFIRMED';
 
-        // Update main booking to CONFIRMED
-        const booking = await Booking.findById(groupBooking.bookingId);
-        if (booking) {
-          booking.status = 'CONFIRMED';
-          await booking.save();
-        }
+        // Update main booking to CONFIRMED (booking already fetched above)
+        booking.status = 'CONFIRMED';
+        await booking.save();
       }
 
       await groupBooking.save();
@@ -101,11 +104,9 @@ export async function PATCH(
         groupBooking.status = 'CANCELLED';
         await groupBooking.save();
 
-        const booking = await Booking.findById(groupBooking.bookingId);
-        if (booking) {
-          booking.status = 'CANCELLED';
-          await booking.save();
-        }
+        // Booking already fetched above
+        booking.status = 'CANCELLED';
+        await booking.save();
 
         return NextResponse.json({
           message: 'Invitation rejected. Group booking cancelled (insufficient members).',

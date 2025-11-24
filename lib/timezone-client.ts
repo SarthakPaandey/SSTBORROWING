@@ -1,36 +1,51 @@
 /**
  * Client-side timezone utilities for consistent IST (Asia/Kolkata) timezone handling
  * These are browser-safe versions of the server-side timezone utilities
+ *
+ * FIX: Updated to use Intl.DateTimeFormat for accurate timezone conversion
+ * Previously used manual offset calculation which failed because:
+ * - now.getTime() is already UTC, not local time
+ * - .toISOString() always returns UTC, causing date to be off by 5.5 hours
  */
 
 /**
  * Get current time in IST timezone
- * Returns a Date object adjusted to IST
+ * Returns a Date object representing the current IST time
  */
 export function getISTNow(): Date {
-    // Get current time in IST timezone
     const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const istTime = new Date(utcTime + istOffset);
-    return istTime;
+    // Use toLocaleString to get the date/time in IST, then parse it back
+    const istString = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    return new Date(istString);
 }
 
 /**
  * Get today's date in IST timezone (YYYY-MM-DD format)
  * Useful for date input fields
+ * FIX: Now uses Intl.DateTimeFormat to correctly format date in IST
  */
 export function getISTToday(): string {
-    const istNow = getISTNow();
-    return istNow.toISOString().split('T')[0];
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    };
+    // Use 'en-CA' locale for YYYY-MM-DD format
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    return formatter.format(now);
 }
 
 /**
  * Get start of today in IST (midnight IST)
+ * FIX: Properly construct IST midnight using the timezone
  */
 export function getISTTodayStart(): Date {
-    const today = getISTToday();
-    return new Date(`${today}T00:00:00+05:30`);
+    const today = getISTToday(); // Gets YYYY-MM-DD in IST
+    // Create date at midnight IST
+    const midnightIST = new Date(`${today}T00:00:00+05:30`);
+    return midnightIST;
 }
 
 /**

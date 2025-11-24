@@ -5,6 +5,54 @@ import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate, isGroupBookingExpired } from './policies';
 
 /**
+ * Recalculate a user's penalty points from the Penalty collection
+ * FIX Issue #8: Ensures penalty points are always in sync with actual penalty records
+ *
+ * This is the single source of truth for penalty point calculation.
+ * Call this after any penalty modification (add, waive, etc.)
+ */
+export async function recalculatePenaltyPoints(userId: string): Promise<number> {
+  // Calculate total points from non-waived penalties
+  const result = await Penalty.aggregate([
+    {
+      $match: {
+        userId: userId,
+        waivedBy: null, // Only count non-waived penalties
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalPoints: { $sum: '$points' }
+      }
+    }
+  ]);
+
+  const totalPoints = result.length > 0 ? result[0].totalPoints : 0;
+
+  // Update the user's penalty points to match
+  const user = await User.findById(userId);
+  if (user) {
+    user.penaltyPoints = totalPoints;
+
+    // Update suspension status based on recalculated points
+    if (totalPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
+      // Only set suspension if not already suspended
+      if (!user.suspendedUntil || user.suspendedUntil < new Date()) {
+        user.suspendedUntil = calculateSuspensionDate();
+      }
+    } else {
+      // Clear suspension if points are below threshold
+      user.suspendedUntil = undefined;
+    }
+
+    await user.save();
+  }
+
+  return totalPoints;
+}
+
+/**
  * Apply no-show penalty to all confirmed members of a group booking
  */
 export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> {

@@ -5,6 +5,8 @@ import { User, IUser } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 import { PenaltyQuery } from '@/types/api';
+import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
+import { getNow } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
   try {
@@ -64,22 +66,28 @@ export async function POST(req: NextRequest) {
         reason,
       });
 
-      user.penaltyPoints += points || 1;
-      await user.save();
+      // FIX Issue #8: Recalculate from source of truth instead of manual increment
+      const totalPoints = await recalculatePenaltyPoints(userId);
 
-      return NextResponse.json({ penalty }, { status: 201 });
+      return NextResponse.json({
+        penalty,
+        totalPenaltyPoints: totalPoints
+      }, { status: 201 });
     } else if (action === 'waive') {
       // Waive all penalties for user
       await Penalty.updateMany(
         { userId, waivedBy: null },
-        { waivedBy: admin.id, waivedAt: new Date() }
+        { waivedBy: admin.id, waivedAt: getNow() }
       );
 
-      user.penaltyPoints = 0;
-      user.suspendedUntil = undefined;
-      await user.save();
+      // FIX Issue #8: Recalculate penalty points from actual records
+      // This ensures the count is accurate and not hardcoded to 0
+      const totalPoints = await recalculatePenaltyPoints(userId);
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        totalPenaltyPoints: totalPoints  // Should be 0 after waiving all
+      });
     }
 
     throw new ValidationError('Invalid action');

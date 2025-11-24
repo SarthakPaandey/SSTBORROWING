@@ -6,7 +6,9 @@ export const bookingSchema = z.object({
     end: z.string().datetime("Invalid end date"),
     items: z.array(z.object({
         itemId: z.string(),
-        qty: z.number().min(1)
+        // FIX Issue #9: Add max limit to prevent absurdly large quantities
+        // Prevents integer overflow, database bloat, and potential DoS
+        qty: z.number().min(1, "Quantity must be at least 1").max(100, "Quantity cannot exceed 100")
     })).optional(),
 }).refine((data: { start: string; end: string }) => {
     const start = new Date(data.start);

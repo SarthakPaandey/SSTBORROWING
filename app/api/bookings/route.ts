@@ -330,36 +330,34 @@ async function postHandler(req: Request) {
         // Use atomic operations to reserve equipment quantities
         // This prevents race conditions by updating qtyReserved atomically
         for (const item of items) {
-          // Atomically increment qtyReserved, but only if enough quantity is available
-          const equipItem = await EquipmentItem.findOneAndUpdate(
+          // First, get the current item to check availability
+          const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+
+          if (!currentItem) {
+            throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
+          }
+
+          // Calculate truly available quantity
+          const available = currentItem.qtyAvailable - (currentItem.qtyReserved || 0);
+
+          if (available < item.qty) {
+            throw new ConflictError(`Not enough ${currentItem.name} available. Available: ${available}, Requested: ${item.qty}`);
+          }
+
+          // Atomically increment qtyReserved
+          const equipItem = await EquipmentItem.findByIdAndUpdate(
+            item.itemId,
             {
-              _id: item.itemId,
-              // Ensure available - reserved >= requested quantity
-              $expr: {
-                $gte: [
-                  { $subtract: ['$qtyAvailable', '$qtyReserved'] },
-                  item.qty
-                ]
-              }
-            },
-            {
-              // Atomically increment reserved quantity
               $inc: { qtyReserved: item.qty }
             },
             {
               session,
-              new: true, // Return updated document
+              new: true,
             }
           );
 
           if (!equipItem) {
-            // Either item doesn't exist or not enough quantity available
-            const checkItem = await EquipmentItem.findById(item.itemId).session(session);
-            if (!checkItem) {
-              throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
-            }
-            const available = checkItem.qtyAvailable - (checkItem.qtyReserved || 0);
-            throw new ConflictError(`Not enough ${checkItem.name} available. Available: ${available}, Requested: ${item.qty}`);
+            throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
           }
 
           enrichedItems.push({

@@ -47,7 +47,3 @@ export async function GET(req: NextRequest) {
     return handleApiError(error);
   }
 }
-
-
-
-

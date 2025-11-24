@@ -6,6 +6,7 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
+import { getNow } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
     try {
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
 
         await connectDB();
 
-        const now = new Date();
+        // Use IST timezone for accurate time-based checks
+        const now = getNow();
         const results = {
             noShows: 0,
             expiredPending: 0,

@@ -23,6 +23,7 @@ import { bookingSchema } from '@/lib/validations';
 import { handleApiError, ValidationError, AuthenticationError, NotFoundError, ConflictError } from '@/lib/errors';
 import { BookingQuery } from '@/types/api';
 import { BookingItem } from '@/types/booking';
+import { getNow, getTodayStart, getStartOfDay } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
   try {
@@ -117,7 +118,7 @@ async function postHandler(req: Request) {
       const startDate = new Date(start);
       const endDate = new Date(end);
 
-      if (startDate < new Date()) {
+      if (startDate < getNow()) {
         throw new ValidationError('Cannot book in the past');
       }
 
@@ -157,9 +158,8 @@ async function postHandler(req: Request) {
         throw new ValidationError('This resource is only available to students');
       }
 
-      // Check daily limit
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Check daily limit (using IST timezone for accurate day boundaries)
+      const today = getTodayStart();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -173,8 +173,8 @@ async function postHandler(req: Request) {
         throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
       }
 
-      // Check weekly limit
-      const weekAgo = new Date();
+      // Check weekly limit (using IST timezone)
+      const weekAgo = getNow();
       weekAgo.setDate(weekAgo.getDate() - 7);
 
       const weekBookings = await Booking.countDocuments({
@@ -187,21 +187,20 @@ async function postHandler(req: Request) {
         throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
       }
 
-      // Check total active bookings limit
+      // Check total active bookings limit (using IST timezone)
       const totalActiveBookings = await Booking.countDocuments({
         userId: user.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        end: { $gt: new Date() }, // Future bookings only
+        end: { $gt: getNow() }, // Future bookings only
       }).session(session);
 
       if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
         throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
       }
 
-      // Check monthly limits based on resource type
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
+      // Check monthly limits based on resource type (using IST timezone)
+      const now = getNow();
+      const monthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
 
       const monthEnd = new Date(monthStart);
       monthEnd.setMonth(monthEnd.getMonth() + 1);
@@ -242,12 +241,12 @@ async function postHandler(req: Request) {
 
       // Check library book limits
       if (kind === 'LIBRARY') {
-        // Check if user already has an active book borrowing
+        // Check if user already has an active book borrowing (using IST timezone)
         const activeBookBorrowings = await Booking.countDocuments({
           userId: user.id,
           kind: 'LIBRARY',
           status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-          end: { $gt: new Date() },
+          end: { $gt: getNow() },
         }).session(session);
 
         if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
@@ -255,11 +254,11 @@ async function postHandler(req: Request) {
         }
       }
 
-      // Check minimum gap between bookings
+      // Check minimum gap between bookings (using IST timezone)
       const upcomingBookings = await Booking.find({
         userId: user.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        end: { $gt: new Date() },
+        end: { $gt: getNow() },
       }).session(session);
 
       if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {

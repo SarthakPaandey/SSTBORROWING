@@ -8,6 +8,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
 import { handleApiError, NotFoundError, ValidationError, ConflictError } from '@/lib/errors';
 import mongoose from 'mongoose';
+import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
   const session = await mongoose.startSession();
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if late
-    const now = new Date();
+    // Check if late (using IST timezone for accurate late detection)
+    const now = getNow();
     const isLate = now > booking.end;
 
     let penaltyApplied = false;

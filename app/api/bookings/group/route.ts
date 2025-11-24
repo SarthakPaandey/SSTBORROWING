@@ -11,6 +11,7 @@ import { groupBookingSchema } from '@/lib/validations';
 import { withRateLimit } from '@/lib/ratelimit';
 import { withTransaction } from '@/lib/transaction';
 import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
+import { getNow, getTodayStart } from '@/lib/timezone';
 
 async function postHandler(req: Request) {
   try {
@@ -116,7 +117,7 @@ async function postHandler(req: Request) {
         userId: { $in: allMemberIds },
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         start: { $lt: new Date(end) },
-        end: { $gt: new Date(start) },
+        end: { $gt: new Date(start) },  // These are already Date objects from client
       }).session(txSession);
 
       if (conflictingBookings) {
@@ -124,9 +125,8 @@ async function postHandler(req: Request) {
         throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
       }
 
-      // Check daily limits within transaction
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Check daily limits within transaction (using IST timezone)
+      const today = getTodayStart();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -142,8 +142,8 @@ async function postHandler(req: Request) {
         }
       }
 
-      // Check weekly limits within transaction
-      const weekAgo = new Date();
+      // Check weekly limits within transaction (using IST timezone)
+      const weekAgo = getNow();
       weekAgo.setDate(weekAgo.getDate() - 7);
 
       for (const member of [...members, organizer]) {

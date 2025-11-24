@@ -9,6 +9,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { verifyQRToken } from '@/lib/qr';
 import { handleApiError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
 import mongoose from 'mongoose';
+import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
   const session = await mongoose.startSession();
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       throw new ConflictError('Token already used');
     }
 
-    if (new Date() > dbToken.expiresAt) {
+    if (getNow() > dbToken.expiresAt) {
       await session.abortTransaction();
       throw new ValidationError('Token expired');
     }
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
       throw new NotFoundError('Booking owner');
     }
 
-    if (bookingOwner.suspendedUntil && bookingOwner.suspendedUntil > new Date()) {
+    if (bookingOwner.suspendedUntil && bookingOwner.suspendedUntil > getNow()) {
       await session.abortTransaction();
       throw new ValidationError('User is currently suspended and cannot pick up equipment');
     }
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     // Mark token as used
     dbToken.used = true;
-    dbToken.usedAt = new Date();
+    dbToken.usedAt = getNow();
     await dbToken.save({ session });
 
     // Issue equipment - decrement BOTH availability AND reservation atomically
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
     }
 
     booking.status = 'CHECKED_IN';
-    booking.checkedInAt = new Date();
+    booking.checkedInAt = getNow();
     await booking.save({ session });
 
     // Commit transaction

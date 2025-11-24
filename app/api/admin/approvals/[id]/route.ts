@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+import { getNow } from '@/lib/timezone';
 
 export async function POST(
   req: NextRequest,
@@ -31,7 +32,7 @@ export async function POST(
       booking.approval = 'APPROVED';
       booking.status = 'CONFIRMED';
       booking.approvedBy = admin.id;
-      booking.approvedAt = new Date();
+      booking.approvedAt = getNow();
     } else {
       // FIX EC-11: Release equipment inventory reservation when rejecting
       // The booking created a reservation via qtyReserved that must be released

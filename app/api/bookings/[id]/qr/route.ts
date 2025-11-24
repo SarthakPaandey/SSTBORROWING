@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { generateQRToken, generateQRCodeImage } from '@/lib/qr';
 import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
+import { getNow, getTodayStart } from '@/lib/timezone';
 
 export async function POST(
   req: NextRequest,
@@ -55,8 +56,8 @@ export async function POST(
       throw new ValidationError('Booking must be confirmed to generate QR');
     }
 
-    // Check if booking time has passed
-    const now = new Date();
+    // Check if booking time has passed (using IST timezone)
+    const now = getNow();
     if (now > booking.end) {
       throw new ValidationError('Cannot generate QR for past bookings');
     }
@@ -70,12 +71,12 @@ export async function POST(
       }
     }
 
-    // Check if already has valid QR for THIS specific booking
+    // Check if already has valid QR for THIS specific booking (using IST timezone)
     // This prevents confusion when user has multiple bookings
     const existingToken = await QRToken.findOne({
       bookingId: params.id,
       used: false,
-      expiresAt: { $gt: new Date() },
+      expiresAt: { $gt: getNow() },
     }).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {
@@ -87,9 +88,8 @@ export async function POST(
       });
     }
 
-    // Check QR generation limit (2 per day)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Check QR generation limit (2 per day) - using IST timezone for accurate day boundaries
+    const todayStart = getTodayStart();
 
     const generatedTodayCount = await QRToken.countDocuments({
       bookingId: params.id,

@@ -5,6 +5,7 @@ import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
+import { getNow } from '@/lib/timezone';
 
 export async function PATCH(
   req: NextRequest,
@@ -69,7 +70,7 @@ export async function PATCH(
     // Update member status
     if (response === 'ACCEPT') {
       groupBooking.members[memberIndex].status = 'CONFIRMED';
-      groupBooking.members[memberIndex].respondedAt = new Date();
+      groupBooking.members[memberIndex].respondedAt = getNow();
 
       // FIX EC-15: Use atomic $inc to prevent race condition
       // Previously, we fetched confirmedCount, incremented in JS, and saved back
@@ -80,7 +81,7 @@ export async function PATCH(
         {
           $set: {
             [`members.${memberIndex}.status`]: 'CONFIRMED',
-            [`members.${memberIndex}.respondedAt`]: new Date(),
+            [`members.${memberIndex}.respondedAt`]: getNow(),
           },
           $inc: { confirmedCount: 1 }
         },
@@ -113,7 +114,7 @@ export async function PATCH(
     } else {
       // REJECT
       groupBooking.members[memberIndex].status = 'REJECTED';
-      groupBooking.members[memberIndex].respondedAt = new Date();
+      groupBooking.members[memberIndex].respondedAt = getNow();
       await groupBooking.save();
 
       // Check if we can still reach minimum with remaining pending members

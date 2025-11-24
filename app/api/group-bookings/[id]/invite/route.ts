@@ -6,6 +6,7 @@ import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
+import { getNow, getTodayStart } from '@/lib/timezone';
 
 export async function POST(
   req: NextRequest,
@@ -97,9 +98,8 @@ export async function POST(
       throw new ConflictError(`${email} has a conflicting booking at this time`);
     }
 
-    // Check daily limit
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check daily limit (using IST timezone)
+    const today = getTodayStart();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -113,8 +113,8 @@ export async function POST(
       throw new ConflictError(`${email} has reached their daily booking limit`);
     }
 
-    // Check weekly limit
-    const weekAgo = new Date();
+    // Check weekly limit (using IST timezone)
+    const weekAgo = getNow();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const weekBookings = await Booking.countDocuments({

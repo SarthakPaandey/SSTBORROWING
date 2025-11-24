@@ -8,6 +8,7 @@ import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
+import { getNow, getDaysAgo } from '@/lib/timezone';
 
 export async function PATCH(
   req: NextRequest,
@@ -33,13 +34,12 @@ export async function PATCH(
       throw new ValidationError('Cannot cancel booking in current state');
     }
 
-    if (new Date() > booking.start) {
+    if (getNow() > booking.start) {
       throw new ValidationError('Cannot cancel past bookings');
     }
 
-    // Check weekly cancellation limit
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    // Check weekly cancellation limit (using IST timezone)
+    const weekAgo = getDaysAgo(7);
 
     const weeklyCancellations = await Cancellation.countDocuments({
       userId: booking.userId,
@@ -50,8 +50,8 @@ export async function PATCH(
       throw new ConflictError(`You have reached the maximum cancellation limit of ${POLICIES.MAX_CANCELLATIONS_PER_WEEK} cancellations per week.`);
     }
 
-    // Check if cancellation is late (within 2 hours of start)
-    const now = new Date();
+    // Check if cancellation is late (within 2 hours of start) - using IST timezone
+    const now = getNow();
     const hoursUntilStart =
       (new Date(booking.start).getTime() - now.getTime()) / (1000 * 60 * 60);
     const isLateCancellation = hoursUntilStart < POLICIES.LATE_CANCELLATION_HOURS;

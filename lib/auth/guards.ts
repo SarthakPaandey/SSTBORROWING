@@ -3,6 +3,7 @@ import { authOptions } from './config';
 import { UserRole, User } from '@/models/User';
 import { AuthenticationError, AuthorizationError } from '@/lib/errors';
 import { connectDB } from '@/lib/db';
+import { getNow } from '@/lib/timezone';
 
 export async function requireAuth(allowedRoles?: UserRole[]) {
   const session = await getServerSession(authOptions);
@@ -22,8 +23,8 @@ export async function requireAuth(allowedRoles?: UserRole[]) {
     throw new AuthenticationError('User account not found');
   }
 
-  // Check if user is currently suspended
-  if (dbUser.suspendedUntil && dbUser.suspendedUntil > new Date()) {
+  // Check if user is currently suspended (using IST timezone)
+  if (dbUser.suspendedUntil && dbUser.suspendedUntil > getNow()) {
     throw new AuthorizationError('Your account is suspended');
   }
 

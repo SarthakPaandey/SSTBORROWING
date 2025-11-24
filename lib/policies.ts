@@ -1,4 +1,5 @@
 // System-wide booking policies and rules
+import { getNow } from './timezone';
 
 export const POLICIES = {
   // Booking limits
@@ -76,7 +77,8 @@ export function canUserBook(user: {
   penaltyPoints: number;
   suspendedUntil?: Date;
 }): { allowed: boolean; reason?: string } {
-  if (user.suspendedUntil && new Date() < new Date(user.suspendedUntil)) {
+  // Use IST timezone for accurate suspension check
+  if (user.suspendedUntil && getNow() < new Date(user.suspendedUntil)) {
     return {
       allowed: false,
       reason: `You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}`,
@@ -94,14 +96,16 @@ export function canUserBook(user: {
 }
 
 export function calculateSuspensionDate(): Date {
-  const date = new Date();
+  // Use IST timezone for suspension calculation
+  const date = getNow();
   date.setDate(date.getDate() + POLICIES.SUSPENSION_DAYS);
   return date;
 }
 
 export function isWithinAdvanceWindow(startDate: Date): boolean {
-  const now = new Date();
-  const maxDate = new Date();
+  // Use IST timezone for accurate advance booking window calculation
+  const now = getNow();
+  const maxDate = getNow();
   maxDate.setDate(maxDate.getDate() + POLICIES.ADVANCE_BOOKING_DAYS);
 
   return startDate >= now && startDate <= maxDate;
@@ -156,6 +160,10 @@ export function hasMinimumGap(
 
 /**
  * Check for consecutive bookings
+ * FIX: Properly detect chains of consecutive bookings, not just immediate neighbors
+ *
+ * Example: If user has [10:00-11:00] and [11:00-12:00], and tries to book [12:00-13:00],
+ * the entire chain [10:00-11:00-12:00-13:00] = 3 slots should be detected and blocked
  */
 export function hasConsecutiveBookings(
   existingBookings: Array<{ start: Date; end: Date; resourceId: string }>,
@@ -163,31 +171,57 @@ export function hasConsecutiveBookings(
   newEnd: Date,
   resourceId: string
 ): boolean {
-  // Get bookings for same resource type
-  const sameResourceBookings = existingBookings.filter(b => b.resourceId === resourceId);
+  // Get bookings for same resource, sorted by start time
+  const sameResourceBookings = existingBookings
+    .filter(b => b.resourceId === resourceId)
+    .map(b => ({
+      start: new Date(b.start).getTime(),
+      end: new Date(b.end).getTime(),
+    }))
+    .sort((a, b) => a.start - b.start);
 
-  let consecutiveCount = 1; // The new booking itself
+  if (sameResourceBookings.length === 0) {
+    return false; // No existing bookings, new one is fine
+  }
 
   const newStartTime = new Date(newStart).getTime();
   const newEndTime = new Date(newEnd).getTime();
+  const CONSECUTIVE_THRESHOLD = 60000; // 1 minute in milliseconds
 
-  // Check bookings immediately before
-  for (const booking of sameResourceBookings) {
-    const bookingEnd = new Date(booking.end).getTime();
-    if (Math.abs(bookingEnd - newStartTime) < 60000) { // Within 1 minute (consecutive)
-      consecutiveCount++;
+  // Build the full chain by starting from the new booking and expanding in both directions
+  const chain: Array<{ start: number; end: number }> = [
+    { start: newStartTime, end: newEndTime }
+  ];
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    for (const existing of sameResourceBookings) {
+      // Check if this booking connects to the start of our chain
+      const chainStart = chain[0];
+      if (Math.abs(existing.end - chainStart.start) < CONSECUTIVE_THRESHOLD) {
+        // Check if already in chain
+        if (!chain.some(c => c.start === existing.start && c.end === existing.end)) {
+          chain.unshift(existing);
+          changed = true;
+        }
+      }
+
+      // Check if this booking connects to the end of our chain
+      const chainEnd = chain[chain.length - 1];
+      if (Math.abs(chainEnd.end - existing.start) < CONSECUTIVE_THRESHOLD) {
+        // Check if already in chain
+        if (!chain.some(c => c.start === existing.start && c.end === existing.end)) {
+          chain.push(existing);
+          changed = true;
+        }
+      }
     }
   }
 
-  // Check bookings immediately after
-  for (const booking of sameResourceBookings) {
-    const bookingStart = new Date(booking.start).getTime();
-    if (Math.abs(newEndTime - bookingStart) < 60000) { // Within 1 minute (consecutive)
-      consecutiveCount++;
-    }
-  }
-
-  return consecutiveCount > POLICIES.MAX_CONSECUTIVE_SLOTS;
+  // Chain length represents consecutive slots
+  return chain.length > POLICIES.MAX_CONSECUTIVE_SLOTS;
 }
 
 /**
@@ -202,11 +236,12 @@ export function hasConsecutiveBookings(
  */
 export function calculateGroupBookingExpiration(
   bookingStart: Date,
-  createdAt: Date = new Date()
+  createdAt: Date = getNow()
 ): Date {
   const startDate = new Date(bookingStart);
   const createdDate = new Date(createdAt);
-  const now = new Date();
+  // Use IST timezone for accurate expiration calculation
+  const now = getNow();
 
   // Calculate expiration based on invitation window (from creation)
   const invitationWindowEnd = new Date(
@@ -228,7 +263,8 @@ export function calculateGroupBookingExpiration(
  */
 export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; reason?: string } {
   const startDate = new Date(bookingStart);
-  const now = new Date();
+  // Use IST timezone for accurate time-until-start calculation
+  const now = getNow();
 
   // Minimum time required = cutoff + invitation window
   const minRequiredHours = 
@@ -253,7 +289,8 @@ export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; r
  * Expired if: expiresAt has passed OR booking start time has passed
  */
 export function isGroupBookingExpired(expiresAt: Date, bookingStart: Date): boolean {
-  const now = new Date();
+  // Use IST timezone for accurate expiration check
+  const now = getNow();
   const expiresDate = new Date(expiresAt);
   const startDate = new Date(bookingStart);
 

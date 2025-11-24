@@ -4,9 +4,10 @@ import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
+import { QRToken } from '@/models/QRToken';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
-import { getNow } from '@/lib/timezone';
+import { getNow, getDaysAgo } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
     try {
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
         const results = {
             noShows: 0,
             expiredPending: 0,
+            qrTokensDeleted: 0,
         };
 
         // 1. Handle No-Shows
@@ -99,6 +101,15 @@ export async function GET(req: NextRequest) {
             await booking.save();
             results.expiredPending++;
         }
+
+        // 3. Cleanup Old QR Tokens
+        // FIX: Delete QR tokens older than 7 days to prevent database bloat
+        // Similar to rate limiter cleanup, this prevents infinite growth of the QRToken collection
+        const sevenDaysAgo = getDaysAgo(7);
+        const deleteResult = await QRToken.deleteMany({
+            createdAt: { $lt: sevenDaysAgo }
+        });
+        results.qrTokensDeleted = deleteResult.deletedCount || 0;
 
         return NextResponse.json({ success: true, results });
     } catch (error) {

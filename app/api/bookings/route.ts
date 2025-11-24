@@ -443,10 +443,21 @@ async function postHandler(req: Request) {
               subject: `Booking Approval Required: ${resource.name}`,
               html: emailHTML,
             });
+
+            // FIX: Track successful email delivery
+            booking.approvalEmailSent = true;
+            booking.approvalEmailSentAt = getNow();
+            await booking.save();
           }
         } catch (emailError) {
-          // Log error but don't fail the booking creation
+          // FIX: Track email failure for debugging and potential retry
           console.error('Failed to send approval email:', emailError);
+          const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+          booking.approvalEmailSent = false;
+          booking.approvalEmailError = errorMessage;
+          await booking.save();
+
+          // Note: Booking is still created successfully, but admins need to be notified via dashboard
         }
       }
 

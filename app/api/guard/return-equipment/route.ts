@@ -6,62 +6,71 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
-import { handleApiError, AuthorizationError, ValidationError, NotFoundError } from '@/lib/errors';
+import { handleApiError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
+import mongoose from 'mongoose';
+import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
+  const session = await mongoose.startSession();
+
   try {
-    const user = await requireAuth();
-
-    // Only guards can access this
-    if (user.role !== 'GUARD') {
-      throw new AuthorizationError();
-    }
-
+    const guard = await requireAuth(['GUARD', 'ADMIN']);
     await connectDB();
 
     const { bookingId, condition, notes } = await req.json();
 
-    if (!bookingId || !condition) {
-      throw new ValidationError('Booking ID and condition are required');
+    if (!bookingId) {
+      throw new ValidationError('Booking ID required');
     }
 
-    // Find the booking
-    const booking = await Booking.findById(bookingId);
+    if (!condition) {
+      throw new ValidationError('Condition required');
+    }
 
+    // Start transaction for atomicity
+    await session.startTransaction();
+
+    const booking = await Booking.findById(bookingId).session(session);
     if (!booking) {
+      await session.abortTransaction();
       throw new NotFoundError('Booking');
     }
 
     if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
-      throw new ValidationError('This is not an equipment or library booking');
+      await session.abortTransaction();
+      throw new ValidationError('Only equipment and library bookings can be returned');
     }
 
     if (booking.status !== 'CHECKED_IN') {
-      throw new ValidationError('Equipment has not been checked in yet');
+      await session.abortTransaction();
+      throw new ValidationError('Booking must be checked in to return');
     }
 
-    // Update booking status
-    booking.status = 'COMPLETED';
-    booking.returnedAt = new Date();
-    booking.returnCondition = condition;
-    booking.returnNotes = notes || '';
-    booking.returnedBy = user.id;
+    // FIX: Explicit check to prevent double returns (prevents race condition)
+    if (booking.returnedAt) {
+      await session.abortTransaction();
+      throw new ConflictError('Equipment already returned');
+    }
 
-    // Return equipment items to inventory (only for equipment bookings)
-    if (booking.kind === 'EQUIPMENT' && booking.items && booking.items.length > 0) {
+    // FIX: Restore equipment quantities atomically (only if checked in)
+    // Using $inc for atomic operations to prevent race conditions
+    if (booking.items) {
       for (const item of booking.items) {
-        const equipItem = await EquipmentItem.findById(item.itemId);
-        if (equipItem) {
-          equipItem.qtyAvailable += item.qty;
-          await equipItem.save();
-        }
+        await EquipmentItem.findByIdAndUpdate(
+          item.itemId,
+          {
+            $inc: { qtyAvailable: item.qty }
+          },
+          { session }
+        );
       }
     }
 
-    // Check for late return
-    const now = new Date();
+    // Check if late (using IST timezone)
+    const now = getNow();
     const isLate = now > booking.end;
-    let penaltiesApplied: string[] = [];
+
+    let penaltyApplied = false;
 
     if (isLate) {
       // Library books have higher penalty (2 points) vs equipment (1 point)
@@ -73,56 +82,78 @@ export async function POST(req: NextRequest) {
         ? 'Late book return (payment required)'
         : 'Late equipment return';
 
-      await Penalty.create({
+      // Apply late penalty
+      await Penalty.create([{
         userId: booking.userId,
         bookingId: booking.id,
         points: penaltyPoints,
         reason: penaltyReason,
-      });
-      penaltiesApplied.push(`Late return penalty (${penaltyPoints} points)`);
+      }], { session });
 
-      const userDoc = await User.findById(booking.userId);
-      if (userDoc) {
-        userDoc.penaltyPoints += penaltyPoints;
-        if (userDoc.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          userDoc.suspendedUntil = calculateSuspensionDate();
+      const user = await User.findById(booking.userId).session(session);
+      if (user) {
+        user.penaltyPoints += penaltyPoints;
+
+        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
+          user.suspendedUntil = calculateSuspensionDate();
         }
-        await userDoc.save();
+
+        await user.save({ session });
       }
+
+      penaltyApplied = true;
     }
 
-    // Apply penalty for damaged equipment
+    // Check for damage (if condition provided)
     if (condition === 'damaged') {
-      await Penalty.create({
+      await Penalty.create([{
         userId: booking.userId,
         bookingId: booking.id,
         points: POLICIES.PENALTY_DAMAGE,
         reason: `Equipment returned damaged: ${notes || 'No details provided'}`,
-      });
-      penaltiesApplied.push('Damage penalty');
+      }], { session });
 
-      const userDoc = await User.findById(booking.userId);
-      if (userDoc) {
-        userDoc.penaltyPoints += POLICIES.PENALTY_DAMAGE;
-        if (userDoc.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          userDoc.suspendedUntil = calculateSuspensionDate();
+      const user = await User.findById(booking.userId).session(session);
+      if (user) {
+        user.penaltyPoints += POLICIES.PENALTY_DAMAGE;
+
+        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
+          user.suspendedUntil = calculateSuspensionDate();
         }
-        await userDoc.save();
+
+        await user.save({ session });
       }
+
+      penaltyApplied = true;
     }
 
-    await booking.save();
+    // Complete booking and mark as returned
+    booking.status = 'COMPLETED';
+    booking.returnedAt = now;
+    booking.returnCondition = condition;
+    booking.returnNotes = notes || '';
+    booking.returnedBy = guard.id;
+    await booking.save({ session });
+
+    // Commit transaction
+    await session.commitTransaction();
 
     const itemType = booking.kind === 'LIBRARY' ? 'Book' : 'Equipment';
     return NextResponse.json({
-      message: penaltiesApplied.length > 0
-        ? `${itemType} returned. Penalties applied: ${penaltiesApplied.join(', ')}`
-        : `${itemType} returned successfully`,
+      success: true,
       booking,
-      penaltiesApplied,
+      penaltyApplied,
+      message: penaltyApplied
+        ? `${itemType} returned with penalty applied`
+        : `${itemType} returned successfully`,
     });
   } catch (error) {
-    console.error('Return equipment error:', error);
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    console.error('Return error:', error);
     return handleApiError(error);
+  } finally {
+    session.endSession();
   }
 }

@@ -186,8 +186,8 @@ export function handleApiError(error: unknown): NextResponse {
             );
         }
 
-        // Handle MongoDB transaction errors
-        if (err.name === 'MongoError' && err.message?.includes('TransientTransactionError')) {
+        // Handle MongoDB transaction errors (with explicit null check for defensive programming)
+        if (err.name === 'MongoError' && err.message && err.message.includes('TransientTransactionError')) {
             return NextResponse.json(
                 { error: 'This resource was just booked by someone else. Please try again.' },
                 { status: 409 }

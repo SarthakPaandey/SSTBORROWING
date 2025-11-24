@@ -10,6 +10,9 @@ export interface IGroupMember {
   status: GroupMemberStatus;
   invitedAt: Date;
   respondedAt?: Date;
+  emailSent?: boolean; // Track if invitation email was successfully sent
+  emailSentAt?: Date; // When email was sent
+  emailError?: string; // Error message if email failed
 }
 
 export interface IGroupBooking extends Document {
@@ -36,6 +39,9 @@ const GroupMemberSchema = new Schema({
   },
   invitedAt: { type: Date, required: true, default: Date.now },
   respondedAt: { type: Date },
+  emailSent: { type: Boolean, default: false }, // Track email delivery
+  emailSentAt: { type: Date }, // Timestamp of successful send
+  emailError: { type: String }, // Error message if send failed
 }, { _id: false });
 
 const GroupBookingSchema = new Schema<IGroupBooking>(

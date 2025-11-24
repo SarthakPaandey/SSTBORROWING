@@ -35,6 +35,9 @@ export interface IBooking extends Document {
   returnCondition?: string;
   returnNotes?: string;
   returnedBy?: string; // Guard ID
+  approvalEmailSent?: boolean; // Track if approval email was sent to admins
+  approvalEmailSentAt?: Date; // When approval email was sent
+  approvalEmailError?: string; // Error message if email send failed
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +92,9 @@ const BookingSchema = new Schema<IBooking>(
     },
     returnNotes: { type: String },
     returnedBy: { type: String, ref: 'User' },
+    approvalEmailSent: { type: Boolean, default: false }, // Track email delivery
+    approvalEmailSentAt: { type: Date }, // Timestamp of successful send
+    approvalEmailError: { type: String }, // Error message if send failed
   },
   {
     timestamps: true,

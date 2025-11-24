@@ -325,6 +325,14 @@ async function postHandler(req: Request) {
       // Handle equipment and library bookings with atomic reservation
       let enrichedItems: BookingItem[] | undefined;
       if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
+        // FIX EC-19: Prevent duplicate items in booking
+        // Check that all itemIds are unique
+        const itemIds = items.map(i => i.itemId);
+        const uniqueItemIds = new Set(itemIds);
+        if (uniqueItemIds.size !== itemIds.length) {
+          throw new ValidationError('Duplicate items detected. Each item can only be requested once per booking.');
+        }
+
         enrichedItems = [];
 
         // Use atomic operations to reserve equipment quantities

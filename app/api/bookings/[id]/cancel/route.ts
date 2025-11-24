@@ -84,9 +84,20 @@ export async function PATCH(
       penaltyApplied,
     });
 
-    // Note: We don't need to restore equipment inventory here because
-    // we never actually reduced it. Equipment is only reduced when QR is scanned (check-in).
-    // The booking just "reserves" the equipment by being counted in availability checks.
+    // FIX EC-11: Release equipment inventory reservation
+    // The previous comment was INCORRECT - we DID reduce inventory via qtyReserved
+    // When booking was created, qtyReserved was incremented to hold the items
+    // We must now release that reservation to prevent phantom inventory
+    if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+      for (const item of booking.items) {
+        await EquipmentItem.findByIdAndUpdate(
+          item.itemId,
+          {
+            $inc: { qtyReserved: -item.qty }
+          }
+        );
+      }
+    }
 
     booking.status = 'CANCELLED';
     await booking.save();

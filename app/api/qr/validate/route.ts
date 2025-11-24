@@ -3,14 +3,19 @@ import { connectDB } from '@/lib/db';
 import { QRToken } from '@/models/QRToken';
 import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
+import { User } from '@/models/User';
+import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { verifyQRToken } from '@/lib/qr';
 import { handleApiError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
+import mongoose from 'mongoose';
 
 export async function POST(req: NextRequest) {
+  const session = await mongoose.startSession();
+
   try {
     await requireAuth(['GUARD', 'ADMIN']);
-    await connectDB();
+    const conn = await connectDB();
 
     const { token } = await req.json();
 
@@ -24,64 +29,119 @@ export async function POST(req: NextRequest) {
       throw new ValidationError(verification.error || 'Invalid token');
     }
 
+    // Start transaction for atomicity
+    await session.startTransaction();
+
     // Check DB for token
-    const dbToken = await QRToken.findOne({ token });
+    const dbToken = await QRToken.findOne({ token }).session(session);
     if (!dbToken) {
+      await session.abortTransaction();
       throw new NotFoundError('Token');
     }
 
     if (dbToken.used) {
+      await session.abortTransaction();
       throw new ConflictError('Token already used');
     }
 
     if (new Date() > dbToken.expiresAt) {
+      await session.abortTransaction();
       throw new ValidationError('Token expired');
     }
 
     // Get booking
-    const booking = await Booking.findById(dbToken.bookingId);
+    const booking = await Booking.findById(dbToken.bookingId).session(session);
     if (!booking) {
+      await session.abortTransaction();
       throw new NotFoundError('Booking');
     }
 
     // Only equipment and library bookings can be validated via QR
     if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
+      await session.abortTransaction();
       throw new ValidationError('QR validation is only allowed for equipment/book pickup');
     }
 
     // Check if already checked in (prevent double check-in)
     if (booking.status === 'CHECKED_IN') {
+      await session.abortTransaction();
       throw new ConflictError('Equipment already checked in');
     }
 
     // Check if booking is in valid state
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
+      await session.abortTransaction();
       throw new ValidationError('Booking is not in a valid state for check-in');
+    }
+
+    // EC-12: Check if the booking owner (student) is currently suspended
+    const bookingOwner = await User.findById(booking.userId).session(session);
+    if (!bookingOwner) {
+      await session.abortTransaction();
+      throw new NotFoundError('Booking owner');
+    }
+
+    if (bookingOwner.suspendedUntil && bookingOwner.suspendedUntil > new Date()) {
+      await session.abortTransaction();
+      throw new ValidationError('User is currently suspended and cannot pick up equipment');
+    }
+
+    // EC-13: Check if the resource is still active
+    const resource = await Resource.findById(booking.resourceId).session(session);
+    if (!resource) {
+      await session.abortTransaction();
+      throw new NotFoundError('Resource');
+    }
+
+    if (resource.status !== 'ACTIVE') {
+      await session.abortTransaction();
+      throw new ValidationError('Resource is currently inactive and cannot be checked in');
     }
 
     // Mark token as used
     dbToken.used = true;
     dbToken.usedAt = new Date();
-    await dbToken.save();
+    await dbToken.save({ session });
 
-    // Issue equipment - decrement availability and mark checked in
+    // Issue equipment - decrement BOTH availability AND reservation atomically
+    // FIX: This was the critical bug - we were only decrementing qtyAvailable
+    // but never releasing qtyReserved, causing phantom inventory
     if (booking.items) {
       for (const item of booking.items) {
-        const equipItem = await EquipmentItem.findById(item.itemId);
-        if (equipItem) {
-          // Safety check: prevent negative inventory
-          if (equipItem.qtyAvailable < item.qty) {
-            throw new ConflictError(`Insufficient inventory for ${equipItem.name}. Available: ${equipItem.qtyAvailable}, Required: ${item.qty}`);
+        // Use atomic update to prevent race conditions
+        const result = await EquipmentItem.findOneAndUpdate(
+          {
+            _id: item.itemId,
+            qtyAvailable: { $gte: item.qty }, // Ensure sufficient stock
+          },
+          {
+            $inc: {
+              qtyAvailable: -item.qty,  // Physical removal
+              qtyReserved: -item.qty,   // Release reservation (FIX)
+            },
+          },
+          {
+            session,
+            new: true,
           }
-          equipItem.qtyAvailable -= item.qty;
-          await equipItem.save();
+        );
+
+        if (!result) {
+          await session.abortTransaction();
+          const equipItem = await EquipmentItem.findById(item.itemId);
+          throw new ConflictError(
+            `Insufficient inventory for ${equipItem?.name || 'item'}. Available: ${equipItem?.qtyAvailable || 0}, Required: ${item.qty}`
+          );
         }
       }
     }
+
     booking.status = 'CHECKED_IN';
     booking.checkedInAt = new Date();
+    await booking.save({ session });
 
-    await booking.save();
+    // Commit transaction
+    await session.commitTransaction();
 
     return NextResponse.json({
       success: true,
@@ -94,7 +154,14 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    // Abort transaction on error
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     console.error('QR validation error:', error);
     return handleApiError(error);
+  } finally {
+    // End session
+    session.endSession();
   }
 }

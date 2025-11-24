@@ -109,8 +109,17 @@ export async function POST(
       Math.max(expiryMinutes, 10)
     );
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + Math.max(expiryMinutes, 10));
+    // FIX EC-8: Dynamic QR expiration to handle edge cases
+    // Issue 1: Short bookings - QR shouldn't be valid after booking ends
+    // Issue 2: Early generation - QR should extend into booking start time
+    const baseExpiry = new Date(now.getTime() + Math.max(expiryMinutes, 10) * 60000);
+
+    // Ensure QR expires by booking end time (prevents use after booking ends)
+    let expiresAt = new Date(Math.min(baseExpiry.getTime(), booking.end.getTime()));
+
+    // Ensure QR extends at least 5 minutes into the booking start (for early generation)
+    const minExpiry = new Date(booking.start.getTime() + 5 * 60000);
+    expiresAt = new Date(Math.max(expiresAt.getTime(), minExpiry.getTime()));
 
     // Save token to DB
     await QRToken.create({

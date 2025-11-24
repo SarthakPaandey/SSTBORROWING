@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
+import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
@@ -23,17 +24,28 @@ export async function GET(req: NextRequest) {
         };
 
         // 1. Handle No-Shows
-        // Find confirmed bookings that started more than GRACE_MINUTES ago and haven't checked in
-        const gracePeriodAgo = new Date(now.getTime() - POLICIES.NO_SHOW_GRACE_MINUTES * 60000);
-
+        // FIX EC-4: Changed logic to use booking END time instead of START + grace
+        // This catches short bookings that finish before the grace period would trigger
+        // Original logic: start < (now - gracePeriod)
+        // New logic: end < now AND status = CONFIRMED AND not checked in
         const noShowBookings = await Booking.find({
             status: 'CONFIRMED',
-            start: { $lt: gracePeriodAgo },
-            checkedInAt: null,
-            // Ensure we don't process already completed/cancelled ones (redundant with status check but safe)
+            end: { $lt: now },  // Booking has ended
+            checkedInAt: null,  // Never checked in
         });
 
         for (const booking of noShowBookings) {
+            // FIX EC-10: Release equipment inventory reservation for no-shows
+            // These bookings reserved inventory that was never picked up
+            if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+                for (const item of booking.items) {
+                    await EquipmentItem.findByIdAndUpdate(
+                        item.itemId,
+                        { $inc: { qtyReserved: -item.qty } }
+                    );
+                }
+            }
+
             // Mark as NO_SHOW
             booking.status = 'NO_SHOW';
             await booking.save();
@@ -70,8 +82,18 @@ export async function GET(req: NextRequest) {
         });
 
         for (const booking of expiredPendingBookings) {
+            // FIX: Release equipment inventory reservation for expired pending bookings
+            if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+                for (const item of booking.items) {
+                    await EquipmentItem.findByIdAndUpdate(
+                        item.itemId,
+                        { $inc: { qtyReserved: -item.qty } }
+                    );
+                }
+            }
+
             booking.status = 'CANCELLED';
-            booking.approval = 'REJECTED'; // Or just leave as PENDING? Better to reject.
+            booking.approval = 'REJECTED';
             await booking.save();
             results.expiredPending++;
         }

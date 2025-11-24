@@ -70,23 +70,44 @@ export async function PATCH(
     if (response === 'ACCEPT') {
       groupBooking.members[memberIndex].status = 'CONFIRMED';
       groupBooking.members[memberIndex].respondedAt = new Date();
-      groupBooking.confirmedCount += 1;
+
+      // FIX EC-15: Use atomic $inc to prevent race condition
+      // Previously, we fetched confirmedCount, incremented in JS, and saved back
+      // If two users accepted simultaneously, both would read the same count and save the same incremented value
+      // Using $inc ensures MongoDB handles the increment atomically
+      const updatedGroupBooking = await GroupBooking.findByIdAndUpdate(
+        params.id,
+        {
+          $set: {
+            [`members.${memberIndex}.status`]: 'CONFIRMED',
+            [`members.${memberIndex}.respondedAt`]: new Date(),
+          },
+          $inc: { confirmedCount: 1 }
+        },
+        { new: true }
+      );
+
+      if (!updatedGroupBooking) {
+        throw new NotFoundError('Group booking');
+      }
 
       // Check if we now have enough confirmations
-      if (groupBooking.confirmedCount >= groupBooking.requiredMinimum) {
-        groupBooking.status = 'CONFIRMED';
+      if (updatedGroupBooking.confirmedCount >= updatedGroupBooking.requiredMinimum) {
+        updatedGroupBooking.status = 'CONFIRMED';
 
         // Update main booking to CONFIRMED (booking already fetched above)
         booking.status = 'CONFIRMED';
         await booking.save();
-      }
 
-      await groupBooking.save();
+        await updatedGroupBooking.save();
+      } else {
+        await updatedGroupBooking.save();
+      }
 
       return NextResponse.json({
         message: 'Invitation accepted',
-        groupBooking,
-        isBookingConfirmed: groupBooking.status === 'CONFIRMED',
+        groupBooking: updatedGroupBooking,
+        isBookingConfirmed: updatedGroupBooking.status === 'CONFIRMED',
       });
 
     } else {

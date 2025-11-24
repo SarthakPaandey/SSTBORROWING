@@ -55,8 +55,8 @@ describe('Validation Schemas', () => {
         start: new Date(Date.now() + 86400000).toISOString(),
         end: new Date(Date.now() + 86400000 + 3600000).toISOString(),
         items: [
-          { id: 'item1', qty: 2 },
-          { id: 'item2', qty: 1 },
+          { itemId: 'item1', qty: 2 },
+          { itemId: 'item2', qty: 1 },
         ],
       };
 
@@ -69,7 +69,7 @@ describe('Validation Schemas', () => {
         resourceId: 'resource123',
         start: new Date(Date.now() + 86400000).toISOString(),
         end: new Date(Date.now() + 86400000 + 3600000).toISOString(),
-        items: [{ id: 'item1', qty: 0 }], // Invalid qty
+        items: [{ itemId: 'item1', qty: 0 }], // Invalid qty
       };
 
       const result = bookingSchema.safeParse(invalidData);

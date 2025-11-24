@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 
+// FIX EC-17: Prevent memory leak by cleaning up old entries
+// Run cleanup every hour to remove stale entries
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_MAP_SIZE = 10000; // Prevent unbounded growth
+
+setInterval(() => {
+    const now = Date.now();
+    const entriesToDelete: string[] = [];
+
+    // Remove entries older than 2x the window (generous buffer)
+    for (const [ip, record] of rateLimitMap.entries()) {
+        if (now - record.lastReset > 120000) { // 2 minutes (2x default 60s window)
+            entriesToDelete.push(ip);
+        }
+    }
+
+    entriesToDelete.forEach(ip => rateLimitMap.delete(ip));
+
+    // If still too large, remove oldest entries
+    if (rateLimitMap.size > MAX_MAP_SIZE) {
+        const entries = Array.from(rateLimitMap.entries())
+            .sort((a, b) => a[1].lastReset - b[1].lastReset)
+            .slice(0, rateLimitMap.size - MAX_MAP_SIZE);
+        entries.forEach(([ip]) => rateLimitMap.delete(ip));
+    }
+}, CLEANUP_INTERVAL_MS);
+
+// NOTE: For production with multiple instances, consider Redis or Vercel KV
+// This in-memory solution only works for single-instance deployments
+
 export function rateLimit(ip: string, limit: number = 10, windowMs: number = 60000) {
     const now = Date.now();
     const record = rateLimitMap.get(ip) || { count: 0, lastReset: now };

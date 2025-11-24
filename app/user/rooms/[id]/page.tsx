@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
 interface Params {
   id: string;
@@ -31,7 +32,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
       const today = getISTToday();
       const slotStart = new Date(selectedSlot.start);
       const now = getISTNow();
-      
+
       if (date === today && slotStart < now) {
         setSelectedSlot(null);
       }
@@ -53,7 +54,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     const today = getISTToday();
     const slotStart = new Date(selectedSlot.start);
     const now = getISTNow();
-    
+
     if (date === today && slotStart < now) {
       setError('Cannot book a time slot in the past');
       return;
@@ -103,7 +104,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     const slots = [];
     const today = getISTToday();
     const now = getISTNow();
-    
+
     for (let hour = 8; hour < 20; hour += 1) {
       const start = new Date(date);
       start.setHours(hour, 0, 0, 0);

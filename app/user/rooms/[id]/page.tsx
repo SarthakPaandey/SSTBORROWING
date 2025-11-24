@@ -15,7 +15,7 @@ interface Params {
 export default function RoomBookingPage({ params }: { params: Params }) {
   const router = useRouter();
   const [resource, setResource] = useState<any>(null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getISTToday());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,9 +28,9 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   // Reset selected slot if it becomes invalid when date changes
   useEffect(() => {
     if (selectedSlot) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getISTToday();
       const slotStart = new Date(selectedSlot.start);
-      const now = new Date();
+      const now = getISTNow();
       
       if (date === today && slotStart < now) {
         setSelectedSlot(null);
@@ -50,9 +50,9 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     if (!selectedSlot) return;
 
     // Validate that slot is not in the past
-    const today = new Date().toISOString().split('T')[0];
+    const today = getISTToday();
     const slotStart = new Date(selectedSlot.start);
-    const now = new Date();
+    const now = getISTNow();
     
     if (date === today && slotStart < now) {
       setError('Cannot book a time slot in the past');
@@ -101,8 +101,8 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   // Generate 1-hour slots (8am - 8pm)
   const generateSlots = () => {
     const slots = [];
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
+    const today = getISTToday();
+    const now = getISTNow();
     
     for (let hour = 8; hour < 20; hour += 1) {
       const start = new Date(date);
@@ -146,13 +146,13 @@ export default function RoomBookingPage({ params }: { params: Params }) {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
+              min={getISTToday()}
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm font-medium">Available Slots</label>
-            {date === new Date().toISOString().split('T')[0] && (
+            {date === getISTToday() && (
               <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown</p>
             )}
             {slots.length === 0 ? (

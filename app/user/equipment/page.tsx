@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
 export default function EquipmentPage() {
   const router = useRouter();
@@ -16,8 +17,10 @@ export default function EquipmentPage() {
   const [sportsItems, setSportsItems] = useState<any[]>([]);
   const [labItems, setLabItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // FIX: Use IST timezone for accurate date display
+  const [date, setDate] = useState(getISTToday());
   const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -28,12 +31,14 @@ export default function EquipmentPage() {
 
   // Reset time if it becomes invalid when date changes
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    // FIX: Use IST timezone for accurate today check
+    const today = getISTToday();
     if (date === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
       const selectedTime = new Date();
       selectedTime.setHours(hours, minutes, 0, 0);
-      const now = new Date();
+      // FIX: Use IST time for current time check
+      const now = getISTNow();
 
       // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {
@@ -116,10 +121,11 @@ export default function EquipmentPage() {
     try {
       const start = new Date(`${date}T${startTime}`);
       const startHour = start.getHours();
-      const today = new Date().toISOString().split('T')[0];
+      // FIX: Use IST timezone for today check
+      const today = getISTToday();
 
       // Check if booking is in the past for today
-      if (date === today && start < new Date()) {
+      if (date === today && start < getISTNow()) {
         setError('Pickup time must be in the future for today');
         setLoading(false);
         return;

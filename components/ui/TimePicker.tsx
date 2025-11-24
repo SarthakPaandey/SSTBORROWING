@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
+import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
 interface TimePickerProps {
   date: string; // ISO date string (YYYY-MM-DD)
@@ -31,10 +32,10 @@ export function TimePicker({
     const times: string[] = [];
     const [minHour, minMinute] = minTime.split(':').map(Number);
     const [maxHour, maxMinute] = maxTime.split(':').map(Number);
-    
+
     const minTotalMinutes = minHour * 60 + minMinute;
     const maxTotalMinutes = maxHour * 60 + maxMinute;
-    
+
     // Generate all possible time slots
     for (let totalMinutes = minTotalMinutes; totalMinutes <= maxTotalMinutes; totalMinutes += stepMinutes) {
       const hours = Math.floor(totalMinutes / 60);
@@ -42,25 +43,25 @@ export function TimePicker({
       const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       times.push(timeString);
     }
-    
-    // Filter out past times if date is today
-    const today = new Date().toISOString().split('T')[0];
+
+    // FIX: Filter out past times if date is today (using IST timezone)
+    const today = getISTToday();
     if (date === today) {
-      const now = new Date();
+      const now = getISTNow();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       const currentTotalMinutes = currentHour * 60 + currentMinute;
-      
+
       // Round up to next step
       const roundedCurrentMinutes = Math.ceil(currentTotalMinutes / stepMinutes) * stepMinutes;
-      
+
       return times.filter((time) => {
         const [hour, minute] = time.split(':').map(Number);
         const timeTotalMinutes = hour * 60 + minute;
         return timeTotalMinutes >= roundedCurrentMinutes;
       });
     }
-    
+
     return times;
   }, [date, minTime, maxTime, stepMinutes]);
 

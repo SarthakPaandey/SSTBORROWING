@@ -19,7 +19,7 @@ const TEAM_SPORTS = POLICIES.GROUP_BOOKING_TEAM_SPORTS;
 export default function FacilityBookingPage({ params }: { params: Params }) {
   const router = useRouter();
   const [resource, setResource] = useState<any>(null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getISTToday());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,9 +37,9 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   // Reset selected slot if it becomes invalid when date changes
   useEffect(() => {
     if (selectedSlot) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getISTToday();
       const slotStart = new Date(selectedSlot.start);
-      const now = new Date();
+      const now = getISTNow();
 
       if (date === today && slotStart < now) {
         setSelectedSlot(null);
@@ -65,9 +65,9 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     if (!selectedSlot) return;
 
     // Validate that slot is not in the past
-    const today = new Date().toISOString().split('T')[0];
+    const today = getISTToday();
     const slotStart = new Date(selectedSlot.start);
-    const now = new Date();
+    const now = getISTNow();
 
     if (date === today && slotStart < now) {
       setError('Cannot book a time slot in the past');
@@ -188,8 +188,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   // Generate time slots (6am - 8pm)
   const generateSlots = () => {
     const slots = [];
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
+    const today = getISTToday();
+    const now = getISTNow();
 
     for (let hour = 6; hour < 20; hour++) {
       const start = new Date(date);
@@ -267,29 +267,29 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
+              min={getISTToday()}
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm font-medium">Available Slots</label>
-            {date === new Date().toISOString().split('T')[0] && (
+            {date === getISTToday() && (
               <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown {isTeamSport && '(Group bookings require 3 hours advance notice)'}</p>
             )}
             {slots.length === 0 ? (
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm">
                 <p className="font-semibold text-amber-900 mb-1">No available slots for this date</p>
-                {isTeamSport && date === new Date().toISOString().split('T')[0] && (
+                {isTeamSport && date === getISTToday() && (
                   <p className="text-amber-700 text-xs">
                     Group bookings require 3 hours advance notice. Please select a future date or try again later today when slots become available.
                   </p>
                 )}
-                {!isTeamSport && date === new Date().toISOString().split('T')[0] && (
+                {!isTeamSport && date === getISTToday() && (
                   <p className="text-amber-700 text-xs">
                     All remaining time slots for today have passed. Please select a future date.
                   </p>
                 )}
-                {date !== new Date().toISOString().split('T')[0] && (
+                {date !== getISTToday() && (
                   <p className="text-amber-700 text-xs">
                     This facility may be unavailable on this date. Please try another date.
                   </p>

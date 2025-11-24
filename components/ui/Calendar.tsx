@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
+import { getISTNow } from '@/lib/timezone-client';
 
 export type CalendarEvent = {
   id: string;
@@ -22,7 +23,8 @@ export interface CalendarProps {
 }
 
 export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange, selectedDate }: CalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  // FIX: Use IST timezone for initial month display
+  const [currentDate, setCurrentDate] = useState(getISTNow());
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -52,9 +54,9 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
     });
   };
 
-  // Check if date is today
+  // Check if date is today (using IST timezone)
   const isToday = (date: Date) => {
-    const today = new Date();
+    const today = getISTNow();
     return (
       date.getDate() === today.getDate() &&
       date.getMonth() === today.getMonth() &&
@@ -86,7 +88,8 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
   };
 
   const goToToday = () => {
-    const newDate = new Date();
+    // FIX: Use IST timezone when navigating to today
+    const newDate = getISTNow();
     setCurrentDate(newDate);
     onMonthChange?.(newDate);
   };

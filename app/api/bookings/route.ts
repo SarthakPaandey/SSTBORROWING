@@ -333,7 +333,7 @@ async function postHandler(req: Request) {
           // Atomically increment qtyReserved, but only if enough quantity is available
           const equipItem = await EquipmentItem.findOneAndUpdate(
             {
-              _id: item.id,
+              _id: item.itemId,
               // Ensure available - reserved >= requested quantity
               $expr: {
                 $gte: [
@@ -354,7 +354,7 @@ async function postHandler(req: Request) {
 
           if (!equipItem) {
             // Either item doesn't exist or not enough quantity available
-            const checkItem = await EquipmentItem.findById(item.id).session(session);
+            const checkItem = await EquipmentItem.findById(item.itemId).session(session);
             if (!checkItem) {
               throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
             }
@@ -363,7 +363,7 @@ async function postHandler(req: Request) {
           }
 
           enrichedItems.push({
-            itemId: item.id,
+            itemId: item.itemId,
             name: equipItem.name,
             qty: item.qty,
           });

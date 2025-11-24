@@ -5,7 +5,7 @@ export const bookingSchema = z.object({
     start: z.string().datetime("Invalid start date"),
     end: z.string().datetime("Invalid end date"),
     items: z.array(z.object({
-        id: z.string(),
+        itemId: z.string(),
         qty: z.number().min(1)
     })).optional(),
 }).refine((data: { start: string; end: string }) => {

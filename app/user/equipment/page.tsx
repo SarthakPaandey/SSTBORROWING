@@ -88,7 +88,7 @@ export default function EquipmentPage() {
   const handleBook = async (resourceId: string, kind: string) => {
     const items = Object.entries(selectedItems)
       .filter(([_, qty]) => qty > 0)
-      .map(([itemId, qty]) => ({ id: itemId, qty }));
+      .map(([itemId, qty]) => ({ itemId, qty }));
 
     if (items.length === 0) {
       setError('Please select at least one item');

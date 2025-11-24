@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -16,7 +17,8 @@ export default function LibraryPage() {
   const [nonFictionBooks, setNonFictionBooks] = useState<any[]>([]);
   const [textbooks, setTextbooks] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  // FIX: Use IST timezone for accurate date display
+  const [date, setDate] = useState(getISTToday());
   const [startTime, setStartTime] = useState('09:00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,13 +30,15 @@ export default function LibraryPage() {
 
   // Reset time if it becomes invalid when date changes
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    // FIX: Use IST timezone for accurate today check
+    const today = getISTToday();
     if (date === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
       const selectedTime = new Date();
       selectedTime.setHours(hours, minutes, 0, 0);
-      const now = new Date();
-      
+      // FIX: Use IST time for current time check
+      const now = getISTNow();
+
       // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -42,7 +46,7 @@ export default function LibraryPage() {
         const nextHour = Math.floor(roundedMinutes / 60);
         const nextMinute = roundedMinutes % 60;
         const nextTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
-        
+
         // Ensure it's within allowed hours (9 AM - 8 PM)
         if (nextHour >= 9 && nextHour < 20) {
           setStartTime(nextTime);
@@ -97,10 +101,11 @@ export default function LibraryPage() {
     try {
       const start = new Date(`${date}T${startTime}`);
       const startHour = start.getHours();
-      const today = new Date().toISOString().split('T')[0];
+      // FIX: Use IST timezone for today check
+      const today = getISTToday();
 
-      // Check if booking is in the past for today
-      if (date === today && start < new Date()) {
+      // Check if booking is in the past for today (using IST time)
+      if (date === today && start < getISTNow()) {
         setError('Pickup time must be in the future for today');
         setLoading(false);
         return;
@@ -150,7 +155,7 @@ export default function LibraryPage() {
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          min={new Date().toISOString().split('T')[0]}
+          min={getISTToday()}
           className="mb-2"
         />
         <TimePicker
@@ -169,11 +174,10 @@ export default function LibraryPage() {
         {books.map((book) => (
           <div
             key={book._id}
-            className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors ${
-              selectedBook === book._id
-                ? 'border-accent-blue bg-accent-blue/5'
-                : 'hover:border-gray-300'
-            }`}
+            className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-colors ${selectedBook === book._id
+              ? 'border-accent-blue bg-accent-blue/5'
+              : 'hover:border-gray-300'
+              }`}
             onClick={() => handleBookSelect(book._id)}
           >
             <div>

@@ -135,11 +135,20 @@ export function hasMinimumGap(
 ): boolean {
   const minGapMs = POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES * 60 * 1000;
 
+  // FIX: Convert all dates to IST timezone for proper comparison
+  // This ensures consistent timezone context between existing bookings (from DB)
+  // and new bookings (from frontend)
+  const newStartIST = toIST(new Date(newStart));
+  const newEndIST = toIST(new Date(newEnd));
+
   for (const booking of existingBookings) {
-    const bookingStart = new Date(booking.start).getTime();
-    const bookingEnd = new Date(booking.end).getTime();
-    const newStartTime = new Date(newStart).getTime();
-    const newEndTime = new Date(newEnd).getTime();
+    const bookingStartIST = toIST(new Date(booking.start));
+    const bookingEndIST = toIST(new Date(booking.end));
+
+    const bookingStart = bookingStartIST.getTime();
+    const bookingEnd = bookingEndIST.getTime();
+    const newStartTime = newStartIST.getTime();
+    const newEndTime = newEndIST.getTime();
 
     // Check if new booking is too close to existing booking
     const gapBefore = newStartTime - bookingEnd;
@@ -175,12 +184,13 @@ export function hasConsecutiveBookings(
   newEnd: Date,
   resourceId: string
 ): boolean {
+  // FIX: Convert all dates to IST timezone for proper comparison
   // Get bookings for same resource, sorted by start time
   const sameResourceBookings = existingBookings
     .filter(b => b.resourceId === resourceId)
     .map(b => ({
-      start: new Date(b.start).getTime(),
-      end: new Date(b.end).getTime(),
+      start: toIST(new Date(b.start)).getTime(),
+      end: toIST(new Date(b.end)).getTime(),
     }))
     .sort((a, b) => a.start - b.start);
 
@@ -188,8 +198,8 @@ export function hasConsecutiveBookings(
     return false; // No existing bookings, new one is fine
   }
 
-  const newStartTime = new Date(newStart).getTime();
-  const newEndTime = new Date(newEnd).getTime();
+  const newStartTime = toIST(new Date(newStart)).getTime();
+  const newEndTime = toIST(new Date(newEnd)).getTime();
   const CONSECUTIVE_THRESHOLD = 60000; // 1 minute in milliseconds
 
   // Build the full chain by starting from the new booking and expanding in both directions

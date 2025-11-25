@@ -28,13 +28,18 @@ export async function GET(req: NextRequest) {
         };
 
         // 1. Handle No-Shows
-        // FIX EC-4: Changed logic to use booking END time instead of START + grace
-        // This catches short bookings that finish before the grace period would trigger
-        // Original logic: start < (now - gracePeriod)
-        // New logic: end < now AND status = CONFIRMED AND not checked in
+        // FIX: Check if grace period has passed OR booking has ended
+        // This ensures long bookings are marked no-show early (after 15 mins)
+        // and short bookings are marked immediately after they end
+        const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
+
         const noShowBookings = await Booking.find({
             status: 'CONFIRMED',
-            end: { $lt: now },  // Booking has ended
+            $or: [
+                { start: { $lt: noShowCutoff } }, // Grace period passed
+                { end: { $lt: now } }             // Booking ended (for short bookings)
+            ],
             checkedInAt: null,  // Never checked in
         });
 

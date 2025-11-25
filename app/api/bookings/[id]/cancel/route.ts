@@ -9,6 +9,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { getNow, getDaysAgo } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function PATCH(
   req: NextRequest,
@@ -17,6 +18,11 @@ export async function PATCH(
   try {
     const user = await requireAuth();
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid booking ID format');
+    }
 
     const booking = await Booking.findById(params.id);
 

@@ -413,9 +413,12 @@ async function postHandler(req: Request) {
             const approveToken = generateApprovalToken();
             const rejectToken = generateApprovalToken();
 
-            // Set expiration to 7 days from now
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
+            // FIX: Set expiration to minimum of 7 days or booking start time
+            // This prevents approval tokens from being valid after the booking has started
+            // which would allow approving past bookings
+            const sevenDaysFromNow = new Date();
+            sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+            const expiresAt = new Date(Math.min(sevenDaysFromNow.getTime(), startDate.getTime()));
 
             // Create token documents
             await ApprovalToken.create({

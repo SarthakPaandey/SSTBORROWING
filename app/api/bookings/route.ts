@@ -23,7 +23,7 @@ import { bookingSchema } from '@/lib/validations';
 import { handleApiError, ValidationError, AuthenticationError, NotFoundError, ConflictError } from '@/lib/errors';
 import { BookingQuery } from '@/types/api';
 import { BookingItem } from '@/types/booking';
-import { getNow, getTodayStart, getStartOfDay } from '@/lib/timezone';
+import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
   try {
@@ -118,7 +118,10 @@ async function postHandler(req: Request) {
       const startDate = new Date(start);
       const endDate = new Date(end);
 
-      if (startDate < getNow()) {
+      // FIX: Convert startDate to IST timezone for proper comparison with getNow()
+      // getNow() returns a "zoned" date, so we need to convert startDate to the same format
+      const startDateIST = toIST(startDate);
+      if (startDateIST < getNow()) {
         throw new ValidationError('Cannot book in the past');
       }
 

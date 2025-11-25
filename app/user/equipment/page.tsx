@@ -35,10 +35,10 @@ export default function EquipmentPage() {
     const today = getISTToday();
     if (date === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
-      const selectedTime = new Date();
-      selectedTime.setHours(hours, minutes, 0, 0);
-      // FIX: Use IST time for current time check
+      // FIX: Use IST time for both selectedTime and now to ensure consistent comparison
       const now = getISTNow();
+      const selectedTime = new Date(now);
+      selectedTime.setHours(hours, minutes, 0, 0);
 
       // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {
@@ -219,11 +219,12 @@ export default function EquipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                {/* FIX: Use IST today for accurate minimum date */}
                 <Input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getISTToday()}
                   className="mb-2"
                 />
                 <TimePicker
@@ -311,11 +312,12 @@ export default function EquipmentPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                {/* FIX: Use IST today for accurate minimum date */}
                 <Input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getISTToday()}
                   className="mb-2"
                 />
                 <TimePicker

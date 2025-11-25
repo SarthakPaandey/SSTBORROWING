@@ -106,10 +106,9 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     const now = getISTNow();
 
     for (let hour = 8; hour < 20; hour += 1) {
-      const start = new Date(date);
-      start.setHours(hour, 0, 0, 0);
-      const end = new Date(start);
-      end.setHours(hour + 1, 0, 0, 0);
+      // FIX: Create dates in IST timezone by specifying +05:30 offset
+      const start = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00+05:30`);
+      const end = new Date(`${date}T${(hour + 1).toString().padStart(2, '0')}:00:00+05:30`);
 
       // Filter out past slots if date is today
       if (date === today && start < now) {

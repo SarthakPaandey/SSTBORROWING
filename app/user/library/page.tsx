@@ -99,8 +99,10 @@ export default function LibraryPage() {
     setError('');
 
     try {
-      const start = new Date(`${date}T${startTime}`);
-      const startHour = start.getHours();
+      // FIX: Create date in IST timezone by specifying +05:30 offset
+      // This ensures the backend receives the correct IST time regardless of browser timezone
+      const start = new Date(`${date}T${startTime}:00+05:30`);
+      const startHour = parseInt(startTime.split(':')[0]);
       // FIX: Use IST timezone for today check
       const today = getISTToday();
 

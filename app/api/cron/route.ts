@@ -27,15 +27,18 @@ export async function GET(req: NextRequest) {
             qrTokensDeleted: 0,
         };
 
-        // 1. Handle No-Shows
+        // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
         // FIX: Check if grace period has passed OR booking has ended
         // This ensures long bookings are marked no-show early (after 15 mins)
         // and short bookings are marked immediately after they end
+        // FIX: Only apply to EQUIPMENT and LIBRARY which require physical check-in
+        // Rooms and Facilities do not have a check-in mechanism, so they shouldn't be penalized
         const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
         const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
 
         const noShowBookings = await Booking.find({
             status: 'CONFIRMED',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] }, // Only these types require check-in
             $or: [
                 { start: { $lt: noShowCutoff } }, // Grace period passed
                 { end: { $lt: now } }             // Booking ended (for short bookings)
@@ -44,9 +47,8 @@ export async function GET(req: NextRequest) {
         });
 
         for (const booking of noShowBookings) {
-            // FIX EC-10: Release equipment inventory reservation for no-shows
-            // These bookings reserved inventory that was never picked up
-            if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+            // Release equipment inventory reservation for no-shows
+            if (booking.items) {
                 for (const item of booking.items) {
                     await EquipmentItem.findByIdAndUpdate(
                         item.itemId,
@@ -79,6 +81,22 @@ export async function GET(req: NextRequest) {
 
             results.noShows++;
         }
+
+        // 1.5 Auto-Complete Rooms and Facilities
+        // Since Rooms and Facilities don't have check-in, we auto-complete them when they end
+        const completedBookings = await Booking.updateMany(
+            {
+                status: 'CONFIRMED',
+                kind: { $in: ['ROOM', 'FACILITY'] },
+                end: { $lt: now } // Booking has ended
+            },
+            {
+                $set: { status: 'COMPLETED' }
+            }
+        );
+
+        // We don't track the count of auto-completed bookings in the results object currently,
+        // but we could add it if needed. For now, this is a silent cleanup.
 
         // 2. Handle Expired Pending Bookings
         // If a booking is pending approval for more than 7 days (or start time passed), cancel it

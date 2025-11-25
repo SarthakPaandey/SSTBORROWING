@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Block } from '@/models/Block';
 import { requireAuth } from '@/lib/auth/guards';
-import { handleApiError, NotFoundError } from '@/lib/errors';
+import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
+import mongoose from 'mongoose';
 
 export async function DELETE(
   req: NextRequest,
@@ -11,6 +12,11 @@ export async function DELETE(
   try {
     await requireAuth(['ADMIN']);
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid block ID format');
+    }
 
     const block = await Block.findById(params.id);
 

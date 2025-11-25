@@ -69,53 +69,60 @@ export async function POST(req: NextRequest) {
     // Check if late (using IST timezone)
     const now = getNow();
     const isLate = now > booking.end;
+    const isDamaged = condition === 'damaged';
 
     let penaltyApplied = false;
+    let totalPenaltyPoints = 0;
+    const penaltyReasons: string[] = [];
 
+    // Calculate total penalties (late + damage if applicable)
     if (isLate) {
       // Library books have higher penalty (2 points) vs equipment (1 point)
-      const penaltyPoints = booking.kind === 'LIBRARY'
+      const latePoints = booking.kind === 'LIBRARY'
         ? POLICIES.PENALTY_BOOK_LATE_RETURN
         : POLICIES.PENALTY_LATE_RETURN;
 
-      const penaltyReason = booking.kind === 'LIBRARY'
-        ? 'Late book return (payment required)'
-        : 'Late equipment return';
-
-      // Apply late penalty
-      await Penalty.create([{
-        userId: booking.userId,
-        bookingId: booking.id,
-        points: penaltyPoints,
-        reason: penaltyReason,
-      }], { session });
-
-      const user = await User.findById(booking.userId).session(session);
-      if (user) {
-        user.penaltyPoints += penaltyPoints;
-
-        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          user.suspendedUntil = calculateSuspensionDate();
-        }
-
-        await user.save({ session });
-      }
-
-      penaltyApplied = true;
+      totalPenaltyPoints += latePoints;
+      penaltyReasons.push(booking.kind === 'LIBRARY' ? 'Late book return' : 'Late equipment return');
     }
 
-    // Check for damage (if condition provided)
-    if (condition === 'damaged') {
-      await Penalty.create([{
-        userId: booking.userId,
-        bookingId: booking.id,
-        points: POLICIES.PENALTY_DAMAGE,
-        reason: `Equipment returned damaged: ${notes || 'No details provided'}`,
-      }], { session });
+    if (isDamaged) {
+      totalPenaltyPoints += POLICIES.PENALTY_DAMAGE;
+      penaltyReasons.push(`Returned damaged: ${notes || 'No details provided'}`);
+    }
 
+    // FIX: Apply all penalties in a single user update to prevent race conditions
+    // and ensure accurate penalty point calculation
+    if (totalPenaltyPoints > 0) {
+      // Create penalty records for each type
+      if (isLate) {
+        const latePoints = booking.kind === 'LIBRARY'
+          ? POLICIES.PENALTY_BOOK_LATE_RETURN
+          : POLICIES.PENALTY_LATE_RETURN;
+
+        await Penalty.create([{
+          userId: booking.userId,
+          bookingId: booking.id,
+          points: latePoints,
+          reason: booking.kind === 'LIBRARY' ? 'Late book return (payment required)' : 'Late equipment return',
+        }], { session });
+      }
+
+      if (isDamaged) {
+        await Penalty.create([{
+          userId: booking.userId,
+          bookingId: booking.id,
+          points: POLICIES.PENALTY_DAMAGE,
+          reason: `Equipment returned damaged: ${notes || 'No details provided'}`,
+        }], { session });
+      }
+
+      // FIX: Single atomic update for user penalty points
+      // Previously, if both late AND damaged, we fetched user twice and saved twice
+      // which could cause race conditions and incorrect suspension checks
       const user = await User.findById(booking.userId).session(session);
       if (user) {
-        user.penaltyPoints += POLICIES.PENALTY_DAMAGE;
+        user.penaltyPoints += totalPenaltyPoints;
 
         if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
           user.suspendedUntil = calculateSuspensionDate();

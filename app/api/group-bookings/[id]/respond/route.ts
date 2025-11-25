@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
 import { getNow } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function PATCH(
   req: NextRequest,
@@ -14,6 +15,11 @@ export async function PATCH(
   try {
     const user = await requireAuth(['STUDENT']);
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid group booking ID format');
+    }
 
     const { response } = await req.json(); // 'ACCEPT' or 'REJECT'
 

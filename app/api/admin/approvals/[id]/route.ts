@@ -4,6 +4,7 @@ import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 import { getNow } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function POST(
   req: NextRequest,
@@ -12,6 +13,11 @@ export async function POST(
   try {
     const admin = await requireAuth(['ADMIN']);
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid booking ID format');
+    }
 
     const { action } = await req.json(); // 'approve' or 'reject'
 

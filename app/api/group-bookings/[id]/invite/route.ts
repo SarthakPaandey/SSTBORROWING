@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { getNow, getTodayStart } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function POST(
   req: NextRequest,
@@ -15,6 +16,11 @@ export async function POST(
   try {
     const currentUser = await requireAuth(['STUDENT']);
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid group booking ID format');
+    }
 
     const { email } = await req.json();
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
-import { handleApiError, NotFoundError, ConflictError } from '@/lib/errors';
+import { handleApiError, NotFoundError, ConflictError, ValidationError } from '@/lib/errors';
+import mongoose from 'mongoose';
 
 export async function PUT(
   req: NextRequest,
@@ -12,7 +13,19 @@ export async function PUT(
     await requireAuth(['ADMIN']);
     await connectDB();
 
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid equipment ID format');
+    }
+
     const body = await req.json();
+
+    // FIX: Prevent dangerous field updates that could corrupt inventory
+    // Admin should not be able to directly set qtyReserved as it's managed by the system
+    if ('qtyReserved' in body) {
+      throw new ValidationError('Cannot directly modify reserved quantity. This is managed by the booking system.');
+    }
+
     const item = await EquipmentItem.findByIdAndUpdate(
       params.id,
       body,
@@ -36,6 +49,11 @@ export async function DELETE(
   try {
     await requireAuth(['ADMIN']);
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid equipment ID format');
+    }
 
     // FIX: Prevent equipment deletion if active bookings exist
     // This prevents app crashes when users try to view bookings with deleted equipment

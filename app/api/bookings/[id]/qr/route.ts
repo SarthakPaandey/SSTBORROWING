@@ -7,6 +7,7 @@ import { generateQRToken, generateQRCodeImage } from '@/lib/qr';
 import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { getNow, getTodayStart } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function POST(
   req: NextRequest,
@@ -15,6 +16,11 @@ export async function POST(
   try {
     const user = await requireAuth();
     await connectDB();
+
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid booking ID format');
+    }
 
     const booking = await Booking.findById(params.id);
 

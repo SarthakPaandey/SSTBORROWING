@@ -266,13 +266,14 @@ export function calculateGroupBookingExpiration(
  * Requires at least (cutoff + invitation window) time before booking start
  */
 export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; reason?: string } {
-  const startDate = new Date(bookingStart);
+  // FIX: Convert to IST timezone for proper comparison
+  const startDate = toIST(new Date(bookingStart));
   // Use IST timezone for accurate time-until-start calculation
   const now = getNow();
 
   // Minimum time required = cutoff + invitation window
-  const minRequiredHours = 
-    POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + 
+  const minRequiredHours =
+    POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS +
     POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS;
 
   const minRequiredMs = minRequiredHours * 60 * 60 * 1000;
@@ -295,8 +296,9 @@ export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; r
 export function isGroupBookingExpired(expiresAt: Date, bookingStart: Date): boolean {
   // Use IST timezone for accurate expiration check
   const now = getNow();
-  const expiresDate = new Date(expiresAt);
-  const startDate = new Date(bookingStart);
+  // FIX: Convert to IST timezone for proper comparison
+  const expiresDate = toIST(new Date(expiresAt));
+  const startDate = toIST(new Date(bookingStart));
 
   return now > expiresDate || now >= startDate;
 }

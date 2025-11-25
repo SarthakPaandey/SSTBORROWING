@@ -46,15 +46,26 @@ export async function PATCH(req: NextRequest) {
     await requireAuth(['ADMIN']);
     await connectDB();
 
-    const { id, qtyTotal, qtyAvailable } = await req.json();
+    // FIX: Accept both 'id' and 'itemId' for backwards compatibility
+    const body = await req.json();
+    const itemId = body.id || body.itemId;
+    const { name, qtyTotal, qtyAvailable, safety, restricted } = body;
 
-    const item = await EquipmentItem.findById(id);
+    if (!itemId) {
+      throw new NotFoundError('Item ID is required');
+    }
+
+    const item = await EquipmentItem.findById(itemId);
     if (!item) {
       throw new NotFoundError('Item');
     }
 
+    // Update all provided fields
+    if (name !== undefined) item.name = name;
     if (qtyTotal !== undefined) item.qtyTotal = qtyTotal;
     if (qtyAvailable !== undefined) item.qtyAvailable = qtyAvailable;
+    if (safety !== undefined) item.safety = safety;
+    if (restricted !== undefined) item.restricted = restricted;
 
     await item.save();
 

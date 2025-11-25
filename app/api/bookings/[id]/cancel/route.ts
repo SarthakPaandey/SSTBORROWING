@@ -34,7 +34,13 @@ export async function PATCH(
       throw new ValidationError('Cannot cancel booking in current state');
     }
 
-    if (getNow() > booking.start) {
+    // Check if booking has already started - compare times properly accounting for timezone
+    // booking.start is stored in UTC, getNow() returns IST time
+    // We need to compare them properly by converting both to timestamps
+    const bookingStartTime = new Date(booking.start).getTime();
+    const currentTime = getNow().getTime();
+
+    if (currentTime > bookingStartTime) {
       throw new ValidationError('Cannot cancel past bookings');
     }
 

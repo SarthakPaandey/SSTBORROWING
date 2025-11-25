@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
             noShows: 0,
             expiredPending: 0,
             qrTokensDeleted: 0,
+            libraryNoPickups: 0,
+            overdueCompleted: 0,
         };
 
         // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
@@ -98,7 +100,66 @@ export async function GET(req: NextRequest) {
         // We don't track the count of auto-completed bookings in the results object currently,
         // but we could add it if needed. For now, this is a silent cleanup.
 
-        // 2. Handle Expired Pending Bookings
+        // 2. Handle Library Book Pickup Window
+        // If a library booking isn't picked up within 24 hours, cancel it with penalty
+        const pickupWindowMs = POLICIES.LIBRARY_BOOK_PICKUP_WINDOW_HOURS * 60 * 60 * 1000;
+        const pickupCutoff = new Date(now.getTime() - pickupWindowMs);
+
+        const libraryNoPickupBookings = await Booking.find({
+            kind: 'LIBRARY',
+            status: 'CONFIRMED',  // Was confirmed but never checked in
+            checkedInAt: null,
+            createdAt: { $lt: pickupCutoff }  // Created more than 24 hours ago
+        });
+
+        for (const booking of libraryNoPickupBookings) {
+            // Release book reservation
+            if (booking.items) {
+                for (const item of booking.items) {
+                    await EquipmentItem.findByIdAndUpdate(
+                        item.itemId,
+                        { $inc: { qtyReserved: -item.qty } }
+                    );
+                }
+            }
+
+            booking.status = 'CANCELLED';
+            await booking.save();
+
+            // Apply smaller penalty for not picking up (0.5 points per policy)
+            await Penalty.create({
+                userId: booking.userId,
+                bookingId: booking.id,
+                points: POLICIES.PENALTY_BOOK_NO_PICKUP,
+                reason: 'Library book not picked up within 24 hours',
+            });
+
+            const user = await User.findById(booking.userId);
+            if (user) {
+                user.penaltyPoints += POLICIES.PENALTY_BOOK_NO_PICKUP;
+                if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
+                    user.suspendedUntil = calculateSuspensionDate();
+                }
+                await user.save();
+            }
+
+            results.libraryNoPickups++;
+        }
+
+        // 3. Handle Overdue CHECKED_IN Bookings
+        // Equipment/Library that was checked in but never returned should be flagged
+        // Note: We don't auto-complete these because they need physical return
+        // But we can mark them for admin attention and notify guards
+        const overdueCheckedIn = await Booking.find({
+            status: 'CHECKED_IN',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            end: { $lt: now }  // Past their return time
+        });
+
+        // For now, just count them - penalties are applied when guard processes the return
+        results.overdueCompleted = overdueCheckedIn.length;
+
+        // 4. Handle Expired Pending Bookings
         // If a booking is pending approval for more than 7 days (or start time passed), cancel it
         const expiredPendingBookings = await Booking.find({
             status: 'PENDING',
@@ -125,7 +186,7 @@ export async function GET(req: NextRequest) {
             results.expiredPending++;
         }
 
-        // 3. Cleanup Old QR Tokens
+        // 5. Cleanup Old QR Tokens
         // FIX: Delete QR tokens older than 7 days to prevent database bloat
         // Similar to rate limiter cleanup, this prevents infinite growth of the QRToken collection
         const sevenDaysAgo = getDaysAgo(7);

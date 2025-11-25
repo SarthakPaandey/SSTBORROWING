@@ -7,13 +7,14 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Public routes
-  // Note: /api/approve uses email token auth, /api/cron uses Bearer token auth
-  // Both should be accessible without NextAuth session
+  // Note: /api/approve uses email token auth, /api/cron and /api/group-bookings/expire use Bearer token auth
+  // All should be accessible without NextAuth session
   if (
     path === '/login' ||
     path.startsWith('/api/auth') ||
     path.startsWith('/api/approve') ||
-    path === '/api/cron'
+    path === '/api/cron' ||
+    path === '/api/group-bookings/expire' // Uses CRON_SECRET for auth
   ) {
     return NextResponse.next();
   }

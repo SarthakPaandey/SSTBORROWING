@@ -292,38 +292,43 @@ async function postHandler(req: Request) {
       }
 
       // Check for conflicts with existing bookings
-      const conflictingBookings = await Booking.findOne({
-        resourceId,
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $lt: endDate },
-        end: { $gt: startDate },
-      }).session(session);
-
-      if (conflictingBookings) {
-        throw new ConflictError('Time slot already booked');
-      }
-
-      // Check shared turf conflicts
-      if (resource.sharedGroupId) {
-        const sharedResources = await Resource.find({
-          sharedGroupId: resource.sharedGroupId,
-          _id: { $ne: resourceId },
-        }).session(session);
-
-        const sharedResourceIds = sharedResources.map(r => r.id);
-
-        const sharedConflict = await Booking.findOne({
-          resourceId: { $in: sharedResourceIds },
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+      // FIX: Time-slot conflicts only apply to FACILITY and ROOM bookings
+      // Equipment and Library bookings are constrained by inventory, not time slots
+      // Multiple students can borrow different items from the same equipment resource at the same time
+      if (kind === 'FACILITY' || kind === 'ROOM') {
+        const conflictingBookings = await Booking.findOne({
+          resourceId,
+          status: { $in: ['CONFIRMED', 'PENDING'] },  // Exclude CHECKED_IN - not applicable for rooms/facilities
           start: { $lt: endDate },
           end: { $gt: startDate },
         }).session(session);
 
-        if (sharedConflict) {
-          const conflictResource = sharedResources.find(
-            r => r.id === sharedConflict.resourceId
-          );
-          throw new ConflictError(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
+        if (conflictingBookings) {
+          throw new ConflictError('Time slot already booked');
+        }
+
+        // Check shared turf conflicts (only for facilities like Football/Cricket turf)
+        if (resource.sharedGroupId) {
+          const sharedResources = await Resource.find({
+            sharedGroupId: resource.sharedGroupId,
+            _id: { $ne: resourceId },
+          }).session(session);
+
+          const sharedResourceIds = sharedResources.map(r => r.id);
+
+          const sharedConflict = await Booking.findOne({
+            resourceId: { $in: sharedResourceIds },
+            status: { $in: ['CONFIRMED', 'PENDING'] },
+            start: { $lt: endDate },
+            end: { $gt: startDate },
+          }).session(session);
+
+          if (sharedConflict) {
+            const conflictResource = sharedResources.find(
+              r => r.id === sharedConflict.resourceId
+            );
+            throw new ConflictError(`Cannot book: ${conflictResource?.name} is booked during this time (shared turf rule)`);
+          }
         }
       }
 

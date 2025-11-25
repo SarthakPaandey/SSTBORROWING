@@ -3,6 +3,7 @@ import { GroupBooking } from '@/models/GroupBooking';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate, isGroupBookingExpired } from './policies';
+import { getNow } from './timezone';
 
 /**
  * Recalculate a user's penalty points from the Penalty collection
@@ -37,8 +38,8 @@ export async function recalculatePenaltyPoints(userId: string): Promise<number> 
 
     // Update suspension status based on recalculated points
     if (totalPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-      // Only set suspension if not already suspended
-      if (!user.suspendedUntil || user.suspendedUntil < new Date()) {
+      // Only set suspension if not already suspended (using IST timezone)
+      if (!user.suspendedUntil || user.suspendedUntil < getNow()) {
         user.suspendedUntil = calculateSuspensionDate();
       }
     } else {
@@ -149,7 +150,8 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
  * Expires if: expiresAt has passed OR booking start time has passed
  */
 export async function expireGroupBookings(): Promise<number> {
-  const now = new Date();
+  // FIX: Use IST timezone for accurate expiration checks
+  const now = getNow();
 
   // Find all pending group bookings
   const pendingBookings = await GroupBooking.find({

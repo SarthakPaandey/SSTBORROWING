@@ -264,6 +264,14 @@ async function postHandler(req: Request) {
         end: { $gt: getNow() },
       }).session(session);
 
+      // DEBUG: Log booking times for debugging
+      console.log('[DEBUG] New booking:', { start: startDate.toISOString(), end: endDate.toISOString() });
+      console.log('[DEBUG] Upcoming bookings:', upcomingBookings.map(b => ({
+        start: new Date(b.start).toISOString(),
+        end: new Date(b.end).toISOString(),
+        resource: b.resourceId
+      })));
+
       if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
         throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
       }

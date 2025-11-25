@@ -258,19 +258,14 @@ async function postHandler(req: Request) {
       }
 
       // Check minimum gap between bookings (using IST timezone)
+      // FIX: Exclude LIBRARY bookings from gap validation since they're long-term borrows
+      // (14 days) and don't conflict with time-slot bookings (rooms, facilities, equipment)
       const upcomingBookings = await Booking.find({
         userId: user.id,
+        kind: { $ne: 'LIBRARY' }, // Exclude library bookings from time-slot conflict checks
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: getNow() },
       }).session(session);
-
-      // DEBUG: Log booking times for debugging
-      console.log('[DEBUG] New booking:', { start: startDate.toISOString(), end: endDate.toISOString() });
-      console.log('[DEBUG] Upcoming bookings:', upcomingBookings.map(b => ({
-        start: new Date(b.start).toISOString(),
-        end: new Date(b.end).toISOString(),
-        resource: b.resourceId
-      })));
 
       if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
         throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);

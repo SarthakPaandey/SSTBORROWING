@@ -5,6 +5,7 @@ import { Booking, IBooking } from '@/models/Booking';
 import { Block } from '@/models/Block';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+import { getStartOfDay, getEndOfDay } from '@/lib/timezone';
 
 export async function GET(
   req: NextRequest,
@@ -21,11 +22,10 @@ export async function GET(
       throw new ValidationError('Date parameter required');
     }
 
+    // FIX: Use IST timezone utilities for accurate day boundaries
     const date = new Date(dateStr);
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = getStartOfDay(date);
+    const endOfDay = getEndOfDay(date);
 
     const resource = await Resource.findById(params.id);
     if (!resource) {

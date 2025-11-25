@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { BookOpen, CheckCircle, AlertTriangle, Clock, User } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { getISTNow } from '@/lib/timezone-client';
 import { EnrichedBooking } from '@/types/booking';
 
 export default function GuardLibraryReturnsPage() {
@@ -162,7 +163,8 @@ export default function GuardLibraryReturnsPage() {
 
                     <div className="flex items-center gap-2">
                       <Badge variant="default">Checked In</Badge>
-                      {new Date(booking.end) < new Date() && (
+                      {/* FIX: Use IST time for accurate overdue check */}
+                      {new Date(booking.end) < getISTNow() && (
                         <Badge variant="warning">Overdue</Badge>
                       )}
                     </div>

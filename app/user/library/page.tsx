@@ -34,10 +34,10 @@ export default function LibraryPage() {
     const today = getISTToday();
     if (date === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
-      const selectedTime = new Date();
-      selectedTime.setHours(hours, minutes, 0, 0);
-      // FIX: Use IST time for current time check
+      // FIX: Use IST time for both selectedTime and now to ensure consistent comparison
       const now = getISTNow();
+      const selectedTime = new Date(now);
+      selectedTime.setHours(hours, minutes, 0, 0);
 
       // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {

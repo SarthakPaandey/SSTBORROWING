@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
-import { startOfDay, subDays, format } from 'date-fns';
+import { format } from 'date-fns';
+import { getNow, getStartOfDay, getEndOfDay, getDaysAgo } from '@/lib/timezone';
 
 export async function GET() {
     try {
@@ -15,32 +16,32 @@ export async function GET() {
 
         await connectDB();
 
-        // 1. Bookings by Type (All time or last 30 days? Let's do last 30 days for relevance)
-        const thirtyDaysAgo = subDays(new Date(), 30);
+        // FIX: Use IST timezone for accurate day boundaries
+        // 1. Bookings by Type (Last 30 days)
+        const thirtyDaysAgo = getDaysAgo(30);
 
         const bookingsByType = await Booking.aggregate([
             { $match: { start: { $gte: thirtyDaysAgo } } },
             { $group: { _id: '$kind', count: { $sum: 1 } } }
         ]);
 
-        // 2. Weekly Activity (Last 7 days)
+        // 2. Weekly Activity (Last 7 days) - using IST timezone
         const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const d = subDays(new Date(), 6 - i);
-            return startOfDay(d);
+            return getDaysAgo(6 - i);
         });
 
         const weeklyActivity = await Promise.all(
-            last7Days.map(async (date) => {
-                const nextDay = new Date(date);
-                nextDay.setDate(date.getDate() + 1);
+            last7Days.map(async (dayStart) => {
+                // FIX: Use getEndOfDay for accurate day boundary
+                const dayEnd = getEndOfDay(dayStart);
 
                 const count = await Booking.countDocuments({
-                    start: { $gte: date, $lt: nextDay }
+                    start: { $gte: dayStart, $lte: dayEnd }
                 });
 
                 return {
-                    date: format(date, 'EEE'), // Mon, Tue, etc.
-                    fullDate: format(date, 'yyyy-MM-dd'),
+                    date: format(dayStart, 'EEE'), // Mon, Tue, etc.
+                    fullDate: format(dayStart, 'yyyy-MM-dd'),
                     count
                 };
             })

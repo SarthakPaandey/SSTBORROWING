@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { getISTNow } from '@/lib/timezone-client';
 import { CalendarDays, Clock, MapPin, Package, Filter, Users, User } from 'lucide-react';
 
 import { EnrichedBooking } from '@/types/booking';
@@ -344,9 +345,10 @@ export default function CalendarPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* FIX: Use IST time for accurate upcoming count */}
             <div className="text-2xl font-bold text-accent-blue">
               {bookings.filter(b =>
-                new Date(b.start) > new Date() &&
+                new Date(b.start) > getISTNow() &&
                 ['CONFIRMED', 'PENDING'].includes(b.status)
               ).length}
             </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTime } from '@/lib/utils';
+import { getISTNow } from '@/lib/timezone-client';
 import { QrCode, X, Clock } from 'lucide-react';
 
 export default function BookingsPage() {
@@ -120,12 +121,14 @@ export default function BookingsPage() {
     return <Badge>{status}</Badge>;
   };
 
+  // FIX: Use IST time for accurate upcoming/past booking filtering
+  const now = getISTNow();
   const upcomingBookings = bookings.filter(
-    (b) => ['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) && new Date(b.start) >= new Date()
+    (b) => ['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) && new Date(b.start) >= now
   );
 
   const pastBookings = bookings.filter(
-    (b) => !['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) || new Date(b.start) < new Date()
+    (b) => !['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) || new Date(b.start) < now
   );
 
   if (loading) {

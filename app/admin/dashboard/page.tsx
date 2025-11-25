@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Calendar, Users, AlertTriangle, Clock } from 'lucide-react';
 import { AdminNotifications } from '@/components/AdminNotifications';
 import { DashboardCharts } from '@/components/admin/DashboardCharts';
+import { getTodayStart, getTodayEnd, getNow } from '@/lib/timezone';
 
 export default async function AdminDashboard() {
   const session = await getServerSession(authOptions);
@@ -19,15 +20,14 @@ export default async function AdminDashboard() {
 
   await connectDB();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // FIX: Use IST timezone for accurate "today" boundaries
+  const today = getTodayStart();
+  const tomorrow = getTodayEnd();
 
   // Get stats
   const todayBookings = await Booking.countDocuments({
     status: { $in: ['CONFIRMED', 'CHECKED_IN'] },
-    start: { $gte: today, $lt: tomorrow },
+    start: { $gte: today, $lte: tomorrow },
   });
 
   const pendingApprovals = await Booking.countDocuments({

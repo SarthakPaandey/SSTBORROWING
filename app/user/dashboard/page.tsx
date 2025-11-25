@@ -11,6 +11,7 @@ import { AlertCircle, Calendar, Clock, MapPin, Package, DoorOpen, Users, Calenda
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { getNow } from '@/lib/timezone';
 import { EnrichedBooking } from '@/types/booking';
 
 export default async function UserDashboard() {
@@ -27,11 +28,14 @@ export default async function UserDashboard() {
     redirect('/login');
   }
 
+  // FIX: Use IST timezone for accurate "upcoming" bookings query
+  const now = getNow();
+
   // Get upcoming bookings
   const upcomingBookings = await Booking.find({
     userId: user.id,
     status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
-    start: { $gte: new Date() },
+    start: { $gte: now },
   })
     .sort({ start: 1 })
     .limit(5)
@@ -64,8 +68,9 @@ export default async function UserDashboard() {
                 Penalty Points: {user.penaltyPoints}
               </CardTitle>
             </div>
+            {/* FIX: Use IST timezone for accurate suspension check */}
             <CardDescription className="text-text-muted">
-              {user.suspendedUntil && new Date() < user.suspendedUntil
+              {user.suspendedUntil && now < user.suspendedUntil
                 ? `You are suspended until ${ new Date(user.suspendedUntil).toLocaleDateString() } `
                 : user.penaltyPoints >= 5
                   ? 'You have reached the maximum penalty points. Please contact admin.'

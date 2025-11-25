@@ -1,5 +1,5 @@
 // System-wide booking policies and rules
-import { getNow } from './timezone';
+import { getNow, toIST } from './timezone';
 
 export const POLICIES = {
   // Booking limits
@@ -108,7 +108,11 @@ export function isWithinAdvanceWindow(startDate: Date): boolean {
   const maxDate = getNow();
   maxDate.setDate(maxDate.getDate() + POLICIES.ADVANCE_BOOKING_DAYS);
 
-  return startDate >= now && startDate <= maxDate;
+  // FIX: Convert startDate to IST timezone for proper comparison
+  // Frontend sends UTC dates, but getNow() returns IST "zoned" dates
+  const startDateIST = toIST(startDate);
+
+  return startDateIST >= now && startDateIST <= maxDate;
 }
 
 /**

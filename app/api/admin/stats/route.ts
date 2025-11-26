@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
+import { Penalty } from '@/models/Penalty';
 import { format } from 'date-fns';
 import { getNow, getStartOfDay, getEndOfDay, getDaysAgo } from '@/lib/timezone';
 
@@ -53,10 +54,26 @@ export async function GET() {
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
+        // 4. Penalty Stats
+        const todayStart = getStartOfDay(getNow());
+        const todayEnd = getEndOfDay(getNow());
+        const sevenDaysAgo = getDaysAgo(7);
+
+        const [todayPenalties, last7DaysPenalties, totalPenalties] = await Promise.all([
+            Penalty.countDocuments({ createdAt: { $gte: todayStart, $lte: todayEnd } }),
+            Penalty.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+            Penalty.countDocuments({})
+        ]);
+
         return NextResponse.json({
             bookingsByType: bookingsByType.map(b => ({ name: b._id, value: b.count })),
             weeklyActivity,
-            statusDistribution: statusDistribution.map(s => ({ name: s._id, value: s.count }))
+            statusDistribution: statusDistribution.map(s => ({ name: s._id, value: s.count })),
+            penaltyStats: {
+                today: todayPenalties,
+                last7Days: last7DaysPenalties,
+                total: totalPenalties
+            }
         });
 
     } catch (error) {

@@ -9,9 +9,28 @@ export default function PenaltiesPage() {
   const [penalties, setPenalties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [stats, setStats] = useState({
+    today: 0,
+    last7Days: 0,
+    total: 0
+  });
+
   useEffect(() => {
     fetchPenalties();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/admin/stats');
+      const data = await res.json();
+      if (data.penaltyStats) {
+        setStats(data.penaltyStats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
 
   const fetchPenalties = async () => {
     const res = await fetch('/api/admin/penalties');
@@ -36,6 +55,7 @@ export default function PenaltiesPage() {
 
       if (res.ok) {
         fetchPenalties();
+        fetchStats(); // Refresh stats after waiving
         alert('Penalties waived successfully');
       } else {
         const data = await res.json();
@@ -55,6 +75,40 @@ export default function PenaltiesPage() {
       <div>
         <h1 className="text-3xl font-bold">Penalty Management</h1>
         <p className="text-gray-600">View and manage user penalties</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Today's Penalties
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.today}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Last 7 Days
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.last7Days}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Total Penalties
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

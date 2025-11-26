@@ -378,7 +378,7 @@ export default function BlocksPage() {
               </div>
             )}
 
-            <div className="max-h-64 overflow-y-auto border border-card-border rounded-lg">
+            <div className="max-h-48 overflow-y-auto border border-card-border rounded-lg">
               {resources.map((resource) => (
                 <label
                   key={resource._id}
@@ -412,24 +412,24 @@ export default function BlocksPage() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'MAINTENANCE' })}
-                className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'MAINTENANCE'
-                    ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
-                    : 'border-card-border hover:border-accent-blue/50'
+                className={`p-3 rounded-lg border-2 transition-all ${formData.type === 'MAINTENANCE'
+                  ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
+                  : 'border-card-border hover:border-accent-blue/50'
                   }`}
               >
-                <Wrench className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-                <span className="text-sm font-medium text-text-main">Maintenance</span>
+                <Wrench className="h-5 w-5 text-yellow-500 mx-auto mb-1" />
+                <span className="text-xs font-medium text-text-main">Maintenance</span>
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'EVENT' })}
-                className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'EVENT'
-                    ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
-                    : 'border-card-border hover:border-accent-blue/50'
+                className={`p-3 rounded-lg border-2 transition-all ${formData.type === 'EVENT'
+                  ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
+                  : 'border-card-border hover:border-accent-blue/50'
                   }`}
               >
-                <CalendarIcon className="h-6 w-6 text-badge-blue mx-auto mb-2" />
-                <span className="text-sm font-medium text-text-main">Event</span>
+                <CalendarIcon className="h-5 w-5 text-badge-blue mx-auto mb-1" />
+                <span className="text-xs font-medium text-text-main">Event</span>
               </button>
             </div>
           </div>
@@ -445,7 +445,7 @@ export default function BlocksPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setQuickDate('today')}
-                className="text-xs"
+                className="text-xs h-8"
               >
                 Today
               </Button>
@@ -454,7 +454,7 @@ export default function BlocksPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setQuickDate('tomorrow')}
-                className="text-xs"
+                className="text-xs h-8"
               >
                 Tomorrow
               </Button>
@@ -463,7 +463,7 @@ export default function BlocksPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setQuickDate('weekend')}
-                className="text-xs"
+                className="text-xs h-8"
               >
                 This Weekend
               </Button>

@@ -28,14 +28,14 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className={cn(
-          'relative z-50 w-full rounded-xl card-glow p-6 shadow-2xl',
+          'relative z-50 w-full rounded-xl card-glow shadow-2xl max-h-[90vh] flex flex-col',
           {
             'max-w-sm': size === 'sm',
             'max-w-md': size === 'md',
@@ -45,7 +45,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         )}
       >
         {title && (
-          <div className="mb-4 flex items-center justify-between">
+          <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-card-border">
             <h2 className="text-xl font-semibold text-foreground">{title}</h2>
             <button
               onClick={onClose}
@@ -55,7 +55,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             </button>
           </div>
         )}
-        {children}
+        <div className="p-6 overflow-y-auto flex-1">
+          {children}
+        </div>
       </div>
     </div>
   );

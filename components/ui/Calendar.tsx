@@ -161,13 +161,13 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
       </div>
 
       {/* Calendar Grid */}
-      <div className="rounded-lg border border-card-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-card-border bg-card overflow-hidden shadow-lg">
         {/* Day Headers */}
-        <div className="grid grid-cols-7 border-b border-card-border bg-bg-dark">
+        <div className="grid grid-cols-7 bg-bg-dark">
           {daysOfWeek.map((day) => (
             <div
               key={day}
-              className="p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold text-text-muted"
+              className="p-3 text-center text-sm font-semibold text-text-muted uppercase tracking-wider"
             >
               {day}
             </div>
@@ -175,13 +175,13 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
         </div>
 
         {/* Calendar Days */}
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 gap-px bg-card-border">
           {calendarDays.map((date, index) => {
             if (!date) {
               return (
                 <div
                   key={`empty-${index}`}
-                  className="min-h-[80px] sm:min-h-[100px] border-b border-r border-card-border bg-bg-very-dark/50"
+                  className="min-h-[90px] sm:min-h-[110px] bg-bg-very-dark/30"
                 />
               );
             }
@@ -195,26 +195,27 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
                 key={date.toISOString()}
                 onClick={() => onDateClick?.(date)}
                 className={cn(
-                  'min-h-[80px] sm:min-h-[100px] border-b border-r border-card-border p-1 sm:p-2 transition-all cursor-pointer',
-                  isCurrentDay && 'bg-accent-blue/5 border-accent-blue/50',
-                  isSelectedDay && 'bg-accent-purple-1/10 border-accent-purple-1/50',
-                  !isCurrentDay && !isSelectedDay && 'hover:bg-bg-dark',
+                  'min-h-[90px] sm:min-h-[110px] p-2 transition-all cursor-pointer bg-card relative group',
+                  'hover:bg-accent-blue/5 hover:shadow-inner',
+                  isCurrentDay && 'bg-accent-blue/10',
+                  isSelectedDay && 'bg-accent-purple-1/10',
                   dayEvents.length > 0 && 'font-medium'
                 )}
               >
                 <div className="flex flex-col h-full">
                   <div
                     className={cn(
-                      'text-xs sm:text-sm mb-1 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full',
-                      isCurrentDay && 'bg-accent-blue text-white font-bold',
-                      !isCurrentDay && 'text-text-main'
+                      'text-sm mb-2 w-8 h-8 flex items-center justify-center rounded-full transition-all',
+                      isCurrentDay && 'bg-accent-blue text-white font-bold shadow-lg shadow-accent-blue/30',
+                      isSelectedDay && !isCurrentDay && 'bg-accent-purple-1 text-white',
+                      !isCurrentDay && !isSelectedDay && 'text-text-main group-hover:bg-bg-dark'
                     )}
                   >
                     {date.getDate()}
                   </div>
 
                   {/* Event indicators */}
-                  <div className="flex-1 space-y-0.5 overflow-hidden">
+                  <div className="flex-1 space-y-1 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
@@ -223,7 +224,7 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
                           onEventClick?.(event);
                         }}
                         className={cn(
-                          'text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded truncate text-white cursor-pointer transition-all hover:scale-105',
+                          'text-[10px] sm:text-xs px-2 py-1 rounded-md truncate text-white cursor-pointer transition-all hover:scale-105 hover:shadow-md',
                           getEventTypeColor(event.type)
                         )}
                       >
@@ -231,7 +232,7 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
-                      <div className="text-[9px] sm:text-xs text-text-muted px-1">
+                      <div className="text-xs text-text-muted px-2 font-medium">
                         +{dayEvents.length - 3} more
                       </div>
                     )}

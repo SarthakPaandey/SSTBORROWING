@@ -146,27 +146,32 @@ export default function BlocksPage() {
 
   const setQuickDate = (type: 'today' | 'tomorrow' | 'weekend') => {
     const today = getISTToday();
-    const now = getISTNow();
+
+    // Business hours constants
+    const BUSINESS_START_HOUR = 8;  // 8:00 AM
+    const BUSINESS_END_HOUR = 20;   // 8:00 PM
 
     let startDate = new Date(today);
     let endDate = new Date(today);
 
     if (type === 'today') {
-      startDate.setHours(0, 0, 0);
-      endDate.setHours(23, 59, 59);
+      // Today's business hours: 8 AM - 8 PM
+      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
+      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
     } else if (type === 'tomorrow') {
+      // Tomorrow's business hours: 8 AM - 8 PM
       startDate.setDate(startDate.getDate() + 1);
-      startDate.setHours(8, 0, 0);
+      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
       endDate.setDate(endDate.getDate() + 1);
-      endDate.setHours(20, 0, 0);
+      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
     } else if (type === 'weekend') {
-      // Next Saturday
+      // Next Saturday 8 AM to Sunday 8 PM
       const daysUntilSaturday = (6 - startDate.getDay() + 7) % 7 || 7;
       startDate.setDate(startDate.getDate() + daysUntilSaturday);
-      startDate.setHours(8, 0, 0);
+      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
       // Sunday evening
       endDate.setDate(startDate.getDate() + 1);
-      endDate.setHours(20, 0, 0);
+      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
     }
 
     setFormData({

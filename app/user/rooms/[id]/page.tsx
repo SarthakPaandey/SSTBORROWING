@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Calendar } from '@/components/ui/Calendar';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
@@ -16,8 +17,8 @@ interface Params {
 export default function RoomBookingPage({ params }: { params: Params }) {
   const router = useRouter();
   const [resource, setResource] = useState<any>(null);
-  const [date, setDate] = useState(getISTToday());
-  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(getISTNow());
+  const [selectedStartTime, setSelectedStartTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -25,20 +26,6 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   useEffect(() => {
     fetchResource();
   }, [params.id]);
-
-  // Reset selected slot if it becomes invalid when date changes
-  useEffect(() => {
-    if (selectedSlot) {
-      const today = getISTToday();
-      const slotStart = new Date(selectedSlot.start);
-      const now = getISTNow();
-
-      if (date === today && slotStart < now) {
-        setSelectedSlot(null);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
 
   const fetchResource = async () => {
     const res = await fetch(`/api/resources?type=ROOM`);
@@ -48,14 +35,21 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   };
 
   const handleBook = async () => {
-    if (!selectedSlot) return;
+    if (!selectedStartTime) {
+      setError('Please select a time');
+      return;
+    }
 
     // Validate that slot is not in the past
-    const today = getISTToday();
-    const slotStart = new Date(selectedSlot.start);
-    const now = getISTNow();
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const [hour, minute] = selectedStartTime.split(':').map(Number);
 
-    if (date === today && slotStart < now) {
+    const startDateTime = new Date(`${dateStr}T${selectedStartTime}:00+05:30`);
+    const endDateTime = new Date(startDateTime);
+    endDateTime.setHours(hour + 1, minute, 0); // 1 hour slot
+
+    const now = getISTNow();
+    if (startDateTime < now) {
       setError('Cannot book a time slot in the past');
       return;
     }
@@ -70,8 +64,8 @@ export default function RoomBookingPage({ params }: { params: Params }) {
         body: JSON.stringify({
           resourceId: params.id,
           kind: 'ROOM',
-          start: selectedSlot.start,
-          end: selectedSlot.end,
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString(),
         }),
       });
 
@@ -99,32 +93,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     );
   }
 
-  // Generate 1-hour slots (8am - 8pm)
-  const generateSlots = () => {
-    const slots = [];
-    const today = getISTToday();
-    const now = getISTNow();
-
-    for (let hour = 8; hour < 20; hour += 1) {
-      // FIX: Create dates in IST timezone by specifying +05:30 offset
-      const start = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00+05:30`);
-      const end = new Date(`${date}T${(hour + 1).toString().padStart(2, '0')}:00:00+05:30`);
-
-      // Filter out past slots if date is today
-      if (date === today && start < now) {
-        continue;
-      }
-
-      slots.push({
-        start: start.toISOString(),
-        end: end.toISOString(),
-        label: `${hour}:00 - ${hour + 1}:00`,
-      });
-    }
-    return slots;
-  };
-
-  const slots = generateSlots();
+  const dateStr = selectedDate.toISOString().split('T')[0];
 
   return (
     <div className="space-y-6">
@@ -137,60 +106,49 @@ export default function RoomBookingPage({ params }: { params: Params }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{resource.name}</CardTitle>
+          <CardTitle className="text-2xl">{resource.name}</CardTitle>
+          <p className="text-text-muted">Select a date and time for your booking</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Calendar */}
           <div>
-            <label className="mb-2 block text-sm font-medium">Select Date</label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={getISTToday()}
+            <label className="mb-3 block text-sm font-medium text-text-main">Select Date</label>
+            <Calendar
+              selectedDate={selectedDate}
+              onDateClick={setSelectedDate}
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">Available Slots</label>
-            {date === getISTToday() && (
-              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown</p>
-            )}
-            {slots.length === 0 ? (
-              <p className="text-sm text-text-muted py-4">No available slots for this date</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {slots.map((slot, idx) => (
-                  <Button
-                    key={idx}
-                    variant={selectedSlot?.start === slot.start ? 'default' : 'outline'}
-                    onClick={() => setSelectedSlot(slot)}
-                    size="sm"
-                    className={selectedSlot?.start === slot.start ? 'shadow-lg shadow-accent-blue/30' : ''}
-                  >
-                    {slot.label}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Time Picker */}
+          <TimePicker
+            date={dateStr}
+            value={selectedStartTime}
+            onChange={setSelectedStartTime}
+            minTime="08:00"
+            maxTime="20:00"
+            stepMinutes={60}
+            label="Select Time Slot"
+            helperText="Each booking is for 1 hour"
+          />
 
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
+            <div className="rounded-md bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-600">
               Booking successful! Redirecting...
             </div>
           )}
 
           <Button
             onClick={handleBook}
-            disabled={!selectedSlot || loading}
+            disabled={!selectedStartTime || loading}
             className="w-full"
             size="lg"
+            variant="gradient"
           >
             {loading ? 'Booking...' : 'Confirm Booking'}
           </Button>

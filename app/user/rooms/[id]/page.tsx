@@ -40,8 +40,16 @@ export default function RoomBookingPage({ params }: { params: Params }) {
       return;
     }
 
+    // Helper to get YYYY-MM-DD from Date object in IST
+    const formatISTDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     // Validate that slot is not in the past
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = formatISTDate(selectedDate);
     const [hour, minute] = selectedStartTime.split(':').map(Number);
 
     const startDateTime = new Date(`${dateStr}T${selectedStartTime}:00+05:30`);
@@ -93,7 +101,15 @@ export default function RoomBookingPage({ params }: { params: Params }) {
     );
   }
 
-  const dateStr = selectedDate.toISOString().split('T')[0];
+  // Helper to get YYYY-MM-DD from Date object in IST
+  const formatISTDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const dateStr = formatISTDate(selectedDate);
 
   return (
     <div className="space-y-6">

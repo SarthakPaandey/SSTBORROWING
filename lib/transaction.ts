@@ -25,16 +25,21 @@ export async function withTransaction<T>(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         const session = await mongooseInstance.connection.startSession();
+        let transactionStarted = false;
 
         try {
             session.startTransaction();
+            transactionStarted = true;
 
             const result = await operation(session);
 
             await session.commitTransaction();
             return result;
         } catch (error: unknown) {
-            await session.abortTransaction();
+            // Only abort if transaction was actually started
+            if (transactionStarted && session.inTransaction()) {
+                await session.abortTransaction();
+            }
             lastError = error;
 
             // Check if this is a transient transaction error that we can retry

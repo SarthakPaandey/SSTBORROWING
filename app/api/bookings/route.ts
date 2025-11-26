@@ -106,10 +106,7 @@ async function postHandler(req: Request) {
       // Validate input using Zod
       const validationResult = bookingSchema.safeParse(body);
       if (!validationResult.success) {
-        return NextResponse.json(
-          { error: 'Validation Error', details: validationResult.error.flatten() },
-          { status: 400 }
-        );
+        throw new ValidationError('Validation failed: ' + JSON.stringify(validationResult.error.flatten()));
       }
 
       const { resourceId, start, end, items } = validationResult.data;

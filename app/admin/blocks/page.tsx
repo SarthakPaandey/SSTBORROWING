@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { formatDateTime } from '@/lib/utils';
 import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle, Check, X } from 'lucide-react';
-import { getISTToday, getISTNow } from '@/lib/timezone-client';
+import { getISTTodayStart, getISTNow } from '@/lib/timezone-client';
 
 export default function BlocksPage() {
   const [blocks, setBlocks] = useState<any[]>([]);
@@ -17,12 +18,16 @@ export default function BlocksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<'ALL' | 'MAINTENANCE' | 'EVENT'>('ALL');
   const [selectedResources, setSelectedResources] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
-    start: '',
-    end: '',
-    reason: '',
-    type: 'MAINTENANCE' as 'MAINTENANCE' | 'EVENT',
-  });
+
+  // Split state for better timezone handling
+  const [startDate, setStartDate] = useState<Date>(getISTTodayStart());
+  const [startTime, setStartTime] = useState<string>('08:00');
+  const [endDate, setEndDate] = useState<Date>(getISTTodayStart());
+  const [endTime, setEndTime] = useState<string>('20:00');
+
+  const [reason, setReason] = useState('');
+  const [blockType, setBlockType] = useState<'MAINTENANCE' | 'EVENT'>('MAINTENANCE');
+
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -67,6 +72,19 @@ export default function BlocksPage() {
     setLoading(true);
 
     try {
+      // Construct ISO strings with IST offset
+      // Note: We manually construct the string to ensure +05:30 offset is preserved
+      // regardless of the browser's local timezone
+      const formatDateISO = (date: Date, time: string) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}T${time}:00+05:30`;
+      };
+
+      const startISO = formatDateISO(startDate, startTime);
+      const endISO = formatDateISO(endDate, endTime);
+
       // Create blocks for all selected resources
       const promises = selectedResources.map(resourceId =>
         fetch('/api/admin/blocks', {
@@ -74,10 +92,10 @@ export default function BlocksPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             resourceId,
-            start: formData.start,
-            end: formData.end,
-            reason: formData.reason,
-            type: formData.type,
+            start: startISO,
+            end: endISO,
+            reason: reason,
+            type: blockType,
           }),
         })
       );
@@ -88,12 +106,9 @@ export default function BlocksPage() {
       if (failed.length === 0) {
         setModalOpen(false);
         fetchBlocks();
-        setFormData({
-          start: '',
-          end: '',
-          reason: '',
-          type: 'MAINTENANCE',
-        });
+        // Reset form
+        setReason('');
+        setBlockType('MAINTENANCE');
         setSelectedResources([]);
         alert(`Successfully created ${selectedResources.length} block(s)`);
       } else {
@@ -145,40 +160,41 @@ export default function BlocksPage() {
   };
 
   const setQuickDate = (type: 'today' | 'tomorrow' | 'weekend') => {
-    const today = getISTToday();
+    const today = getISTTodayStart();
 
     // Business hours constants
-    const BUSINESS_START_HOUR = 8;  // 8:00 AM
-    const BUSINESS_END_HOUR = 20;   // 8:00 PM
+    const BUSINESS_START_TIME = '08:00';
+    const BUSINESS_END_TIME = '20:00';
 
-    let startDate = new Date(today);
-    let endDate = new Date(today);
+    let newStartDate = new Date(today);
+    let newEndDate = new Date(today);
 
     if (type === 'today') {
-      // Today's business hours: 8 AM - 8 PM
-      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
-      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
+      // Today 8 AM - 8 PM
+      setStartDate(newStartDate);
+      setStartTime(BUSINESS_START_TIME);
+      setEndDate(newEndDate);
+      setEndTime(BUSINESS_END_TIME);
     } else if (type === 'tomorrow') {
-      // Tomorrow's business hours: 8 AM - 8 PM
-      startDate.setDate(startDate.getDate() + 1);
-      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
-      endDate.setDate(endDate.getDate() + 1);
-      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
-    } else if (type === 'weekend') {
-      // Next Saturday 8 AM to Sunday 8 PM
-      const daysUntilSaturday = (6 - startDate.getDay() + 7) % 7 || 7;
-      startDate.setDate(startDate.getDate() + daysUntilSaturday);
-      startDate.setHours(BUSINESS_START_HOUR, 0, 0);
-      // Sunday evening
-      endDate.setDate(startDate.getDate() + 1);
-      endDate.setHours(BUSINESS_END_HOUR, 0, 0);
-    }
+      // Tomorrow 8 AM - 8 PM
+      newStartDate.setDate(newStartDate.getDate() + 1);
+      newEndDate.setDate(newEndDate.getDate() + 1);
 
-    setFormData({
-      ...formData,
-      start: startDate.toISOString().slice(0, 16),
-      end: endDate.toISOString().slice(0, 16),
-    });
+      setStartDate(newStartDate);
+      setStartTime(BUSINESS_START_TIME);
+      setEndDate(newEndDate);
+      setEndTime(BUSINESS_END_TIME);
+    } else if (type === 'weekend') {
+      // Next Saturday 8 AM - Sunday 8 PM
+      const daysUntilSaturday = (6 - newStartDate.getDay() + 7) % 7 || 7;
+      newStartDate.setDate(newStartDate.getDate() + daysUntilSaturday);
+      newEndDate.setDate(newStartDate.getDate() + 1); // Sunday
+
+      setStartDate(newStartDate);
+      setStartTime(BUSINESS_START_TIME);
+      setEndDate(newEndDate);
+      setEndTime(BUSINESS_END_TIME);
+    }
   };
 
   const filteredBlocks = blocks.filter(block => {
@@ -415,8 +431,8 @@ export default function BlocksPage() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'MAINTENANCE' })}
-                className={`p-3 rounded-lg border-2 transition-all ${formData.type === 'MAINTENANCE'
+                onClick={() => setBlockType('MAINTENANCE')}
+                className={`p-3 rounded-lg border-2 transition-all ${blockType === 'MAINTENANCE'
                   ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
                   : 'border-card-border hover:border-accent-blue/50'
                   }`}
@@ -426,8 +442,8 @@ export default function BlocksPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'EVENT' })}
-                className={`p-3 rounded-lg border-2 transition-all ${formData.type === 'EVENT'
+                onClick={() => setBlockType('EVENT')}
+                className={`p-3 rounded-lg border-2 transition-all ${blockType === 'EVENT'
                   ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
                   : 'border-card-border hover:border-accent-blue/50'
                   }`}
@@ -474,31 +490,47 @@ export default function BlocksPage() {
             </div>
           </div>
 
-          {/* Date/Time Inputs */}
+          {/* Date/Time Inputs - Compact Modern UI */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-main mb-2">
+            {/* Start Date & Time */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-text-main">
                 Start Date & Time <span className="text-danger">*</span>
               </label>
-              <Input
-                type="datetime-local"
-                value={formData.start}
-                onChange={(e) => setFormData({ ...formData, start: e.target.value })}
-                className="text-base"
-                required
+              <DatePicker
+                value={startDate}
+                onChange={setStartDate}
+                minDate={getISTTodayStart()}
+                placeholder="Select start date"
+              />
+              <TimePicker
+                date={startDate.toISOString().split('T')[0]}
+                value={startTime}
+                onChange={setStartTime}
+                minTime="00:00"
+                maxTime="23:45"
+                stepMinutes={15}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-main mb-2">
+            {/* End Date & Time */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-text-main">
                 End Date & Time <span className="text-danger">*</span>
               </label>
-              <Input
-                type="datetime-local"
-                value={formData.end}
-                onChange={(e) => setFormData({ ...formData, end: e.target.value })}
-                className="text-base"
-                required
+              <DatePicker
+                value={endDate}
+                onChange={setEndDate}
+                minDate={startDate}
+                placeholder="Select end date"
+              />
+              <TimePicker
+                date={endDate.toISOString().split('T')[0]}
+                value={endTime}
+                onChange={setEndTime}
+                minTime="00:00"
+                maxTime="23:45"
+                stepMinutes={15}
               />
             </div>
           </div>
@@ -509,8 +541,8 @@ export default function BlocksPage() {
               Reason / Description <span className="text-danger">*</span>
             </label>
             <textarea
-              value={formData.reason}
-              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Annual maintenance, Sports day event"
               className="w-full px-4 py-3 rounded-lg bg-bg-dark border border-card-border text-text-main placeholder:text-text-muted focus:border-accent-blue focus:outline-none resize-none"
               rows={3}

@@ -152,8 +152,7 @@ export default function BlocksPage() {
     let endDate = new Date(today);
 
     if (type === 'today') {
-      startDate = now;
-      endDate = new Date(today);
+      startDate.setHours(0, 0, 0);
       endDate.setHours(23, 59, 59);
     } else if (type === 'tomorrow') {
       startDate.setDate(startDate.getDate() + 1);

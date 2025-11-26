@@ -7,6 +7,7 @@ import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 import { PenaltyQuery } from '@/types/api';
 import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
 import { getNow } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,14 +28,25 @@ export async function GET(req: NextRequest) {
       .lean();
 
     // Populate user details
+    // FIX: Convert string userIds to ObjectIds for proper MongoDB lookup
     const userIds = [...new Set(penalties.map(p => p.userId))];
-    const users = await User.find({ _id: { $in: userIds } }).lean();
-    const userMap = new Map(users.map((u) => [String(u._id), { name: u.name, email: u.email }]));
+    const objectIdUserIds = userIds
+      .filter(id => id && mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+
+    const users = await User.find({ _id: { $in: objectIdUserIds } }).lean();
+
+    // Create a map with both string and ObjectId keys for flexible lookup
+    const userMap = new Map<string, { name: string | null; email: string }>();
+    users.forEach((u) => {
+      const userData = { name: u.name, email: u.email };
+      userMap.set(String(u._id), userData);
+    });
 
     const enrichedPenalties = penalties.map((p) => ({
       ...(p as any),
-      userName: userMap.get(p.userId)?.name || 'Unknown',
-      userEmail: userMap.get(p.userId)?.email || 'N/A',
+      userName: userMap.get(String(p.userId))?.name || 'Unknown',
+      userEmail: userMap.get(String(p.userId))?.email || 'N/A',
     }));
 
     return NextResponse.json({ penalties: enrichedPenalties });

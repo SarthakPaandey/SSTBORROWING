@@ -95,7 +95,7 @@ async function postHandler(req: Request) {
   }
 
   try {
-    return await withTransaction(conn, async (session) => {
+    const transactionResult = await withTransaction(conn, async (session) => {
       const authSession = await getServerSession(authOptions);
       if (!authSession?.user) {
         throw new AuthenticationError();
@@ -400,80 +400,90 @@ async function postHandler(req: Request) {
         qrIssued: false,
       }], { session });
 
-      await session.commitTransaction();
+      // Return booking data for email sending after transaction completes
+      return {
+        booking,
+        requiresApproval,
+        resource,
+        user,
+        startDate,
+        endDate
+      };
+    }); // End of withTransaction - it will auto-commit
 
-      // If approval is required, send emails to admins with approve/reject links
-      // Done after transaction commit to avoid side effects if transaction fails
-      if (requiresApproval) {
-        try {
-          // Get all admin users
-          const admins = await User.find({ role: 'ADMIN' });
-          const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+    // Email sending happens here, AFTER transaction is committed
+    // This prevents transaction rollback if email fails
+    if (transactionResult.requiresApproval) {
+      const { booking, resource, user, startDate, endDate } = transactionResult;
 
-          if (adminEmails.length > 0) {
-            // Generate approval and rejection tokens
-            const approveToken = generateApprovalToken();
-            const rejectToken = generateApprovalToken();
+      try {
+        // Get all admin users
+        const admins = await User.find({ role: 'ADMIN' });
+        const adminEmails = admins.map(admin => admin.email).filter(Boolean);
 
-            // FIX: Set expiration to minimum of 7 days or booking start time
-            // This prevents approval tokens from being valid after the booking has started
-            // which would allow approving past bookings
-            const sevenDaysFromNow = new Date();
-            sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-            const expiresAt = new Date(Math.min(sevenDaysFromNow.getTime(), startDate.getTime()));
+        if (adminEmails.length > 0) {
+          // Generate approval and rejection tokens
+          const approveToken = generateApprovalToken();
+          const rejectToken = generateApprovalToken();
 
-            // Create token documents
-            await ApprovalToken.create({
-              bookingId: booking.id,
-              token: approveToken,
-              action: 'approve',
-              expiresAt,
-            });
+          // FIX: Set expiration to minimum of 7 days or booking start time
+          // This prevents approval tokens from being valid after the booking has started
+          // which would allow approving past bookings
+          const sevenDaysFromNow = new Date();
+          sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+          const expiresAt = new Date(Math.min(sevenDaysFromNow.getTime(), startDate.getTime()));
 
-            await ApprovalToken.create({
-              bookingId: booking.id,
-              token: rejectToken,
-              action: 'reject',
-              expiresAt,
-            });
+          // Create token documents
+          await ApprovalToken.create({
+            bookingId: booking.id,
+            token: approveToken,
+            action: 'approve',
+            expiresAt,
+          });
 
-            // Send email to all admins
-            const emailHTML = generateApprovalEmailHTML(
-              booking.id,
-              resource.name,
-              user.name || user.email.split('@')[0],
-              user.email,
-              formatDateTime(startDate),
-              formatDateTime(endDate),
-              approveToken,
-              rejectToken
-            );
+          await ApprovalToken.create({
+            bookingId: booking.id,
+            token: rejectToken,
+            action: 'reject',
+            expiresAt,
+          });
 
-            await sendEmail({
-              to: adminEmails,
-              subject: `Booking Approval Required: ${resource.name}`,
-              html: emailHTML,
-            });
+          // Send email to all admins
+          const emailHTML = generateApprovalEmailHTML(
+            booking.id,
+            resource.name,
+            user.name || user.email.split('@')[0],
+            user.email,
+            formatDateTime(startDate),
+            formatDateTime(endDate),
+            approveToken,
+            rejectToken
+          );
 
-            // FIX: Track successful email delivery
-            booking.approvalEmailSent = true;
-            booking.approvalEmailSentAt = getNow();
-            await booking.save();
-          }
-        } catch (emailError) {
-          // FIX: Track email failure for debugging and potential retry
-          console.error('Failed to send approval email:', emailError);
-          const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-          booking.approvalEmailSent = false;
-          booking.approvalEmailError = errorMessage;
+          await sendEmail({
+            to: adminEmails,
+            subject: `Booking Approval Required: ${resource.name}`,
+            html: emailHTML,
+          });
+
+          // FIX: Track successful email delivery
+          booking.approvalEmailSent = true;
+          booking.approvalEmailSentAt = getNow();
           await booking.save();
-
-          // Note: Booking is still created successfully, but admins need to be notified via dashboard
         }
-      }
+      } catch (emailError) {
+        // FIX: Track email failure for debugging and potential retry
+        console.error('Failed to send approval email:', emailError);
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+        transactionResult.booking.approvalEmailSent = false;
+        transactionResult.booking.approvalEmailError = errorMessage;
+        await transactionResult.booking.save();
 
-      return NextResponse.json({ booking }, { status: 201 });
-    }); // End of withTransaction
+        // Note: Booking is still created successfully, but admins need to be notified via dashboard
+      }
+    }
+
+    return NextResponse.json({ booking: transactionResult.booking }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

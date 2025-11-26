@@ -30,15 +30,31 @@ export async function GET(req: NextRequest) {
     // Populate user details
     // FIX: Convert string userIds to ObjectIds for proper MongoDB lookup
     const userIds = [...new Set(penalties.map(p => p.userId))];
+
+    // Try both ObjectId and string lookups for better compatibility
     const objectIdUserIds = userIds
       .filter(id => id && mongoose.Types.ObjectId.isValid(id))
       .map(id => new mongoose.Types.ObjectId(id));
 
+    // First try: lookup by ObjectId _id
     const users = await User.find({ _id: { $in: objectIdUserIds } }).lean();
+
+    // Second try: if some users not found, try looking up by string _id as fallback
+    const foundUserIds = new Set(users.map(u => String(u._id)));
+    const missingUserIds = userIds.filter(id => !foundUserIds.has(id));
+
+    let additionalUsers: any[] = [];
+    if (missingUserIds.length > 0) {
+      // Try querying with string IDs directly (in case _id is stored as string)
+      additionalUsers = await User.find({ _id: { $in: missingUserIds } }).lean();
+    }
+
+    // Combine all found users
+    const allUsers = [...users, ...additionalUsers];
 
     // Create a map with both string and ObjectId keys for flexible lookup
     const userMap = new Map<string, { name: string | null; email: string }>();
-    users.forEach((u) => {
+    allUsers.forEach((u) => {
       const userData = { name: u.name, email: u.email };
       userMap.set(String(u._id), userData);
     });

@@ -7,7 +7,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { AlertCircle, Calendar, Clock, MapPin, Package, DoorOpen, Users, CalendarDays } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, MapPin, Package, DoorOpen, Users, CalendarDays, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
@@ -121,8 +121,8 @@ export default async function UserDashboard() {
                 </div>
               </div>
               <div>
-                <CardTitle className="text-base">Borrow Equipment</CardTitle>
-                <CardDescription>Sports & Lab Items</CardDescription>
+                <CardTitle className="text-base">Borrow Items</CardTitle>
+                <CardDescription>Equipment & Books</CardDescription>
               </div>
             </CardHeader>
           </Card>

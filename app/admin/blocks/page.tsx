@@ -8,15 +8,16 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { formatDateTime } from '@/lib/utils';
-import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle, Check, X } from 'lucide-react';
+import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
 export default function BlocksPage() {
   const [blocks, setBlocks] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<'ALL' | 'MAINTENANCE' | 'EVENT'>('ALL');
+  const [selectedResources, setSelectedResources] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    resourceId: '',
     start: '',
     end: '',
     reason: '',
@@ -57,31 +58,49 @@ export default function BlocksPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (selectedResources.length === 0) {
+      alert('Please select at least one resource');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/blocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      // Create blocks for all selected resources
+      const promises = selectedResources.map(resourceId =>
+        fetch('/api/admin/blocks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resourceId,
+            start: formData.start,
+            end: formData.end,
+            reason: formData.reason,
+            type: formData.type,
+          }),
+        })
+      );
 
-      if (res.ok) {
+      const results = await Promise.all(promises);
+      const failed = results.filter(r => !r.ok);
+
+      if (failed.length === 0) {
         setModalOpen(false);
         fetchBlocks();
         setFormData({
-          resourceId: '',
           start: '',
           end: '',
           reason: '',
           type: 'MAINTENANCE',
         });
+        setSelectedResources([]);
+        alert(`Successfully created ${selectedResources.length} block(s)`);
       } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to create block');
+        alert(`Created ${results.length - failed.length} blocks, but ${failed.length} failed`);
       }
     } catch (error) {
-      alert('Failed to create block');
+      alert('Failed to create blocks');
     } finally {
       setLoading(false);
     }
@@ -107,6 +126,55 @@ export default function BlocksPage() {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const toggleResourceSelection = (resourceId: string) => {
+    setSelectedResources(prev =>
+      prev.includes(resourceId)
+        ? prev.filter(id => id !== resourceId)
+        : [...prev, resourceId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedResources.length === resources.length) {
+      setSelectedResources([]);
+    } else {
+      setSelectedResources(resources.map(r => r._id));
+    }
+  };
+
+  const setQuickDate = (type: 'today' | 'tomorrow' | 'weekend') => {
+    const today = getISTToday();
+    const now = getISTNow();
+
+    let startDate = new Date(today);
+    let endDate = new Date(today);
+
+    if (type === 'today') {
+      startDate = now;
+      endDate = new Date(today);
+      endDate.setHours(23, 59, 59);
+    } else if (type === 'tomorrow') {
+      startDate.setDate(startDate.getDate() + 1);
+      startDate.setHours(8, 0, 0);
+      endDate.setDate(endDate.getDate() + 1);
+      endDate.setHours(20, 0, 0);
+    } else if (type === 'weekend') {
+      // Next Saturday
+      const daysUntilSaturday = (6 - startDate.getDay() + 7) % 7 || 7;
+      startDate.setDate(startDate.getDate() + daysUntilSaturday);
+      startDate.setHours(8, 0, 0);
+      // Sunday evening
+      endDate.setDate(startDate.getDate() + 1);
+      endDate.setHours(20, 0, 0);
+    }
+
+    setFormData({
+      ...formData,
+      start: startDate.toISOString().slice(0, 16),
+      end: endDate.toISOString().slice(0, 16),
+    });
   };
 
   const filteredBlocks = blocks.filter(block => {
@@ -198,8 +266,8 @@ export default function BlocksPage() {
                     {filterType === 'MAINTENANCE'
                       ? 'Schedule maintenance windows for facilities and equipment'
                       : filterType === 'EVENT'
-                      ? 'Block resources for special events'
-                      : 'Create blocks to manage resource availability'}
+                        ? 'Block resources for special events'
+                        : 'Create blocks to manage resource availability'}
                   </p>
                   <Button onClick={() => setModalOpen(true)} variant="gradient" className="btn-ripple">
                     <Plus className="mr-2 h-5 w-5" />
@@ -265,43 +333,89 @@ export default function BlocksPage() {
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedResources([]);
+        }}
         title="Create Resource Block"
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Resource Multi-Select */}
           <div>
-            <label className="block text-sm font-medium text-text-main mb-2">
-              Resource <span className="text-danger">*</span>
-            </label>
-            <select
-              value={formData.resourceId}
-              onChange={(e) => setFormData({ ...formData, resourceId: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-bg-dark border border-card-border text-text-main focus:border-accent-blue focus:outline-none"
-              required
-            >
-              <option value="">Select resource</option>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-text-main">
+                Resources <span className="text-danger">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAll}
+                  className="text-xs"
+                >
+                  {selectedResources.length === resources.length ? (
+                    <>
+                      <X className="h-3 w-3 mr-1" />
+                      Deselect All
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      Select All ({resources.length})
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {selectedResources.length > 0 && (
+              <div className="mb-3 p-3 bg-accent-blue/10 border border-accent-blue/30 rounded-lg">
+                <p className="text-sm text-accent-blue font-medium">
+                  {selectedResources.length} resource{selectedResources.length !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+            )}
+
+            <div className="max-h-64 overflow-y-auto border border-card-border rounded-lg">
               {resources.map((resource) => (
-                <option key={resource._id} value={resource._id}>
-                  {resource.name} ({resource.type})
-                </option>
+                <label
+                  key={resource._id}
+                  className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-bg-dark ${selectedResources.includes(resource._id) ? 'bg-accent-blue/10' : ''
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedResources.includes(resource._id)}
+                    onChange={() => toggleResourceSelection(resource._id)}
+                    className="w-4 h-4 rounded border-card-border text-accent-blue focus:ring-accent-blue"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-main">{resource.name}</p>
+                    <p className="text-xs text-text-muted">{resource.type}</p>
+                  </div>
+                  {selectedResources.includes(resource._id) && (
+                    <Check className="h-4 w-4 text-accent-blue" />
+                  )}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
+          {/* Block Type */}
           <div>
-            <label className="block text-sm font-medium text-text-main mb-2">
+            <label className="block text-sm font-medium text-text-main mb-3">
               Block Type <span className="text-danger">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'MAINTENANCE' })}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.type === 'MAINTENANCE'
-                    ? 'border-accent-blue bg-accent-blue/10'
+                className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'MAINTENANCE'
+                    ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
                     : 'border-card-border hover:border-accent-blue/50'
-                }`}
+                  }`}
               >
                 <Wrench className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
                 <span className="text-sm font-medium text-text-main">Maintenance</span>
@@ -309,11 +423,10 @@ export default function BlocksPage() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'EVENT' })}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.type === 'EVENT'
-                    ? 'border-accent-blue bg-accent-blue/10'
+                className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'EVENT'
+                    ? 'border-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/20'
                     : 'border-card-border hover:border-accent-blue/50'
-                }`}
+                  }`}
               >
                 <CalendarIcon className="h-6 w-6 text-badge-blue mx-auto mb-2" />
                 <span className="text-sm font-medium text-text-main">Event</span>
@@ -321,30 +434,72 @@ export default function BlocksPage() {
             </div>
           </div>
 
+          {/* Quick Date Selection */}
           <div>
             <label className="block text-sm font-medium text-text-main mb-2">
-              Start Date & Time <span className="text-danger">*</span>
+              Quick Select
             </label>
-            <Input
-              type="datetime-local"
-              value={formData.start}
-              onChange={(e) => setFormData({ ...formData, start: e.target.value })}
-              required
-            />
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDate('today')}
+                className="text-xs"
+              >
+                Today
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDate('tomorrow')}
+                className="text-xs"
+              >
+                Tomorrow
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickDate('weekend')}
+                className="text-xs"
+              >
+                This Weekend
+              </Button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-2">
-              End Date & Time <span className="text-danger">*</span>
-            </label>
-            <Input
-              type="datetime-local"
-              value={formData.end}
-              onChange={(e) => setFormData({ ...formData, end: e.target.value })}
-              required
-            />
+          {/* Date/Time Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-main mb-2">
+                Start Date & Time <span className="text-danger">*</span>
+              </label>
+              <Input
+                type="datetime-local"
+                value={formData.start}
+                onChange={(e) => setFormData({ ...formData, start: e.target.value })}
+                className="text-base"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-main mb-2">
+                End Date & Time <span className="text-danger">*</span>
+              </label>
+              <Input
+                type="datetime-local"
+                value={formData.end}
+                onChange={(e) => setFormData({ ...formData, end: e.target.value })}
+                className="text-base"
+                required
+              />
+            </div>
           </div>
 
+          {/* Reason */}
           <div>
             <label className="block text-sm font-medium text-text-main mb-2">
               Reason / Description <span className="text-danger">*</span>
@@ -359,20 +514,32 @@ export default function BlocksPage() {
             />
           </div>
 
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-            <div className="flex items-start gap-2">
+          {/* Warning */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-text-main">
-                This will prevent new bookings during the specified time period. Existing bookings will not be affected.
-              </p>
+              <div>
+                <p className="text-sm font-medium text-text-main mb-1">
+                  {selectedResources.length > 1
+                    ? `This will block ${selectedResources.length} resources`
+                    : 'This will prevent new bookings'}
+                </p>
+                <p className="text-xs text-text-muted">
+                  during the specified time period. Existing bookings will not be affected.
+                </p>
+              </div>
             </div>
           </div>
 
+          {/* Actions */}
           <div className="flex gap-3">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setModalOpen(false)}
+              onClick={() => {
+                setModalOpen(false);
+                setSelectedResources([]);
+              }}
               className="flex-1"
               disabled={loading}
             >
@@ -380,11 +547,11 @@ export default function BlocksPage() {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || selectedResources.length === 0}
               variant="gradient"
               className="flex-1 btn-ripple"
             >
-              {loading ? 'Creating...' : 'Create Block'}
+              {loading ? 'Creating...' : `Create ${selectedResources.length > 1 ? `${selectedResources.length} Blocks` : 'Block'}`}
             </Button>
           </div>
         </form>

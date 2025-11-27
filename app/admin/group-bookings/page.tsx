@@ -150,7 +150,7 @@ export default function AdminGroupBookingsPage() {
       </div>
 
       {/* Filters */}
-      <Tabs defaultValue="all" onValueChange={setFilter}>
+      <Tabs value={filter} onValueChange={setFilter}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="PENDING_CONFIRMATIONS">Pending</TabsTrigger>
@@ -169,137 +169,137 @@ export default function AdminGroupBookingsPage() {
               </Card>
             ) : (
               groupBookings.map((gb) => (
-              <Card key={gb._id} className="border-l-4 border-l-accent-blue">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{gb.resourceName}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
-                        <MapPin className="h-4 w-4" />
-                        {gb.resourceLocation}
-                      </CardDescription>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {getStatusBadge(gb.status)}
-                      {gb.status === 'PENDING_CONFIRMATIONS' && (
-                        <Badge variant="warning" className="text-xs">
-                          <Clock className="mr-1 h-3 w-3" />
-                          {getTimeRemaining(gb.expiresAt)}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Booking Details */}
-                  <div className="grid md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <span className="text-sm text-text-muted">Organizer</span>
-                      <p className="font-medium flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-accent-blue" />
-                        {gb.organizerName}
-                      </p>
-                      <p className="text-sm text-text-muted">{gb.organizerEmail}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-text-muted">Booking Time</span>
-                      <p className="font-medium flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-accent-blue" />
-                        {gb.bookingStart ? formatDate(gb.bookingStart) : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-text-muted">Confirmations</span>
-                      <p className="font-medium flex items-center gap-2">
-                        <Users className="h-4 w-4 text-accent-blue" />
-                        {gb.confirmedCount} / {gb.requiredMinimum} required
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-text-muted">Created</span>
-                      <p className="font-medium">{formatDate(gb.createdAt)}</p>
-                    </div>
-                  </div>
-
-                  {/* Members List */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Team Members ({gb.members.length + 1} total)
-                    </h4>
-                    <div className="space-y-2">
-                      {/* Organizer */}
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          <div>
-                            <p className="font-medium text-sm">{gb.organizerName}</p>
-                            <p className="text-xs text-text-muted">{gb.organizerEmail}</p>
-                          </div>
-                        </div>
-                        <Badge variant="default" className="text-xs">Organizer</Badge>
+                <Card key={gb._id} className="border-l-4 border-l-accent-blue">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{gb.resourceName}</CardTitle>
+                        <CardDescription className="flex items-center gap-2 mt-1">
+                          <MapPin className="h-4 w-4" />
+                          {gb.resourceLocation}
+                        </CardDescription>
                       </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {getStatusBadge(gb.status)}
+                        {gb.status === 'PENDING_CONFIRMATIONS' && (
+                          <Badge variant="warning" className="text-xs">
+                            <Clock className="mr-1 h-3 w-3" />
+                            {getTimeRemaining(gb.expiresAt)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
 
-                      {/* Other Members */}
-                      {gb.members.map((member: any, index: number) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
+                  <CardContent className="space-y-4">
+                    {/* Booking Details */}
+                    <div className="grid md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <span className="text-sm text-text-muted">Organizer</span>
+                        <p className="font-medium flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-accent-blue" />
+                          {gb.organizerName}
+                        </p>
+                        <p className="text-sm text-text-muted">{gb.organizerEmail}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-text-muted">Booking Time</span>
+                        <p className="font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-accent-blue" />
+                          {gb.bookingStart ? formatDate(gb.bookingStart) : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-text-muted">Confirmations</span>
+                        <p className="font-medium flex items-center gap-2">
+                          <Users className="h-4 w-4 text-accent-blue" />
+                          {gb.confirmedCount} / {gb.requiredMinimum} required
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-text-muted">Created</span>
+                        <p className="font-medium">{formatDate(gb.createdAt)}</p>
+                      </div>
+                    </div>
+
+                    {/* Members List */}
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Team Members ({gb.members.length + 1} total)
+                      </h4>
+                      <div className="space-y-2">
+                        {/* Organizer */}
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                           <div className="flex items-center gap-3">
-                            {getMemberStatusIcon(member.status)}
+                            <CheckCircle className="h-4 w-4 text-green-600" />
                             <div>
-                              <p className="font-medium text-sm">{member.userName}</p>
-                              <p className="text-xs text-text-muted">{member.email}</p>
+                              <p className="font-medium text-sm">{gb.organizerName}</p>
+                              <p className="text-xs text-text-muted">{gb.organizerEmail}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <Badge
-                              variant={
-                                member.status === 'CONFIRMED'
-                                  ? 'success'
-                                  : member.status === 'REJECTED'
-                                  ? 'destructive'
-                                  : 'warning'
-                              }
-                              className="text-xs"
-                            >
-                              {member.status}
-                            </Badge>
-                            {member.respondedAt && (
-                              <p className="text-xs text-text-muted mt-1">
-                                {formatDate(member.respondedAt)}
-                              </p>
-                            )}
-                          </div>
+                          <Badge variant="default" className="text-xs">Organizer</Badge>
                         </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  {/* Additional Info */}
-                  {gb.status === 'PENDING_CONFIRMATIONS' && (
-                    <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm">
-                      <p className="font-semibold text-yellow-800 mb-1">
-                        <AlertCircle className="inline h-4 w-4 mr-1" />
-                        Waiting for confirmations
-                      </p>
-                      <p className="text-yellow-700">
-                        {gb.confirmedCount} of {gb.requiredMinimum} minimum members confirmed.
-                        Expires: {formatDate(gb.expiresAt)}
-                      </p>
+                        {/* Other Members */}
+                        {gb.members.map((member: any, index: number) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
+                            <div className="flex items-center gap-3">
+                              {getMemberStatusIcon(member.status)}
+                              <div>
+                                <p className="font-medium text-sm">{member.userName}</p>
+                                <p className="text-xs text-text-muted">{member.email}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <Badge
+                                variant={
+                                  member.status === 'CONFIRMED'
+                                    ? 'success'
+                                    : member.status === 'REJECTED'
+                                      ? 'destructive'
+                                      : 'warning'
+                                }
+                                className="text-xs"
+                              >
+                                {member.status}
+                              </Badge>
+                              {member.respondedAt && (
+                                <p className="text-xs text-text-muted mt-1">
+                                  {formatDate(member.respondedAt)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  )}
 
-                  {gb.status === 'CONFIRMED' && (
-                    <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
-                      <CheckCircle className="inline h-4 w-4 mr-1" />
-                      Group booking confirmed with {gb.confirmedCount} members
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    {/* Additional Info */}
+                    {gb.status === 'PENDING_CONFIRMATIONS' && (
+                      <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm">
+                        <p className="font-semibold text-yellow-800 mb-1">
+                          <AlertCircle className="inline h-4 w-4 mr-1" />
+                          Waiting for confirmations
+                        </p>
+                        <p className="text-yellow-700">
+                          {gb.confirmedCount} of {gb.requiredMinimum} minimum members confirmed.
+                          Expires: {formatDate(gb.expiresAt)}
+                        </p>
+                      </div>
+                    )}
+
+                    {gb.status === 'CONFIRMED' && (
+                      <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                        <CheckCircle className="inline h-4 w-4 mr-1" />
+                        Group booking confirmed with {gb.confirmedCount} members
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               ))
             )}
           </TabsContent>

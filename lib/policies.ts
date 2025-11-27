@@ -46,15 +46,16 @@ export const POLICIES = {
   QR_VALIDITY_AFTER_START: 15,
   QR_EQUIPMENT_PICKUP_WINDOW: 10, // QR expires 10 min after generation
 
-  // Penalties
-  PENALTY_NO_SHOW: 1,
-  PENALTY_LATE_RETURN: 1,
-  PENALTY_DAMAGE: 2,
-  PENALTY_CANCELLATION: 0.25, // Penalty for any cancellation
-  PENALTY_LATE_CANCELLATION_POINTS: 0.5,
-  PENALTY_BOOK_LATE_RETURN: 2, // 2 points for late book return (+ payment)
-  PENALTY_BOOK_NO_PICKUP: 0.5, // 0.5 points if student doesn't pick up book within 24h
-  PENALTY_THRESHOLD_FOR_SUSPENSION: 5,
+  // FIX EC-36: Penalties (integers to avoid float precision drift)
+  // System uses 4x multiplier: 0.25 points = 1, 0.5 points = 2, 1 point = 4, 2 points = 8
+  PENALTY_NO_SHOW: 4,          // 1 point
+  PENALTY_LATE_RETURN: 4,      // 1 point
+  PENALTY_DAMAGE: 8,           // 2 points
+  PENALTY_CANCELLATION: 1,     // 0.25 points
+  PENALTY_LATE_CANCELLATION_POINTS: 2, // 0.5 points (not used, kept for reference)
+  PENALTY_BOOK_LATE_RETURN: 8, // 2 points (+ payment required)
+  PENALTY_BOOK_NO_PICKUP: 2,   // 0.5 points
+  PENALTY_THRESHOLD_FOR_SUSPENSION: 20, // 5 points (5 x 4)
   SUSPENSION_DAYS: 7,
 
   // Special rules

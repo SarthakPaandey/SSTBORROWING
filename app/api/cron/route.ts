@@ -166,11 +166,11 @@ export async function GET(req: NextRequest) {
         }
 
         // 5. Cleanup Old QR Tokens
-        // FIX: Delete QR tokens older than 7 days to prevent database bloat
-        // Similar to rate limiter cleanup, this prevents infinite growth of the QRToken collection
-        const sevenDaysAgo = getDaysAgo(7);
+        // FIX EC-34: Delete QR tokens older than 1 day (they expire in 10 minutes anyway)
+        // Previously was 7 days, causing massive buildup of expired tokens
+        const oneDayAgo = getDaysAgo(1);
         const deleteResult = await QRToken.deleteMany({
-            createdAt: { $lt: sevenDaysAgo }
+            createdAt: { $lt: oneDayAgo }
         });
         results.qrTokensDeleted = deleteResult.deletedCount || 0;
 

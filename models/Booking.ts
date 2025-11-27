@@ -65,7 +65,20 @@ const BookingSchema = new Schema<IBooking>(
       enum: ['FACILITY', 'ROOM', 'EQUIPMENT', 'LIBRARY'],
       required: true,
     },
-    items: [BookingItemSchema],
+    items: {
+      type: [BookingItemSchema],
+      // FIX EC-41: Prevent empty items array for equipment/library bookings
+      validate: {
+        validator: function (this: IBooking, items: any[]) {
+          // Only validate if kind is EQUIPMENT or LIBRARY
+          if (this.kind === 'EQUIPMENT' || this.kind === 'LIBRARY') {
+            return items && items.length > 0;
+          }
+          return true; // FACILITY and ROOM don't need items
+        },
+        message: 'Equipment and Library bookings must have at least one item'
+      }
+    },
     start: { type: Date, required: true },
     end: { type: Date, required: true },
     status: {

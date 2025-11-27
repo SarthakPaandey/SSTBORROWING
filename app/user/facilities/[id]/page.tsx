@@ -80,7 +80,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     // For team sports, validate group booking requirements
     if (isTeamSport) {
       const validEmails = memberEmails.filter(email => email.trim() !== '');
-      if (validEmails.length < 5) {
+      if (validEmails.length < 1) {
         setError('Please provide at least 1 friend email (2 total including you)');
         return;
       }

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       items.map(async (item) => {
         const itemObj = item.toObject();
         const availableNow = await getAvailableQuantity(
-          item._id.toString(),
+          String(item._id),
           start,
           end,
           item.qtyTotal

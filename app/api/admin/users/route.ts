@@ -1,8 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
+import { Penalty } from '@/models/Penalty';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+
+export async function GET(req: NextRequest) {
+    try {
+        await requireAuth(['ADMIN']);
+        await connectDB();
+
+        const { searchParams } = new URL(req.url);
+        const query = searchParams.get('q');
+
+        if (!query || query.trim().length < 2) {
+            return NextResponse.json({ users: [] });
+        }
+
+        // Search by name or email (case-insensitive)
+        const users = await User.find({
+            $or: [
+                { name: { $regex: query, $options: 'i' } },
+                { email: { $regex: query, $options: 'i' } },
+            ],
+        })
+            .select('name email role penaltyPoints blocked blockedAt')
+            .limit(20)
+            .lean();
+
+        // Get penalty counts for each user
+        const usersWithPenalties = await Promise.all(
+            users.map(async (user) => {
+                const activePenalties = await Penalty.countDocuments({
+                    userId: user._id,
+                    waivedBy: null,
+                });
+
+                return {
+                    ...user,
+                    _id: String(user._id),
+                    activePenaltyCount: activePenalties,
+                };
+            })
+        );
+
+        return NextResponse.json({ users: usersWithPenalties });
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {

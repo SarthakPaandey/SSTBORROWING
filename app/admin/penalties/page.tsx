@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatDate } from '@/lib/utils';
+import { Search, Shield, Ban, CheckCircle2 } from 'lucide-react';
 
 type FilterStatus = 'all' | 'active' | 'waived';
 type FilterPeriod = 'all' | 'today' | 'week' | 'month';
@@ -17,6 +18,11 @@ export default function PenaltiesPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // User search states
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     fetchPenalties();
@@ -148,6 +154,37 @@ export default function PenaltiesPage() {
     }
   };
 
+  const handleUserSearch = async () => {
+    if (!userSearchQuery.trim() || userSearchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(userSearchQuery)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.users || []);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('User search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleUserSearch();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -174,28 +211,116 @@ export default function PenaltiesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Penalty Management</h1>
-        <p className="text-gray-600">View and manage user penalties</p>
+        <h1 className="text-3xl font-bold">User & Penalty Management</h1>
+        <p className="text-gray-600">Search and manage users, view penalties</p>
       </div>
 
-      {/* Filter Controls */}
+      {/* User Search Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-accent-blue" />
+            User Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Search users by name or email..."
+              value={userSearchQuery}
+              onChange={(e) => setUserSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-card-border rounded-lg bg-bg-dark text-text-main placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all"
+            />
+          </div>
+
+          {searching && (
+            <p className="text-sm text-text-muted">Searching...</p>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {searchResults.map((user) => (
+                <div
+                  key={user._id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-card-border bg-card hover:bg-accent-blue/5 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-text-main">{user.name}</p>
+                      <span className="text-xs text-text-muted">
+                        ({user.role})
+                      </span>
+                      {user.blocked && (
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white flex items-center gap-1">
+                          <Ban className="h-3 w-3" />
+                          BLOCKED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-text-muted">{user.email}</p>
+                    {user.activePenaltyCount > 0 && (
+                      <p className="text-xs text-warning mt-1">
+                        {user.activePenaltyCount} active {user.activePenaltyCount === 1 ? 'penalty' : 'penalties'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {user.blocked ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleBlockUser(user._id, 'unblock')}
+                        className="flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Unblock
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleBlockUser(user._id, 'block')}
+                        className="flex items-center gap-1"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Block
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {userSearchQuery.trim().length >= 2 && searchResults.length === 0 && !searching && (
+            <p className="text-center text-text-muted py-4">No users found matching "{userSearchQuery}"</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Penalty Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Penalty Filters</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search by name or email
+              Search penalties by user name or email
             </label>
-            <input
-              type="text"
-              placeholder="Search user..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Search user..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-card-border rounded-lg bg-bg-dark text-text-main placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all"
+              />
+            </div>
           </div>
 
           {/* Filter Buttons */}

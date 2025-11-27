@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
   // All should be accessible without NextAuth session
   if (
     path === '/login' ||
+    path === '/blocked' ||
     path.startsWith('/api/auth') ||
     path.startsWith('/api/approve') ||
     path === '/api/cron' ||

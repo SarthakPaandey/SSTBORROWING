@@ -82,6 +82,11 @@ export const authOptions: AuthOptions = {
           });
         }
 
+        // Check if user is blocked
+        if (dbUser.blocked) {
+          return '/blocked'; // Redirect to blocked page
+        }
+
         user.id = dbUser.id;
         user.role = dbUser.role;
 

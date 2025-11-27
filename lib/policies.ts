@@ -69,8 +69,8 @@ export const POLICIES = {
 
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
-  GROUP_BOOKING_INVITATION_EXPIRY_HOURS: 2, // Friends must confirm within 2 hours
-  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 1, // Group must be finalized at least 1 hour before booking start
+  GROUP_BOOKING_INVITATION_EXPIRY_HOURS: 0.5, // Friends must confirm within 30 minutes
+  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 0.5, // Group must be finalized at least 30 minutes before booking start
   GROUP_BOOKING_TEAM_SPORTS: ['Main Turf', 'Basketball Court', 'Volleyball Court'], // Sports that require groups
 } as const;
 

@@ -254,7 +254,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                     Group Booking Required (Minimum 6 people)
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
-                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 3 hours in advance. Friends have 2 hours to confirm. All members share penalties for no-shows.
+                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 1 hour in advance. Friends have 30 minutes to confirm. All members share penalties for no-shows.
                   </p>
                 </div>
               </div>
@@ -274,14 +274,14 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
           <div>
             <label className="mb-2 block text-sm font-medium">Available Slots</label>
             {date === getISTToday() && (
-              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown {isTeamSport && '(Group bookings require 3 hours advance notice)'}</p>
+              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown {isTeamSport && '(Group bookings require 1 hour advance notice)'}</p>
             )}
             {slots.length === 0 ? (
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm">
                 <p className="font-semibold text-amber-900 mb-1">No available slots for this date</p>
                 {isTeamSport && date === getISTToday() && (
                   <p className="text-amber-700 text-xs">
-                    Group bookings require 3 hours advance notice. Please select a future date or try again later today when slots become available.
+                    Group bookings require 1 hour advance notice. Please select a future date or try again later today when slots become available.
                   </p>
                 )}
                 {!isTeamSport && date === getISTToday() && (

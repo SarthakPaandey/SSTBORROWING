@@ -106,26 +106,18 @@ export async function POST(
       throw new ConflictError('QR code generation limit reached. Maximum 2 QR codes per day per booking.');
     }
 
-    // Generate new QR token (equipment only)
-    const expiryMinutes = POLICIES.QR_EQUIPMENT_PICKUP_WINDOW;
+    // Generate new QR token (equipment/library)
+    const expiryMinutes = POLICIES.QR_EQUIPMENT_PICKUP_WINDOW; // 10 minutes
 
     const token = generateQRToken(
       params.id,
       user.id,
-      Math.max(expiryMinutes, 10)
+      expiryMinutes
     );
 
-    // FIX EC-8: Dynamic QR expiration to handle edge cases
-    // Issue 1: Short bookings - QR shouldn't be valid after booking ends
-    // Issue 2: Early generation - QR should extend into booking start time
-    const baseExpiry = new Date(now.getTime() + Math.max(expiryMinutes, 10) * 60000);
-
-    // Ensure QR expires by booking end time (prevents use after booking ends)
-    let expiresAt = new Date(Math.min(baseExpiry.getTime(), booking.end.getTime()));
-
-    // Ensure QR extends at least 5 minutes into the booking start (for early generation)
-    const minExpiry = new Date(booking.start.getTime() + 5 * 60000);
-    expiresAt = new Date(Math.max(expiresAt.getTime(), minExpiry.getTime()));
+    // QR expires exactly 10 minutes after generation
+    // This provides sufficient time for guard pickup while maintaining security
+    const expiresAt = new Date(now.getTime() + expiryMinutes * 60000);
 
     // Save token to DB
     await QRToken.create({

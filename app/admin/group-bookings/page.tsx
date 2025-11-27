@@ -159,15 +159,16 @@ export default function AdminGroupBookingsPage() {
           <TabsTrigger value="EXPIRED">Expired</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={filter} className="space-y-4 mt-6">
-          {groupBookings.length === 0 ? (
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-center text-text-muted">No group bookings found</p>
-              </CardContent>
-            </Card>
-          ) : (
-            groupBookings.map((gb) => (
+        {['all', 'PENDING_CONFIRMATIONS', 'CONFIRMED', 'CANCELLED', 'EXPIRED'].map((tabValue) => (
+          <TabsContent key={tabValue} value={tabValue} className="space-y-4 mt-6">
+            {groupBookings.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <p className="text-center text-text-muted">No group bookings found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              groupBookings.map((gb) => (
               <Card key={gb._id} className="border-l-4 border-l-accent-blue">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -299,9 +300,10 @@ export default function AdminGroupBookingsPage() {
                   )}
                 </CardContent>
               </Card>
-            ))
-          )}
-        </TabsContent>
+              ))
+            )}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

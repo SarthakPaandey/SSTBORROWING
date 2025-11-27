@@ -49,15 +49,8 @@ export async function GET(req: NextRequest) {
         });
 
         for (const booking of noShowBookings) {
-            // Release equipment inventory reservation for no-shows
-            if (booking.items) {
-                for (const item of booking.items) {
-                    await EquipmentItem.findByIdAndUpdate(
-                        item.itemId,
-                        { $inc: { qtyReserved: -item.qty } }
-                    );
-                }
-            }
+            // No need to release qtyReserved as we no longer use it for blocking
+            // (Time-based overlap checking is used instead)
 
             // Mark as NO_SHOW
             booking.status = 'NO_SHOW';
@@ -113,15 +106,8 @@ export async function GET(req: NextRequest) {
         });
 
         for (const booking of libraryNoPickupBookings) {
-            // Release book reservation
-            if (booking.items) {
-                for (const item of booking.items) {
-                    await EquipmentItem.findByIdAndUpdate(
-                        item.itemId,
-                        { $inc: { qtyReserved: -item.qty } }
-                    );
-                }
-            }
+            // No need to release qtyReserved as we no longer use it for blocking
+            // (Time-based overlap checking is used instead)
 
             booking.status = 'CANCELLED';
             await booking.save();
@@ -170,15 +156,8 @@ export async function GET(req: NextRequest) {
         });
 
         for (const booking of expiredPendingBookings) {
-            // FIX: Release equipment inventory reservation for expired pending bookings
-            if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
-                for (const item of booking.items) {
-                    await EquipmentItem.findByIdAndUpdate(
-                        item.itemId,
-                        { $inc: { qtyReserved: -item.qty } }
-                    );
-                }
-            }
+            // No need to release qtyReserved as we no longer use it for blocking
+            // (Time-based overlap checking is used instead)
 
             booking.status = 'CANCELLED';
             booking.approval = 'REJECTED';

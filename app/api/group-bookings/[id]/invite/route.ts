@@ -56,16 +56,8 @@ export async function POST(
       await groupBooking.save();
 
       if (booking.status === 'PENDING') {
-        // Release equipment inventory reservation
-        if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
-          const { EquipmentItem } = await import('@/models/EquipmentItem');
-          for (const item of booking.items) {
-            await EquipmentItem.findByIdAndUpdate(
-              item.itemId,
-              { $inc: { qtyReserved: -item.qty } }
-            );
-          }
-        }
+        // No need to release qtyReserved as we no longer use it for blocking
+        // (Time-based overlap checking is used instead)
 
         booking.status = 'CANCELLED';
         await booking.save();

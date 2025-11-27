@@ -39,20 +39,10 @@ export async function POST(
       booking.status = 'CONFIRMED';
       booking.approvedBy = admin.id;
       booking.approvedAt = getNow();
-    } else {
-      // FIX EC-11: Release equipment inventory reservation when rejecting
-      // The booking created a reservation via qtyReserved that must be released
-      if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
-        const { EquipmentItem } = await import('@/models/EquipmentItem');
-        for (const item of booking.items) {
-          await EquipmentItem.findByIdAndUpdate(
-            item.itemId,
-            {
-              $inc: { qtyReserved: -item.qty }
-            }
-          );
-        }
-      }
+    }
+    if (action === 'reject') {
+      // No need to release qtyReserved as we no longer use it for blocking
+      // (Time-based overlap checking is used instead)
 
       booking.approval = 'REJECTED';
       booking.status = 'CANCELLED';

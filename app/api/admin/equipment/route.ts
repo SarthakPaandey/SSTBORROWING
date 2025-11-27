@@ -3,6 +3,8 @@ import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, NotFoundError } from '@/lib/errors';
+import { getAvailableQuantity } from '@/lib/inventory';
+import { getNow } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,6 +14,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const resourceId = searchParams.get('resourceId');
+    const startParam = searchParams.get('start');
+    const endParam = searchParams.get('end');
 
     const query: any = {};
     if (resourceId) {
@@ -20,11 +24,36 @@ export async function GET(req: NextRequest) {
 
     const items = await EquipmentItem.find(query).sort({ name: 1 });
 
-    // Calculate true availability for each item (accounting for reserved qty)
-    const itemsWithAvailability = items.map(item => ({
-      ...item.toObject(),
-      availableNow: item.qtyAvailable - (item.qtyReserved || 0)
-    }));
+    // Calculate availability based on time window if provided, otherwise use "now"
+    let start: Date, end: Date;
+    if (startParam && endParam) {
+      start = new Date(startParam);
+      end = new Date(endParam);
+    } else {
+      // Default to current hour if no time specified
+      const now = getNow();
+      start = now;
+      end = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
+    }
+
+    // Calculate dynamic availability for each item
+    const itemsWithAvailability = await Promise.all(
+      items.map(async (item) => {
+        const availableNow = await getAvailableQuantity(
+          item._id.toString(),
+          start,
+          end,
+          item.qtyTotal
+        );
+
+        return {
+          ...item.toObject(),
+          availableNow,
+          // Keep qtyReserved for backward compatibility but don't use it for display
+          qtyReserved: item.qtyReserved || 0
+        };
+      })
+    );
 
     return NextResponse.json({ items: itemsWithAvailability });
   } catch (error) {

@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx --env-file=.env seed/seed.ts",
+    "fix-inventory": "tsx --env-file=.env scripts/fix-inventory-reservations.ts",
+    "migrate-inventory": "tsx --env-file=.env scripts/migrate-to-time-based-inventory.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"

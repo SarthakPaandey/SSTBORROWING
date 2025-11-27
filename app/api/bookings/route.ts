@@ -343,42 +343,46 @@ async function postHandler(req: Request) {
 
         enrichedItems = [];
 
-        // Use atomic operations to reserve equipment quantities
-        // This prevents race conditions by updating qtyReserved atomically
-        for (const item of items) {
-          // First, get the current item to check availability
-          const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+        // Check availability using time-based overlap instead of qtyReserved
+        const { checkBookingAvailability } = await import('@/lib/inventory');
 
-          if (!currentItem) {
-            throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
-          }
-
-          // Calculate truly available quantity
-          const available = currentItem.qtyAvailable - (currentItem.qtyReserved || 0);
-
-          if (available < item.qty) {
-            throw new ConflictError(`Not enough ${currentItem.name} available. Available: ${available}, Requested: ${item.qty}`);
-          }
-
-          // Atomically increment qtyReserved
-          const equipItem = await EquipmentItem.findByIdAndUpdate(
-            item.itemId,
-            {
-              $inc: { qtyReserved: item.qty }
-            },
-            {
-              session,
-              new: true,
+        // Prepare items with total quantities for checking
+        const itemsToCheck = await Promise.all(
+          items.map(async (item) => {
+            const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+            if (!currentItem) {
+              throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
             }
-          );
+            return {
+              itemId: item.itemId.toString(),
+              qty: item.qty,
+              totalQty: currentItem.qtyTotal,
+              name: currentItem.name
+            };
+          })
+        );
 
-          if (!equipItem) {
+        // Check if booking can be fulfilled based on time-slot overlap
+        const availabilityCheck = await checkBookingAvailability(
+          itemsToCheck,
+          startDate,
+          endDate
+        );
+
+        if (!availabilityCheck.success) {
+          throw new ConflictError(availabilityCheck.message || 'Items not available for selected time');
+        }
+
+        // Build enriched items (no qtyReserved update needed)
+        for (const item of items) {
+          const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+          if (!currentItem) {
             throw new NotFoundError(kind === 'LIBRARY' ? 'Book' : 'Equipment item');
           }
 
           enrichedItems.push({
             itemId: item.itemId,
-            name: equipItem.name,
+            name: currentItem.name,
             qty: item.qty,
           });
         }

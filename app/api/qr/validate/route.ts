@@ -104,9 +104,8 @@ export async function POST(req: NextRequest) {
     dbToken.usedAt = getNow();
     await dbToken.save({ session });
 
-    // Issue equipment - decrement BOTH availability AND reservation atomically
-    // FIX: This was the critical bug - we were only decrementing qtyAvailable
-    // but never releasing qtyReserved, causing phantom inventory
+    // Issue equipment - decrement physical availability only
+    // qtyReserved is no longer used for blocking (time-based overlap checking instead)
     if (booking.items) {
       for (const item of booking.items) {
         // Use atomic update to prevent race conditions
@@ -117,8 +116,7 @@ export async function POST(req: NextRequest) {
           },
           {
             $inc: {
-              qtyAvailable: -item.qty,  // Physical removal
-              qtyReserved: -item.qty,   // Release reservation (FIX)
+              qtyAvailable: -item.qty,  // Physical removal from shelf
             },
           },
           {

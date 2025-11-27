@@ -61,6 +61,14 @@ export default function EquipmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
+  // Refetch items when date or time changes to update availability
+  useEffect(() => {
+    if (sportsResources.length > 0 || labResources.length > 0) {
+      fetchItems();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, startTime, endTime]);
+
   const fetchResources = async () => {
     const sportsRes = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
     const sportsData = await sportsRes.json();
@@ -70,14 +78,42 @@ export default function EquipmentPage() {
     const labData = await labRes.json();
     setLabResources(labData.resources);
 
-    if (sportsData.resources.length > 0) {
-      const itemsRes = await fetch(`/api/admin/equipment?resourceId=${sportsData.resources[0]._id}`);
+    // Fetch initial items after resources are loaded
+    if (sportsData.resources.length > 0 || labData.resources.length > 0) {
+      await fetchItems(sportsData.resources, labData.resources);
+    }
+  };
+
+  const fetchItems = async (sportsRes = sportsResources, labRes = labResources) => {
+    // Build time window for availability check
+    const start = new Date(`${date}T${startTime}:00+05:30`);
+    const startHour = parseInt(startTime.split(':')[0]);
+    const end = new Date(start);
+
+    // Calculate end time based on typical booking duration
+    // Use 75 minutes for general equipment (most are sports)
+    end.setMinutes(end.getMinutes() + 75);
+
+    const startISO = start.toISOString();
+    const endISO = end.toISOString();
+
+    if (sportsRes.length > 0) {
+      const itemsRes = await fetch(
+        `/api/admin/equipment?resourceId=${sportsRes[0]._id}&start=${startISO}&end=${endISO}`
+      );
       const itemsData = await itemsRes.json();
       setSportsItems(itemsData.items);
     }
 
-    if (labData.resources.length > 0) {
-      const itemsRes = await fetch(`/api/admin/equipment?resourceId=${labData.resources[0]._id}`);
+    if (labRes.length > 0) {
+      // Lab equipment has 24-hour duration
+      const labEnd = new Date(start);
+      labEnd.setHours(labEnd.getHours() + 24);
+      const labEndISO = labEnd.toISOString();
+
+      const itemsRes = await fetch(
+        `/api/admin/equipment?resourceId=${labRes[0]._id}&start=${startISO}&end=${labEndISO}`
+      );
       const itemsData = await itemsRes.json();
       setLabItems(itemsData.items);
     }

@@ -19,8 +19,8 @@ export async function GET(req: NextRequest) {
 
         await connectDB();
 
-        // Use IST timezone for accurate time-based checks
-        const now = getNow();
+        // Use UTC for database comparisons (DB stores UTC timestamps)
+        const now = new Date();
         const results = {
             noShows: 0,
             expiredPending: 0,

@@ -115,10 +115,8 @@ async function postHandler(req: Request) {
       const startDate = new Date(start);
       const endDate = new Date(end);
 
-      // FIX: Convert startDate to IST timezone for proper comparison with getNow()
-      // getNow() returns a "zoned" date, so we need to convert startDate to the same format
-      const startDateIST = toIST(startDate);
-      if (startDateIST < getNow()) {
+      // Check if booking is in the past (use UTC for comparison)
+      if (startDate < new Date()) {
         throw new ValidationError('Cannot book in the past');
       }
 
@@ -187,11 +185,11 @@ async function postHandler(req: Request) {
         throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
       }
 
-      // Check total active bookings limit (using IST timezone)
+      // Check total active bookings limit (use UTC for DB comparison)
       const totalActiveBookings = await Booking.countDocuments({
         userId: user.id,
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        end: { $gt: getNow() }, // Future bookings only
+        end: { $gt: new Date() }, // Future bookings only
       }).session(session);
 
       if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
@@ -241,12 +239,12 @@ async function postHandler(req: Request) {
 
       // Check library book limits
       if (kind === 'LIBRARY') {
-        // Check if user already has an active book borrowing (using IST timezone)
+        // Check if user already has an active book borrowing (use UTC for DB comparison)
         const activeBookBorrowings = await Booking.countDocuments({
           userId: user.id,
           kind: 'LIBRARY',
           status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-          end: { $gt: getNow() },
+          end: { $gt: new Date() },
         }).session(session);
 
         if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
@@ -254,14 +252,14 @@ async function postHandler(req: Request) {
         }
       }
 
-      // Check minimum gap between bookings (using IST timezone)
+      // Check minimum gap between bookings (use UTC for DB comparison)
       // FIX: Exclude LIBRARY bookings from gap validation since they're long-term borrows
       // (14 days) and don't conflict with time-slot bookings (rooms, facilities, equipment)
       const upcomingBookings = await Booking.find({
         userId: user.id,
         kind: { $ne: 'LIBRARY' }, // Exclude library bookings from time-slot conflict checks
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        end: { $gt: getNow() },
+        end: { $gt: new Date() },
       }).session(session);
 
       // Gap check removed to allow back-to-back bookings
@@ -473,7 +471,7 @@ async function postHandler(req: Request) {
 
           // FIX: Track successful email delivery
           booking.approvalEmailSent = true;
-          booking.approvalEmailSentAt = getNow();
+          booking.approvalEmailSentAt = new Date();
           await booking.save();
         }
       } catch (emailError) {

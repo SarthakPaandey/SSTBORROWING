@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
       start = new Date(startParam);
       end = new Date(endParam);
     } else {
-      // Default to current hour if no time specified
-      const now = getNow();
+      // Default to current hour if no time specified (use UTC for DB comparison)
+      const now = new Date();
       start = now;
       end = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
     }

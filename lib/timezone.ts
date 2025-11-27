@@ -9,6 +9,17 @@ const TIMEZONE = 'Asia/Kolkata';
 
 /**
  * Get the current time in IST timezone
+ * 
+ * ⚠️ IMPORTANT: Use this ONLY for:
+ * - Display purposes (showing time to users)
+ * - Business logic checks (e.g., "is it after 8 PM IST?")
+ * 
+ * ❌ DO NOT use for:
+ * - Database queries/comparisons (use `new Date()` instead)
+ * - Storing timestamps (MongoDB stores UTC automatically)
+ * 
+ * Why? This function returns a Date object that's "shifted" by +5:30 hours.
+ * Comparing it with DB timestamps (which are UTC) causes a 5.5-hour offset error.
  */
 export function getNow(): Date {
     return toZonedTime(new Date(), TIMEZONE);

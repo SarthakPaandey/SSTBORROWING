@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       throw new ConflictError('Token already used');
     }
 
-    if (getNow().getTime() > new Date(dbToken.expiresAt).getTime()) {
+    if (new Date().getTime() > new Date(dbToken.expiresAt).getTime()) {
       await session.abortTransaction();
       throw new ValidationError('Token expired');
     }

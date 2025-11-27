@@ -80,8 +80,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     // For team sports, validate group booking requirements
     if (isTeamSport) {
       const validEmails = memberEmails.filter(email => email.trim() !== '');
-      if (validEmails.length < 1) {
-        setError('Please provide at least 1 friend email (2 total including you)');
+      if (validEmails.length < 5) {
+        setError('Please provide at least 5 friend emails (6 total including you)');
         return;
       }
 
@@ -251,10 +251,10 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                 <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-blue-900">
-                    Group Booking Required (Minimum 2 people)
+                    Group Booking Required (Minimum 6 people)
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
-                    Team sports require at least 2 participants. Invite 1 friend below - bookings must be made 1 hour in advance. Friends have 30 minutes to confirm. All members share penalties for no-shows.
+                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 1 hour in advance. Friends have 30 minutes to confirm. All members share penalties for no-shows.
                   </p>
                 </div>
               </div>

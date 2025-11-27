@@ -4,6 +4,7 @@ import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { Cancellation } from '@/models/Cancellation';
 import { User } from '@/models/User';
+import { Penalty } from '@/models/Penalty';
 import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES } from '@/lib/policies';
@@ -50,17 +51,8 @@ export async function PATCH(
       throw new ValidationError('Cannot cancel past bookings');
     }
 
-    // Check weekly cancellation limit (using IST timezone)
-    const weekAgo = getDaysAgo(7);
-
-    const weeklyCancellations = await Cancellation.countDocuments({
-      userId: booking.userId,
-      cancelledAt: { $gte: weekAgo },
-    });
-
-    if (weeklyCancellations >= POLICIES.MAX_CANCELLATIONS_PER_WEEK) {
-      throw new ConflictError(`You have reached the maximum cancellation limit of ${POLICIES.MAX_CANCELLATIONS_PER_WEEK} cancellations per week.`);
-    }
+    // NOTE: Weekly cancellation limit removed - users can cancel unlimited times
+    // However, penalties still apply for late cancellations (< 2 hours before start)
 
     // Check if cancellation is late (within 2 hours of start) - using IST timezone
     const now = getNow();
@@ -74,6 +66,15 @@ export async function PATCH(
     if (isLateCancellation) {
       penaltyApplied = POLICIES.PENALTY_LATE_CANCELLATION_POINTS;
 
+      // Create penalty record for audit trail
+      await Penalty.create({
+        userId: booking.userId,
+        bookingId: booking.id,
+        points: penaltyApplied,
+        reason: `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`,
+      });
+
+      // Update user penalty points
       const userRecord = await User.findById(booking.userId);
       if (userRecord) {
         userRecord.penaltyPoints += penaltyApplied;

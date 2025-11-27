@@ -24,7 +24,7 @@ export const POLICIES = {
   MAX_CONSECUTIVE_SLOTS: 2, // Can't book more than 2 consecutive slots for same resource type
 
   // Cancellation limits
-  MAX_CANCELLATIONS_PER_WEEK: 2,
+  MAX_CANCELLATIONS_PER_WEEK: 2, // NOTE: No longer enforced - kept for reference only
   PENALTY_LATE_CANCELLATION: 0.5, // Half point if cancelled <2 hours before start
   LATE_CANCELLATION_HOURS: 2, // Considered "late" if within 2 hours of start
 

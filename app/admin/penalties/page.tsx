@@ -122,6 +122,32 @@ export default function PenaltiesPage() {
     }
   };
 
+  const handleBlockUser = async (userId: string, action: 'block' | 'unblock') => {
+    const confirmMsg = action === 'block'
+      ? 'Are you sure you want to block this user? They will not be able to access the system.'
+      : 'Are you sure you want to unblock this user?';
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action }),
+      });
+
+      if (res.ok) {
+        fetchPenalties();
+        alert(action === 'block' ? 'User blocked successfully' : 'User unblocked successfully');
+      } else {
+        const data = await res.json();
+        alert(data.error || `Failed to ${action} user`);
+      }
+    } catch (error) {
+      alert(`Failed to ${action} user`);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -320,6 +346,11 @@ export default function PenaltiesPage() {
                           Waived
                         </span>
                       )}
+                      {penalty.userBlocked && (
+                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                          BLOCKED
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">{penalty.reason}</p>
                     <p className="text-sm text-gray-500">
@@ -331,15 +362,34 @@ export default function PenaltiesPage() {
                       </p>
                     )}
                   </div>
-                  {!penalty.waivedBy && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleWaive(penalty.userId)}
-                    >
-                      Waive
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {!penalty.waivedBy && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleWaive(penalty.userId)}
+                      >
+                        Waive
+                      </Button>
+                    )}
+                    {penalty.userBlocked ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleBlockUser(penalty.userId, 'unblock')}
+                      >
+                        Unblock User
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleBlockUser(penalty.userId, 'block')}
+                      >
+                        Block User
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

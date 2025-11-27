@@ -17,13 +17,18 @@ export async function requireAuth(allowedRoles?: UserRole[]) {
   // We must verify against the database to prevent banned/demoted users from accessing resources
   await connectDB();
 
-  const dbUser = await User.findById(session.user.id).select('role suspendedUntil penaltyPoints');
+  const dbUser = await User.findById(session.user.id).select('role suspendedUntil penaltyPoints blocked');
 
   if (!dbUser) {
-    throw new AuthenticationError('User account not found');
+    throw new AuthenticationError('User not found');
   }
 
-  // Check if user is currently suspended (using IST timezone)
+  // Check if user is permanently blocked (takes precedence over suspension)
+  if (dbUser.blocked) {
+    throw new AuthorizationError('Your account has been blocked by an administrator. Please contact support.');
+  }
+
+  // Check if user is temporarily suspended (using IST timezone)
   if (dbUser.suspendedUntil && dbUser.suspendedUntil > getNow()) {
     throw new AuthorizationError('Your account is suspended');
   }

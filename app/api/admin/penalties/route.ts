@@ -53,9 +53,9 @@ export async function GET(req: NextRequest) {
     const allUsers = [...users, ...additionalUsers];
 
     // Create a map with both string and ObjectId keys for flexible lookup
-    const userMap = new Map<string, { name: string | null; email: string }>();
+    const userMap = new Map<string, { name: string | null; email: string; blocked: boolean }>();
     allUsers.forEach((u) => {
-      const userData = { name: u.name, email: u.email };
+      const userData = { name: u.name, email: u.email, blocked: u.blocked || false };
       userMap.set(String(u._id), userData);
     });
 
@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
       ...(p as any),
       userName: userMap.get(String(p.userId))?.name || 'Unknown',
       userEmail: userMap.get(String(p.userId))?.email || 'N/A',
+      userBlocked: userMap.get(String(p.userId))?.blocked || false,
     }));
 
     return NextResponse.json({ penalties: enrichedPenalties });

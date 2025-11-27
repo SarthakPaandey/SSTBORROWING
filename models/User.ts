@@ -10,6 +10,9 @@ export interface IUser extends Document {
   password?: string; // For guards only (bcrypt hash)
   penaltyPoints: number;
   suspendedUntil?: Date;
+  blocked: boolean; // Permanent block
+  blockedAt?: Date; // When blocked
+  blockedBy?: string; // Admin who blocked
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +31,9 @@ const UserSchema = new Schema<IUser>(
     password: { type: String }, // Only for guards
     penaltyPoints: { type: Number, default: 0 },
     suspendedUntil: { type: Date },
+    blocked: { type: Boolean, default: false },
+    blockedAt: { type: Date },
+    blockedBy: { type: String, ref: 'User' },
   },
   {
     timestamps: true,

@@ -39,18 +39,19 @@ export async function GET(req: NextRequest) {
     // Calculate dynamic availability for each item
     const itemsWithAvailability = await Promise.all(
       items.map(async (item) => {
+        const itemObj = item.toObject();
         const availableNow = await getAvailableQuantity(
-          item._id.toString(),
+          itemObj._id.toString(),
           start,
           end,
-          item.qtyTotal
+          itemObj.qtyTotal
         );
 
         return {
-          ...item.toObject(),
+          ...itemObj,
           availableNow,
           // Keep qtyReserved for backward compatibility but don't use it for display
-          qtyReserved: item.qtyReserved || 0
+          qtyReserved: itemObj.qtyReserved || 0
         };
       })
     );

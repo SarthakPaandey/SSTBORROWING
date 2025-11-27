@@ -1,4 +1,5 @@
 import { Booking } from '@/models/Booking';
+import mongoose from 'mongoose';
 
 /**
  * Calculate available quantity for an equipment item during a specific time window.
@@ -9,6 +10,7 @@ import { Booking } from '@/models/Booking';
  * @param end - End time of the requested booking
  * @param totalQuantity - Total quantity of the item (from qtyTotal)
  * @param excludeBookingId - Optional booking ID to exclude (for edit scenarios)
+ * @param session - MongoDB session for transaction support (FIX EC-31)
  * @returns Number of items available during the time window
  */
 export async function getAvailableQuantity(
@@ -16,7 +18,8 @@ export async function getAvailableQuantity(
     start: Date,
     end: Date,
     totalQuantity: number,
-    excludeBookingId?: string
+    excludeBookingId?: string,
+    session?: mongoose.ClientSession
 ): Promise<number> {
     // Find all bookings that overlap with the requested time window
     // A booking overlaps if: booking.start < end AND booking.end > start
@@ -34,7 +37,10 @@ export async function getAvailableQuantity(
         query._id = { $ne: excludeBookingId };
     }
 
-    const overlappingBookings = await Booking.find(query);
+    // FIX EC-31: Add session support for transaction isolation
+    const overlappingBookings = session
+        ? await Booking.find(query).session(session)
+        : await Booking.find(query);
 
     // Sum up the quantities reserved in overlapping bookings
     let reservedQuantity = 0;
@@ -56,13 +62,15 @@ export async function getAvailableQuantity(
  * @param start - Start time of the booking
  * @param end - End time of the booking
  * @param excludeBookingId - Optional booking ID to exclude
+ * @param session - MongoDB session for transaction support (FIX EC-31)
  * @returns Object with {success: boolean, message?: string, unavailableItems?: Array}
  */
 export async function checkBookingAvailability(
     items: Array<{ itemId: string; qty: number; totalQty: number; name?: string }>,
     start: Date,
     end: Date,
-    excludeBookingId?: string
+    excludeBookingId?: string,
+    session?: mongoose.ClientSession
 ): Promise<{
     success: boolean;
     message?: string;
@@ -71,12 +79,14 @@ export async function checkBookingAvailability(
     const unavailableItems: Array<{ itemId: string; name: string; requested: number; available: number }> = [];
 
     for (const item of items) {
+        // FIX EC-31: Pass session to ensure transaction isolation
         const available = await getAvailableQuantity(
             item.itemId,
             start,
             end,
             item.totalQty,
-            excludeBookingId
+            excludeBookingId,
+            session
         );
 
         if (available < item.qty) {

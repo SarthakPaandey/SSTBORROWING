@@ -71,12 +71,13 @@ export default function LibraryPage() {
         const itemsRes = await fetch(`/api/admin/equipment?resourceId=${resource._id}`);
         const itemsData = await itemsRes.json();
 
-        // Check Non-Fiction first to avoid matching Fiction
-        if (resource.name.includes('Non-Fiction')) {
+        // FIX EC-30: Use exact matching instead of includes() to avoid fragile matching
+        // e.g., "Science Fiction Library" would incorrectly match "Fiction"
+        if (resource.name === 'Non-Fiction Library') {
           setNonFictionBooks(itemsData.items || []);
-        } else if (resource.name.includes('Fiction')) {
+        } else if (resource.name === 'Fiction Library') {
           setFictionBooks(itemsData.items || []);
-        } else if (resource.name.includes('Textbooks')) {
+        } else if (resource.name === 'Textbooks Library') {
           setTextbooks(itemsData.items || []);
         }
       }

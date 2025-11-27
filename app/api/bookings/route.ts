@@ -360,11 +360,13 @@ async function postHandler(req: Request) {
           })
         );
 
-        // Check if booking can be fulfilled based on time-slot overlap
+        // FIX EC-31: Check if booking can be fulfilled with session for transaction isolation
         const availabilityCheck = await checkBookingAvailability(
           itemsToCheck,
           startDate,
-          endDate
+          endDate,
+          undefined, // excludeBookingId
+          session // Pass session for transaction isolation
         );
 
         if (!availabilityCheck.success) {

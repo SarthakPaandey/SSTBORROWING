@@ -163,10 +163,10 @@ export default function LibraryManagementPage() {
     return <div>Loading...</div>;
   }
 
-  // Organize books by category
-  const fictionResource = resources.find(r => r.name.includes('Fiction') && !r.name.includes('Non'));
-  const nonFictionResource = resources.find(r => r.name.includes('Non-Fiction'));
-  const textbooksResource = resources.find(r => r.name.includes('Textbooks'));
+  // FIX EC-30: Organize books by category using exact matching
+  const fictionResource = resources.find(r => r.name === 'Fiction Library');
+  const nonFictionResource = resources.find(r => r.name === 'Non-Fiction Library');
+  const textbooksResource = resources.find(r => r.name === 'Textbooks Library');
 
   const fictionBooks = books.filter(b => fictionResource && b.resourceId === fictionResource._id);
   const nonFictionBooks = books.filter(b => nonFictionResource && b.resourceId === nonFictionResource._id);

@@ -245,9 +245,14 @@ export default function EquipmentPage() {
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div>
-                      <p className="font-medium">{item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{item.name}</p>
+                        {item.availableNow === 0 && (
+                          <Badge variant="destructive">Out of Stock</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
-                        Available: {item.qtyAvailable}/{item.qtyTotal}
+                        Available: {item.availableNow}/{item.qtyTotal}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -257,6 +262,7 @@ export default function EquipmentPage() {
                         onClick={() =>
                           handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
                         }
+                        disabled={(selectedItems[item._id] || 0) === 0}
                       >
                         -
                       </Button>
@@ -267,7 +273,7 @@ export default function EquipmentPage() {
                         onClick={() =>
                           handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
                         }
-                        disabled={(selectedItems[item._id] || 0) >= item.qtyAvailable}
+                        disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
                       >
                         +
                       </Button>
@@ -338,9 +344,14 @@ export default function EquipmentPage() {
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div>
-                      <p className="font-medium">{item.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{item.name}</p>
+                        {item.availableNow === 0 && (
+                          <Badge variant="destructive">Out of Stock</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
-                        Available: {item.qtyAvailable}/{item.qtyTotal}
+                        Available: {item.availableNow}/{item.qtyTotal}
                       </p>
                       {item.restricted && <Badge variant="destructive" className="mt-1">Restricted</Badge>}
                     </div>
@@ -351,6 +362,7 @@ export default function EquipmentPage() {
                         onClick={() =>
                           handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
                         }
+                        disabled={(selectedItems[item._id] || 0) === 0}
                       >
                         -
                       </Button>
@@ -361,7 +373,7 @@ export default function EquipmentPage() {
                         onClick={() =>
                           handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
                         }
-                        disabled={(selectedItems[item._id] || 0) >= item.qtyAvailable}
+                        disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
                       >
                         +
                       </Button>

@@ -20,7 +20,13 @@ export async function GET(req: NextRequest) {
 
     const items = await EquipmentItem.find(query).sort({ name: 1 });
 
-    return NextResponse.json({ items });
+    // Calculate true availability for each item (accounting for reserved qty)
+    const itemsWithAvailability = items.map(item => ({
+      ...item.toObject(),
+      availableNow: item.qtyAvailable - (item.qtyReserved || 0)
+    }));
+
+    return NextResponse.json({ items: itemsWithAvailability });
   } catch (error) {
     console.error('Equipment fetch error:', error);
     return handleApiError(error);

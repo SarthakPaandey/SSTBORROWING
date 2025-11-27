@@ -54,7 +54,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showAllBookings]); // Added showAllBookings to dependencies
 
   useEffect(() => {
     fetchBookings(currentMonth);

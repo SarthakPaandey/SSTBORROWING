@@ -235,7 +235,13 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
-                      <div className="text-xs text-text-muted px-2 font-medium">
+                      <div
+                        className="text-xs text-text-muted px-2 font-medium cursor-pointer hover:text-accent-blue transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDateClick?.(date);
+                        }}
+                      >
                         +{dayEvents.length - 3} more
                       </div>
                     )}

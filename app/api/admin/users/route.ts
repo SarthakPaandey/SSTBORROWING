@@ -13,15 +13,27 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const query = searchParams.get('q');
 
+        // FIX EC-26: Prevent ReDoS attacks
         if (!query || query.trim().length < 2) {
             return NextResponse.json({ users: [] });
         }
 
+        // Limit query length to prevent ReDoS
+        if (query.length > 100) {
+            throw new ValidationError('Search query too long (max 100 characters)');
+        }
+
+        // Escape special regex characters to prevent ReDoS
+        const escapeRegex = (str: string) => {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        };
+        const safeQuery = escapeRegex(query);
+
         // Search by name or email (case-insensitive)
         const users = await User.find({
             $or: [
-                { name: { $regex: query, $options: 'i' } },
-                { email: { $regex: query, $options: 'i' } },
+                { name: { $regex: safeQuery, $options: 'i' } },
+                { email: { $regex: safeQuery, $options: 'i' } },
             ],
         })
             .select('name email role penaltyPoints blocked blockedAt')

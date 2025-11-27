@@ -185,10 +185,11 @@ export default function BlocksPage() {
       setEndDate(newEndDate);
       setEndTime(BUSINESS_END_TIME);
     } else if (type === 'weekend') {
-      // Next Saturday 8 AM - Sunday 8 PM
+      // FIX EC-28: Next Saturday 8 AM - Sunday 8 PM
       const daysUntilSaturday = (6 - newStartDate.getDay() + 7) % 7 || 7;
       newStartDate.setDate(newStartDate.getDate() + daysUntilSaturday);
-      newEndDate.setDate(newStartDate.getDate() + 1); // Sunday
+      // FIX: Use newEndDate directly, not newStartDate after mutation
+      newEndDate.setDate(newEndDate.getDate() + daysUntilSaturday + 1); // Sunday
 
       setStartDate(newStartDate);
       setStartTime(BUSINESS_START_TIME);

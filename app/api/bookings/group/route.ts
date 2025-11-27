@@ -76,6 +76,11 @@ async function postHandler(req: Request) {
         throw new ValidationError(canCreate.reason || 'Cannot create group booking');
       }
 
+      // FIX EC-42: Add maximum limit on member emails
+      if (memberEmails.length > 10) {
+        throw new ValidationError('Maximum 10 members allowed (you + 9 friends)');
+      }
+
       // Validate minimum members (organizer + friends = 6+)
       const totalMembers = 1 + memberEmails.length;
       if (totalMembers < POLICIES.GROUP_BOOKING_MIN_MEMBERS) {
@@ -96,10 +101,9 @@ async function postHandler(req: Request) {
         role: 'STUDENT'
       }).session(txSession);
 
+      // FIX EC-25: Prevent email enumeration - don't reveal which emails are invalid
       if (members.length !== uniqueEmails.length) {
-        const foundEmails = members.map(m => m.email.toLowerCase());
-        const notFound = uniqueEmails.filter((e: string) => !foundEmails.includes(e.toLowerCase()));
-        throw new NotFoundError(`These emails are not registered students: ${notFound.join(', ')}`);
+        throw new ValidationError(`Some invited users are not eligible to join group bookings. Please verify all emails are registered students.`);
       }
 
       // Check all members can book (penalties, suspension)

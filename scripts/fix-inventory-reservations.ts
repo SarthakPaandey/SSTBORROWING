@@ -68,7 +68,7 @@ async function fixInventoryReservations() {
         // Calculate correct reserved quantity
         let correctReserved = 0;
         for (const booking of activeBookings) {
-            const item = booking.items?.find(i => i.itemId.toString() === equipment._id.toString());
+            const item = booking.items?.find(i => i.itemId.toString() === String(equipment._id));
             if (item) {
                 correctReserved += item.qty;
                 console.log(`   ✓ Active booking ${booking._id}: ${item.qty} reserved (status: ${booking.status})`);

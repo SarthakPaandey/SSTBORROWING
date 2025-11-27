@@ -58,6 +58,17 @@ export async function PATCH(
 
       // Cancel the booking if still pending
       if (booking.status === 'PENDING') {
+        // Release equipment inventory reservation
+        if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+          const { EquipmentItem } = await import('@/models/EquipmentItem');
+          for (const item of booking.items) {
+            await EquipmentItem.findByIdAndUpdate(
+              item.itemId,
+              { $inc: { qtyReserved: -item.qty } }
+            );
+          }
+        }
+
         booking.status = 'CANCELLED';
         await booking.save();
       }
@@ -131,6 +142,17 @@ export async function PATCH(
         // Cancel the booking - can't reach minimum even with all pending accepting
         groupBooking.status = 'CANCELLED';
         await groupBooking.save();
+
+        // Release equipment inventory reservation
+        if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+          const { EquipmentItem } = await import('@/models/EquipmentItem');
+          for (const item of booking.items) {
+            await EquipmentItem.findByIdAndUpdate(
+              item.itemId,
+              { $inc: { qtyReserved: -item.qty } }
+            );
+          }
+        }
 
         // Booking already fetched above
         booking.status = 'CANCELLED';

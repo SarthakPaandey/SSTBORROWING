@@ -50,6 +50,17 @@ export async function GET(
 
     // Perform action
     if (action === 'reject') {
+      // Release equipment inventory reservation when rejecting
+      if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
+        const { EquipmentItem } = await import('@/models/EquipmentItem');
+        for (const item of booking.items) {
+          await EquipmentItem.findByIdAndUpdate(
+            item.itemId,
+            { $inc: { qtyReserved: -item.qty } }
+          );
+        }
+      }
+
       booking.approval = 'REJECTED';
       booking.status = 'CANCELLED';
     } else {

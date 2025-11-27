@@ -10,6 +10,7 @@ export function formatDate(date: Date | string): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'Asia/Kolkata', // IST timezone
   });
 }
 
@@ -17,6 +18,7 @@ export function formatTime(date: Date | string): string {
   return new Date(date).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Kolkata', // IST timezone
   });
 }
 

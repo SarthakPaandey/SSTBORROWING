@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Calendar } from '@/components/ui/Calendar';
 import { TimePicker } from '@/components/ui/TimePicker';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -126,12 +125,18 @@ export default function RoomBookingPage({ params }: { params: Params }) {
           <p className="text-text-muted">Select a date and time for your booking</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Calendar */}
+          {/* Date Input */}
           <div>
-            <label className="mb-3 block text-sm font-medium text-text-main">Select Date</label>
-            <Calendar
-              selectedDate={selectedDate}
-              onDateClick={setSelectedDate}
+            <label className="mb-2 block text-sm font-medium text-text-main">Select Date</label>
+            <input
+              type="date"
+              value={dateStr}
+              onChange={(e) => {
+                const newDate = new Date(e.target.value + 'T00:00:00+05:30');
+                setSelectedDate(newDate);
+              }}
+              min={formatISTDate(getISTNow())}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-text-main focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 

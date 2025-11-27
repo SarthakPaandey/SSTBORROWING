@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     // Check if late (using IST timezone)
     const now = getNow();
-    const isLate = now > booking.end;
+    const isLate = now.getTime() > new Date(booking.end).getTime();
     const isDamaged = condition === 'damaged';
 
     let penaltyApplied = false;

@@ -11,6 +11,7 @@ type FilterPeriod = 'all' | 'today' | 'week' | 'month';
 export default function PenaltiesPage() {
   const [penalties, setPenalties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter states
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -22,10 +23,31 @@ export default function PenaltiesPage() {
   }, []);
 
   const fetchPenalties = async () => {
-    const res = await fetch('/api/admin/penalties');
-    const data = await res.json();
-    setPenalties(data.penalties);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/admin/penalties');
+      if (!res.ok) {
+        if (res.status === 403) {
+          setError('You do not have permission to view penalties. Admin access required.');
+        } else if (res.status === 401) {
+          setError('Please log in to view penalties.');
+        } else {
+          setError('Failed to load penalties. Please try again.');
+        }
+        console.error('Failed to fetch penalties:', res.status, res.statusText);
+        setPenalties([]);
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      setPenalties(data.penalties || []);
+      setError(null);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching penalties:', error);
+      setError('An unexpected error occurred. Please try again.');
+      setPenalties([]);
+      setLoading(false);
+    }
   };
 
   // Filter penalties based on selected filters
@@ -102,6 +124,25 @@ export default function PenaltiesPage() {
 
   if (loading) {
     return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-4xl mb-4">⚠️</div>
+              <h2 className="text-xl font-bold text-text-main mb-2">Access Error</h2>
+              <p className="text-text-muted mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

@@ -11,6 +11,7 @@ describe('Equipment Deletion Protection Tests', () => {
     });
 
     afterAll(async () => {
+        await connectDB(); // Ensure connection before cleanup
         await Booking.deleteMany({ userId: { $regex: /test-deletion-/ } });
         await User.deleteMany({ email: { $regex: /test-deletion-/ } });
         await EquipmentItem.deleteMany({ name: { $regex: /Test Deletion/ } });

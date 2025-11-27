@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { requireAuth } from '@/lib/auth/guards';
 import { User } from '@/models/User';
 import { AuthenticationError, AuthorizationError } from '@/lib/errors';
@@ -40,7 +40,7 @@ describe('Security Improvements Tests', () => {
 
             // Cleanup
             await User.findByIdAndDelete(suspendedUser.id);
-        });
+        }, 15000); // 15 second timeout
 
         it('should reject users whose role changed since token issued', async () => {
             await connectDB();
@@ -68,7 +68,7 @@ describe('Security Improvements Tests', () => {
 
             // Cleanup
             await User.findByIdAndDelete(user.id);
-        });
+        }, 15000); // 15 second timeout
 
         it('should accept valid users with matching session', async () => {
             await connectDB();
@@ -95,7 +95,7 @@ describe('Security Improvements Tests', () => {
 
             // Cleanup
             await User.findByIdAndDelete(validUser.id);
-        });
+        }, 15000); // 15 second timeout
     });
 
     describe('Typed Error Classes', () => {

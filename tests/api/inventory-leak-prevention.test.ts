@@ -13,6 +13,7 @@ describe('Inventory Leak Prevention Tests', () => {
 
     afterAll(async () => {
         // Cleanup
+        await connectDB(); // Ensure connection before cleanup
         await Booking.deleteMany({ userId: { $regex: /test-inventory-/ } });
         await User.deleteMany({ email: { $regex: /test-inventory-/ } });
         await Resource.deleteMany({ name: { $regex: /Test Inventory/ } });

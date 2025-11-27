@@ -13,6 +13,7 @@ describe('Race Condition Protection Tests', () => {
 
     afterAll(async () => {
         // Clean up test data
+        await connectDB(); // Ensure connection before cleanup
         await Booking.deleteMany({ userId: { $regex: /test-race-/ } });
         await User.deleteMany({ email: { $regex: /test-race-/ } });
         await Resource.deleteMany({ name: { $regex: /Test Race/ } });

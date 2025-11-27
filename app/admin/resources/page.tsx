@@ -429,7 +429,7 @@ export default function ResourcesPage() {
                           <div className="flex-1">
                             <p className="font-medium text-text-main">{item.name}</p>
                             <p className="text-sm text-text-muted">
-                              Available: {item.qtyAvailable} / {item.qtyTotal}
+                              Available: {item.availableNow} / {item.qtyTotal} {item.availableNow !== item.qtyAvailable && `(${item.qtyReserved || 0} reserved)`}
                             </p>
                             <div className="flex gap-2 mt-1">
                               {item.safety && <Badge variant="warning">Safety Item</Badge>}
@@ -491,7 +491,7 @@ export default function ResourcesPage() {
                           <div className="flex-1">
                             <p className="font-medium text-text-main">{item.name}</p>
                             <p className="text-sm text-text-muted">
-                              Available: {item.qtyAvailable} / {item.qtyTotal}
+                              Available: {item.availableNow} / {item.qtyTotal} {item.availableNow !== item.qtyAvailable && `(${item.qtyReserved || 0} reserved)`}
                             </p>
                             <div className="flex gap-2 mt-1">
                               {item.safety && <Badge variant="warning">Safety Item</Badge>}

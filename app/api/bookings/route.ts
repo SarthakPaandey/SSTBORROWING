@@ -264,9 +264,10 @@ async function postHandler(req: Request) {
         end: { $gt: getNow() },
       }).session(session);
 
-      if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
-        throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
-      }
+      // Gap check removed to allow back-to-back bookings
+      // if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
+      //   throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
+      // }
 
       // Check consecutive bookings for same resource
       const sameResourceBookings = upcomingBookings.filter(

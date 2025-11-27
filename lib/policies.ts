@@ -20,7 +20,7 @@ export const POLICIES = {
   MAX_EQUIPMENT_BORROWS_PER_MONTH: 20, // 20 equipment borrows per month
 
   // Consecutive booking prevention
-  MIN_GAP_BETWEEN_BOOKINGS_MINUTES: 30, // 30-minute gap required between bookings (improved with tolerance handling)
+  MIN_GAP_BETWEEN_BOOKINGS_MINUTES: 0, // Gap removed to allow back-to-back bookings
   MAX_CONSECUTIVE_SLOTS: 2, // Can't book more than 2 consecutive slots for same resource type
 
   // Cancellation limits

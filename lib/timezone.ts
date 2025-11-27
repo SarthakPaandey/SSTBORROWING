@@ -76,3 +76,19 @@ export function getTodayStart(): Date {
 export function getTodayEnd(): Date {
     return getEndOfDay();
 }
+
+/**
+ * Parse a date and time string as IST and return UTC Date object
+ * This centralizes the hardcoded +05:30 offset handling
+ * 
+ * @param date Date string in YYYY-MM-DD format
+ * @param time Time string in HH:mm format
+ * @returns UTC Date object
+ * 
+ * @example
+ * parseISTDateTime('2025-01-15', '14:30') // Returns UTC Date for 2:30 PM IST on Jan 15
+ */
+export function parseISTDateTime(date: string, time: string): Date {
+    // Create ISO string with IST offset
+    return new Date(`${date}T${time}:00+05:30`);
+}

@@ -23,6 +23,11 @@ export async function POST(req: NextRequest) {
       throw new ValidationError('Booking ID required');
     }
 
+    // FIX EC-2: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      throw new ValidationError('Invalid booking ID format');
+    }
+
     if (!condition) {
       throw new ValidationError('Condition required');
     }
@@ -66,8 +71,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if late (using IST timezone)
-    const now = getNow();
+    // FIX EC-6: Check if late using UTC for consistency
+    const now = new Date();
     const isLate = now.getTime() > new Date(booking.end).getTime();
     const isDamaged = condition === 'damaged';
 

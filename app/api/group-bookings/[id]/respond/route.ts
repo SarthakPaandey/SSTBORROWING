@@ -78,19 +78,14 @@ export async function PATCH(
 
     // Update member status
     if (response === 'ACCEPT') {
-      groupBooking.members[memberIndex].status = 'CONFIRMED';
-      groupBooking.members[memberIndex].respondedAt = getNow();
-
-      // FIX EC-15: Use atomic $inc to prevent race condition
-      // Previously, we fetched confirmedCount, incremented in JS, and saved back
-      // If two users accepted simultaneously, both would read the same count and save the same incremented value
-      // Using $inc ensures MongoDB handles the increment atomically
+      // FIX EC-1: Complete atomic update including status change
+      // First increment and update member status
       const updatedGroupBooking = await GroupBooking.findByIdAndUpdate(
         params.id,
         {
           $set: {
             [`members.${memberIndex}.status`]: 'CONFIRMED',
-            [`members.${memberIndex}.respondedAt`]: getNow(),
+            [`members.${memberIndex}.respondedAt`]: new Date(),
           },
           $inc: { confirmedCount: 1 }
         },
@@ -101,19 +96,37 @@ export async function PATCH(
         throw new NotFoundError('Group booking');
       }
 
-      // Check if we now have enough confirmations
-      if (updatedGroupBooking.confirmedCount >= updatedGroupBooking.requiredMinimum) {
-        updatedGroupBooking.status = 'CONFIRMED';
+      // Check if we now have enough confirmations and atomically update status if needed
+      if (updatedGroupBooking.confirmedCount >= updatedGroupBooking.requiredMinimum &&
+        updatedGroupBooking.status === 'PENDING_CONFIRMATIONS') {
 
-        // Update main booking to CONFIRMED (booking already fetched above)
-        booking.status = 'CONFIRMED';
-        await booking.save();
+        // Atomic status update with condition to prevent race
+        const confirmedBooking = await GroupBooking.findOneAndUpdate(
+          {
+            _id: params.id,
+            status: 'PENDING_CONFIRMATIONS', // Only update if still pending
+            confirmedCount: { $gte: updatedGroupBooking.requiredMinimum }
+          },
+          {
+            $set: { status: 'CONFIRMED' }
+          },
+          { new: true }
+        );
 
-        await updatedGroupBooking.save();
-      } else {
-        await updatedGroupBooking.save();
+        // Only update main booking if we successfully confirmed the group
+        if (confirmedBooking) {
+          booking.status = 'CONFIRMED';
+          await booking.save();
+
+          return NextResponse.json({
+            message: 'Invitation accepted. Group booking confirmed!',
+            groupBooking: confirmedBooking,
+            isBookingConfirmed: true,
+          });
+        }
       }
 
+      // If we didn't confirm, just return success
       return NextResponse.json({
         message: 'Invitation accepted',
         groupBooking: updatedGroupBooking,

@@ -35,7 +35,6 @@ export default function LibraryManagementPage() {
 
   useEffect(() => {
     fetchLibraryResources();
-    fetchBooks();
   }, []);
 
   const fetchLibraryResources = async () => {
@@ -52,8 +51,7 @@ export default function LibraryManagementPage() {
     try {
       const res = await fetch('/api/admin/equipment');
       const data = await res.json();
-      // Filter only library books
-      const libraryResourceIds = resources.map(r => r._id);
+      // FIX EC-4: Filter only library books using resources
       const libraryBooks = (data.items || []).filter((item: any) =>
         resources.some(r => r._id === item.resourceId && r.type === 'LIBRARY')
       );
@@ -65,7 +63,7 @@ export default function LibraryManagementPage() {
     }
   };
 
-  // Refetch books when resources change
+  // FIX EC-4: Fetch books AFTER resources are loaded
   useEffect(() => {
     if (resources.length > 0) {
       fetchBooks();

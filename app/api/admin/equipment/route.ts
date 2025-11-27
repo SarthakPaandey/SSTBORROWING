@@ -41,10 +41,10 @@ export async function GET(req: NextRequest) {
       items.map(async (item) => {
         const itemObj = item.toObject();
         const availableNow = await getAvailableQuantity(
-          itemObj._id.toString(),
+          item._id.toString(),
           start,
           end,
-          itemObj.qtyTotal
+          item.qtyTotal
         );
 
         return {

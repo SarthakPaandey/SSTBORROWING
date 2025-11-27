@@ -20,6 +20,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedEvent, setSelectedEvent] = useState<EnrichedBooking | null>(null);
   const [eventModal, setEventModal] = useState(false);
+  const [dayViewModal, setDayViewModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Filters
@@ -104,6 +105,23 @@ export default function CalendarPage() {
       setEventModal(true);
     }
   };
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setDayViewModal(true);
+  };
+
+  // Get events for selected date
+  const selectedDateEvents = selectedDate
+    ? filteredBookings.filter(b => {
+      const bookingDate = new Date(b.start);
+      return (
+        bookingDate.getDate() === selectedDate.getDate() &&
+        bookingDate.getMonth() === selectedDate.getMonth() &&
+        bookingDate.getFullYear() === selectedDate.getFullYear()
+      );
+    })
+    : [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -219,7 +237,7 @@ export default function CalendarPage() {
       ) : (
         <Calendar
           events={calendarEvents}
-          onDateClick={setSelectedDate}
+          onDateClick={handleDateClick}
           onEventClick={handleEventClick}
           onMonthChange={handleMonthChange}
           selectedDate={selectedDate}
@@ -345,6 +363,54 @@ export default function CalendarPage() {
             >
               Close
             </Button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Day View Modal - Shows all events for selected date */}
+      <Modal
+        isOpen={dayViewModal}
+        onClose={() => {
+          setDayViewModal(false);
+          setSelectedDate(undefined);
+        }}
+        title={selectedDate ? `Events on ${selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}` : 'Events'}
+        size="lg"
+      >
+        {selectedDateEvents.length === 0 ? (
+          <p className="text-center text-text-muted py-8">No events on this date</p>
+        ) : (
+          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            {selectedDateEvents.map((booking) => (
+              <div
+                key={String(booking._id)}
+                onClick={() => {
+                  setSelectedEvent(booking);
+                  setDayViewModal(false);
+                  setEventModal(true);
+                }}
+                className="flex items-start justify-between p-4 rounded-lg border border-card-border bg-card hover:bg-accent-blue/5 cursor-pointer transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-text-main">{booking.resourceName}</p>
+                    {getStatusBadge(booking.status)}
+                  </div>
+                  <p className="text-sm text-text-muted mt-1">
+                    {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}
+                    {formatDateTime(booking.start)}
+                  </p>
+                  {booking.kind === 'EQUIPMENT' && (
+                    <p className="text-sm text-text-muted">
+                      Return by: {formatDateTime(booking.end)}
+                    </p>
+                  )}
+                  {!isMyBooking(booking) && (
+                    <p className="text-xs text-text-muted mt-1">Booked by another user</p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Modal>

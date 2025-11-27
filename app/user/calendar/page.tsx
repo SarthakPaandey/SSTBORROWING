@@ -26,8 +26,11 @@ export default function CalendarPage() {
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  // Toggle for showing all bookings
-  const [showAllBookings, setShowAllBookings] = useState(false);
+  // Toggle for showing all bookings - Default to TRUE for better visibility
+  const [showAllBookings, setShowAllBookings] = useState(true);
+
+  // Toggle for showing cancelled bookings - Default to FALSE to reduce clutter
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const fetchBookings = useCallback(async (date: Date) => {
     setLoading(true);
@@ -68,11 +71,20 @@ export default function CalendarPage() {
 
   // Filter bookings
   const filteredBookings = bookings.filter(booking => {
+    // Filter by type
     if (typeFilter !== 'ALL' && booking.kind !== typeFilter) return false;
+
+    // Filter by status
     if (statusFilter !== 'ALL') {
       if (statusFilter === 'ACTIVE' && booking.status !== 'CHECKED_IN') return false;
       if (statusFilter !== 'ACTIVE' && booking.status !== statusFilter) return false;
     }
+
+    // Filter out cancelled/no-show unless explicitly shown or selected in status filter
+    if (!showCancelled && statusFilter === 'ALL') {
+      if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return false;
+    }
+
     return true;
   });
 
@@ -157,6 +169,17 @@ export default function CalendarPage() {
             )}
           </Button>
 
+          {/* Show Cancelled Toggle */}
+          <Button
+            variant={showCancelled ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowCancelled(!showCancelled)}
+            className="flex items-center gap-2"
+            title="Show/Hide Cancelled Bookings"
+          >
+            {showCancelled ? 'Hide Cancelled' : 'Show Cancelled'}
+          </Button>
+
           <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
             <Filter className="h-4 w-4 text-text-muted ml-2" />
             <select
@@ -200,6 +223,7 @@ export default function CalendarPage() {
           onEventClick={handleEventClick}
           onMonthChange={handleMonthChange}
           selectedDate={selectedDate}
+          viewDate={currentMonth} // Pass controlled date
         />
       )}
 

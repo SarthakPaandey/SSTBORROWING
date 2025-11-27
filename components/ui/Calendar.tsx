@@ -20,11 +20,13 @@ export interface CalendarProps {
   onEventClick?: (event: CalendarEvent) => void;
   onMonthChange?: (date: Date) => void;
   selectedDate?: Date;
+  viewDate?: Date; // Controlled date for the current view
 }
 
-export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange, selectedDate }: CalendarProps) {
-  // FIX: Use IST timezone for initial month display
-  const [currentDate, setCurrentDate] = useState(getISTNow());
+export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange, selectedDate, viewDate }: CalendarProps) {
+  // Use viewDate if provided, otherwise use internal state
+  const [internalDate, setInternalDate] = useState(getISTNow());
+  const currentDate = viewDate || internalDate;
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -75,22 +77,23 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
   };
 
   // Navigate months
+  // Navigate months
   const goToPreviousMonth = () => {
     const newDate = new Date(year, month - 1, 1);
-    setCurrentDate(newDate);
+    if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 
   const goToNextMonth = () => {
     const newDate = new Date(year, month + 1, 1);
-    setCurrentDate(newDate);
+    if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 
   const goToToday = () => {
     // FIX: Use IST timezone when navigating to today
     const newDate = getISTNow();
-    setCurrentDate(newDate);
+    if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 

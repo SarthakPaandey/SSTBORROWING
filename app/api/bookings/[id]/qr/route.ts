@@ -64,15 +64,17 @@ export async function POST(
 
     // Check if booking time has passed (using IST timezone)
     const now = getNow();
-    if (now > booking.end) {
+    const bookingEnd = new Date(booking.end).getTime();
+    const bookingStart = new Date(booking.start).getTime();
+
+    if (now.getTime() > bookingEnd) {
       throw new ValidationError('Cannot generate QR for past bookings');
     }
 
     // Check if too early (before pickup window) - only in production
     if (process.env.NODE_ENV === 'production') {
-      const pickupWindow = new Date(booking.start);
-      pickupWindow.setMinutes(pickupWindow.getMinutes() - POLICIES.QR_VALIDITY_BEFORE_START);
-      if (now < pickupWindow) {
+      const pickupWindowStart = bookingStart - (POLICIES.QR_VALIDITY_BEFORE_START * 60000);
+      if (now.getTime() < pickupWindowStart) {
         throw new ValidationError(`QR code can only be generated ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before booking start time`);
       }
     }

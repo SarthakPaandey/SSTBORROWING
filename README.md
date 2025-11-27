@@ -2,7 +2,8 @@
 
 A production-ready unified booking system for SST facilities, rooms, and equipment. Built with Next.js 14, TypeScript, MongoDB, and NextAuth.
 
-![SST Booking System](https://github.com/user-attachments/assets/0822e1a3-5ec0-4894-beed-b06d6e4501bb)
+![SST Booking System}
+
 
 ## Features
 

@@ -52,7 +52,7 @@ export async function PATCH(
     }
 
     // NOTE: Weekly cancellation limit removed - users can cancel unlimited times
-    // However, penalties still apply for late cancellations (< 2 hours before start)
+    // However, penalties apply for all cancellations to discourage abuse
 
     // Check if cancellation is late (within 2 hours of start) - using IST timezone
     const now = getNow();
@@ -60,26 +60,24 @@ export async function PATCH(
       (new Date(booking.start).getTime() - now.getTime()) / (1000 * 60 * 60);
     const isLateCancellation = hoursUntilStart < POLICIES.LATE_CANCELLATION_HOURS;
 
-    let penaltyApplied = 0;
+    // Apply penalty for all cancellations (0.25 points)
+    const penaltyApplied = POLICIES.PENALTY_CANCELLATION;
 
-    // Apply penalty for late cancellation
-    if (isLateCancellation) {
-      penaltyApplied = POLICIES.PENALTY_LATE_CANCELLATION_POINTS;
+    // Create penalty record for audit trail
+    await Penalty.create({
+      userId: booking.userId,
+      bookingId: booking.id,
+      points: penaltyApplied,
+      reason: isLateCancellation
+        ? `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`
+        : 'Booking cancellation',
+    });
 
-      // Create penalty record for audit trail
-      await Penalty.create({
-        userId: booking.userId,
-        bookingId: booking.id,
-        points: penaltyApplied,
-        reason: `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`,
-      });
-
-      // Update user penalty points
-      const userRecord = await User.findById(booking.userId);
-      if (userRecord) {
-        userRecord.penaltyPoints += penaltyApplied;
-        await userRecord.save();
-      }
+    // Update user penalty points
+    const userRecord = await User.findById(booking.userId);
+    if (userRecord) {
+      userRecord.penaltyPoints += penaltyApplied;
+      await userRecord.save();
     }
 
     // Get resource name for logging
@@ -119,9 +117,7 @@ export async function PATCH(
       booking,
       wasLateCancellation: isLateCancellation,
       penaltyApplied,
-      message: isLateCancellation
-        ? `Booking cancelled. ${penaltyApplied} penalty points applied for late cancellation.`
-        : 'Booking cancelled successfully.',
+      message: `Booking cancelled. ${penaltyApplied} penalty points applied.`,
     });
   } catch (error) {
     return handleApiError(error);

@@ -50,6 +50,7 @@ export const POLICIES = {
   PENALTY_NO_SHOW: 1,
   PENALTY_LATE_RETURN: 1,
   PENALTY_DAMAGE: 2,
+  PENALTY_CANCELLATION: 0.25, // Penalty for any cancellation
   PENALTY_LATE_CANCELLATION_POINTS: 0.5,
   PENALTY_BOOK_LATE_RETURN: 2, // 2 points for late book return (+ payment)
   PENALTY_BOOK_NO_PICKUP: 0.5, // 0.5 points if student doesn't pick up book within 24h

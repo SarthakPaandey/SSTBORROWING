@@ -17,6 +17,12 @@ const QRTokenSchema = new Schema<IQRToken>(
       required: true,
       ref: 'Booking'
     },
+    // FIX EC-69: Add userId field (was in interface but not schema)
+    userId: {
+      type: String,
+      required: true,
+      ref: 'User'
+    },
     token: { type: String, required: true, unique: true },
     expiresAt: { type: Date, required: true },
     used: { type: Boolean, default: false },

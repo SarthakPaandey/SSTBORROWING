@@ -73,7 +73,24 @@ export async function POST(req: NextRequest) {
 
     // FIX EC-6: Check if late using UTC for consistency
     const now = new Date();
-    const isLate = now.getTime() > new Date(booking.end).getTime();
+
+    // Dynamic Return Deadline Logic:
+    // If user picked up late, they get equal extra time to return.
+    // Adjusted End Time = Original End Time + (Pickup Time - Start Time)
+    let adjustedEndTime = new Date(booking.end).getTime();
+
+    if (booking.checkedInAt) {
+      const pickupTime = new Date(booking.checkedInAt).getTime();
+      const startTime = new Date(booking.start).getTime();
+      const pickupDelay = pickupTime - startTime;
+
+      // Only extend if picked up late (positive delay)
+      if (pickupDelay > 0) {
+        adjustedEndTime += pickupDelay;
+      }
+    }
+
+    const isLate = now.getTime() > adjustedEndTime;
     const isDamaged = condition === 'damaged';
 
     let penaltyApplied = false;

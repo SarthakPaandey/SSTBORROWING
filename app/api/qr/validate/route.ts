@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     // Mark token as used
     dbToken.used = true;
-    dbToken.usedAt = getNow();
+    dbToken.usedAt = new Date(); // Use UTC for DB consistency
     await dbToken.save({ session });
 
     // Issue equipment - decrement physical availability only
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
 
     booking.status = 'CHECKED_IN';
-    booking.checkedInAt = getNow();
+    booking.checkedInAt = new Date(); // Use UTC for DB consistency
     await booking.save({ session });
 
     // Commit transaction

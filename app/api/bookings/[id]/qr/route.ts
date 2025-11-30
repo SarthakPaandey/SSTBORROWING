@@ -63,21 +63,26 @@ export async function POST(
     }
 
 
-    // FIX: Check if booking time has passed (use UTC for DB comparison)
-    const now = new Date(); // UTC, not IST
+    // QR generation time window with grace periods
+    const now = new Date(); // UTC
     const bookingEnd = new Date(booking.end).getTime();
     const bookingStart = new Date(booking.start).getTime();
 
-    if (now.getTime() > bookingEnd) {
-      throw new ValidationError('Cannot generate QR for past bookings');
+    const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes grace period
+
+    // Allow QR generation:
+    // - 15 minutes before start time
+    // - During booking time
+    // - Up to 15 minutes after end time (grace period for late pickups)
+    const earliestGenTime = bookingStart - GRACE_PERIOD_MS;
+    const latestGenTime = bookingEnd + GRACE_PERIOD_MS;
+
+    if (now.getTime() < earliestGenTime) {
+      throw new ValidationError('QR code can be generated starting 15 minutes before your booking time');
     }
 
-    // Check if too early (before pickup window) - only in production
-    if (process.env.NODE_ENV === 'production') {
-      const pickupWindowStart = bookingStart - (POLICIES.QR_VALIDITY_BEFORE_START * 60000);
-      if (now.getTime() < pickupWindowStart) {
-        throw new ValidationError(`QR code can only be generated ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before booking start time`);
-      }
+    if (now.getTime() > latestGenTime) {
+      throw new ValidationError('QR generation window closed (15 minutes after booking end)');
     }
 
     // Check if already has valid QR for THIS specific booking

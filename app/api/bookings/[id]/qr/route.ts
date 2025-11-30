@@ -62,8 +62,9 @@ export async function POST(
       throw new ValidationError('Booking must be confirmed to generate QR');
     }
 
-    // Check if booking time has passed (using IST timezone)
-    const now = getNow();
+
+    // FIX: Check if booking time has passed (use UTC for DB comparison)
+    const now = new Date(); // UTC, not IST
     const bookingEnd = new Date(booking.end).getTime();
     const bookingStart = new Date(booking.start).getTime();
 
@@ -79,12 +80,12 @@ export async function POST(
       }
     }
 
-    // Check if already has valid QR for THIS specific booking (using IST timezone)
+    // Check if already has valid QR for THIS specific booking
     // This prevents confusion when user has multiple bookings
     const existingToken = await QRToken.findOne({
       bookingId: params.id,
       used: false,
-      expiresAt: { $gt: getNow() },
+      expiresAt: { $gt: new Date() }, // Use UTC for DB comparison
     }).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Dynamic Return Deadline Logic:
     // If user picked up late, they get equal extra time to return.
-    // Adjusted End Time = Original End Time + (Pickup Time - Start Time)
+    // Adjusted End Time = Original End Time + (Pickup Time - Start Time) + 15 min grace
     let adjustedEndTime = new Date(booking.end).getTime();
 
     if (booking.checkedInAt) {
@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
         adjustedEndTime += pickupDelay;
       }
     }
+
+    // Add 15-minute grace period for returns (consistent with QR generation grace period)
+    const RETURN_GRACE_PERIOD_MS = 15 * 60 * 1000;
+    adjustedEndTime += RETURN_GRACE_PERIOD_MS;
 
     const isLate = now.getTime() > adjustedEndTime;
     const isDamaged = condition === 'damaged';

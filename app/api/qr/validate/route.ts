@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
     }
 
     // EC-12: Check if the booking owner (student) is currently suspended
-    const bookingOwner = await User.findById(booking.userId).session(session);
+    // FIX: userId is email address, not ObjectId
+    const bookingOwner = await User.findOne({ email: booking.userId }).session(session);
     if (!bookingOwner) {
       await session.abortTransaction();
       throw new NotFoundError('Booking owner');

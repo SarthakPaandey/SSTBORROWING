@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if late (using IST timezone for accurate late detection)
-    const now = getNow();
+    // Check if late - use UTC for DB comparison (booking.end is UTC)
+    const now = new Date(); // UTC
     const isLate = now.getTime() > new Date(booking.end).getTime();
 
     let penaltyApplied = false;
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // Complete booking and mark as returned
     booking.status = 'COMPLETED';
-    booking.returnedAt = now;  // Track when returned
+    booking.returnedAt = now;  // Use UTC for consistency
     await booking.save({ session });
 
     // Commit transaction

@@ -29,12 +29,14 @@ export async function GET(req: NextRequest) {
       groupBookings.map(async (gb) => {
         const booking = await Booking.findById(gb.bookingId);
         const resource = booking ? await Resource.findById(booking.resourceId) : null;
-        const organizer = await User.findById(gb.organizerId);
+        // FIX: organizerId is email, not ObjectId
+        const organizer = await User.findOne({ email: gb.organizerId });
 
         // Get member details
         const memberDetails = await Promise.all(
           gb.members.map(async (member) => {
-            const user = await User.findById(member.userId);
+            // FIX: member.userId is email, not ObjectId
+            const user = await User.findOne({ email: member.userId });
             return {
               userId: member.userId,
               email: member.email,

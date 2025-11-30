@@ -147,7 +147,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
             onChange={setSelectedStartTime}
             minTime="08:00"
             maxTime="20:00"
-            stepMinutes={60}
+            stepMinutes={30}
             label="Select Time Slot"
             helperText="Each booking is for 1 hour"
           />

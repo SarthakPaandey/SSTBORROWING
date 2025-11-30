@@ -186,16 +186,28 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     );
   }
 
-  // Generate time slots (6am - 8pm)
+  // Generate time slots (6am - 8pm, 30-minute intervals, 1-hour duration)
   const generateSlots = () => {
     const slots = [];
     const today = getISTToday();
     const now = getISTNow();
 
-    for (let hour = 6; hour < 20; hour++) {
+    // Iterate by 30-minute increments
+    const startMinutes = 6 * 60; // 6:00 AM in minutes
+    const endMinutes = 20 * 60;  // 8:00 PM in minutes
+
+    for (let totalMinutes = startMinutes; totalMinutes < endMinutes; totalMinutes += 30) {
+      const startHour = Math.floor(totalMinutes / 60);
+      const startMinute = totalMinutes % 60;
+
+      // End time is 1 hour after start
+      const endTotalMinutes = totalMinutes + 60;
+      const endHour = Math.floor(endTotalMinutes / 60);
+      const endMinute = endTotalMinutes % 60;
+
       // FIX: Create dates in IST timezone by specifying +05:30 offset
-      const start = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00+05:30`);
-      const end = new Date(`${date}T${(hour + 1).toString().padStart(2, '0')}:00:00+05:30`);
+      const start = new Date(`${date}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00+05:30`);
+      const end = new Date(`${date}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00+05:30`);
 
       // Filter out past slots if date is today
       if (date === today) {
@@ -212,10 +224,14 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
         }
       }
 
+      // Format label
+      const formatTime = (hour: number, minute: number) =>
+        `${hour}:${minute.toString().padStart(2, '0')}`;
+
       slots.push({
         start: start.toISOString(),
         end: end.toISOString(),
-        label: `${hour}:00 - ${hour + 1}:00`,
+        label: `${formatTime(startHour, startMinute)} - ${formatTime(endHour, endMinute)}`,
       });
     }
     return slots;

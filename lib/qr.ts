@@ -1,13 +1,19 @@
 import crypto from 'crypto';
 import QRCode from 'qrcode';
 
+// FIX EC-60: Allow fallback in development instead of crashing
 const envSecret = process.env.QR_HMAC_SECRET;
 
-if (!envSecret) {
-  throw new Error('QR_HMAC_SECRET environment variable is not defined');
+if (!envSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('QR_HMAC_SECRET environment variable is required in production');
 }
 
-const QR_SECRET: string = envSecret;
+// Use fallback in development only
+const QR_SECRET: string = envSecret || 'dev-fallback-secret-do-not-use-in-production';
+
+if (!envSecret) {
+  console.warn('⚠️  QR_HMAC_SECRET not set - using insecure fallback for development');
+}
 
 export interface QRPayload {
   bid: string; // booking ID

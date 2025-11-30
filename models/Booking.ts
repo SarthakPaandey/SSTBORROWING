@@ -119,6 +119,8 @@ BookingSchema.index({ userId: 1, status: 1 });
 BookingSchema.index({ resourceId: 1, start: 1, end: 1 });
 BookingSchema.index({ status: 1, start: 1 });
 BookingSchema.index({ approval: 1 });
+// FIX EC-67: Index on items.itemId for faster equipment availability queries
+BookingSchema.index({ 'items.itemId': 1, status: 1, start: 1, end: 1 });
 
 // Unique index to prevent overlapping bookings (race condition protection)
 // Only applies to active bookings (PENDING, CONFIRMED, CHECKED_IN)

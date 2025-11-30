@@ -41,7 +41,8 @@ async function postHandler(req: Request) {
     return await withTransaction(conn, async (txSession) => {
 
       // Get organizer within transaction
-      const organizer = await User.findById(session.user.id).session(txSession);
+      // FIX: session.user.id is email, not ObjectId
+      const organizer = await User.findOne({ email: session.user.id }).session(txSession);
       if (!organizer || organizer.role !== 'STUDENT') {
         throw new AuthorizationError('Only students can create group bookings');
       }
@@ -125,7 +126,8 @@ async function postHandler(req: Request) {
       }).session(txSession);
 
       if (conflictingBookings) {
-        const conflictUser = await User.findById(conflictingBookings.userId).session(txSession);
+        // FIX: booking.userId is email, not ObjectId  
+        const conflictUser = await User.findOne({ email: conflictingBookings.userId }).session(txSession);
         throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
       }
 

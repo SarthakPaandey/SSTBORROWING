@@ -121,7 +121,8 @@ async function postHandler(req: Request) {
       }
 
       // Get user with penalty info
-      const user = await User.findById(userId).session(session);
+      // FIX: userId from session is email, not ObjectId
+      const user = await User.findOne({ email: userId }).session(session);
       if (!user) {
         throw new NotFoundError('User');
       }

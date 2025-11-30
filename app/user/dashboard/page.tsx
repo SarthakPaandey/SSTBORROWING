@@ -23,7 +23,8 @@ export default async function UserDashboard() {
 
   await connectDB();
 
-  const user = await User.findById(session.user.id);
+  // FIX: session.user.id is email, not ObjectId
+  const user = await User.findOne({ email: session.user.id });
   if (!user) {
     redirect('/login');
   }
@@ -71,7 +72,7 @@ export default async function UserDashboard() {
             {/* FIX: Use IST timezone for accurate suspension check */}
             <CardDescription className="text-text-muted">
               {user.suspendedUntil && now < user.suspendedUntil
-                ? `You are suspended until ${ new Date(user.suspendedUntil).toLocaleDateString() } `
+                ? `You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()} `
                 : user.penaltyPoints >= 5
                   ? 'You have reached the maximum penalty points. Please contact admin.'
                   : 'Avoid no-shows and late returns to prevent suspension.'}

@@ -122,14 +122,26 @@ export default function BookingsPage() {
   };
 
   // FIX: Use IST time for accurate upcoming/past booking filtering
+  // Include bookings within 15-minute grace period after start time
   const now = getISTNow();
-  const upcomingBookings = bookings.filter(
-    (b) => ['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) && new Date(b.start) >= now
-  );
+  const QR_GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
 
-  const pastBookings = bookings.filter(
-    (b) => !['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status) || new Date(b.start) < now
-  );
+  const upcomingBookings = bookings.filter((b) => {
+    if (!['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status)) {
+      return false;
+    }
+    // Keep in "upcoming" if start time + 15 min grace period hasn't passed yet
+    const graceEnd = new Date(new Date(b.start).getTime() + QR_GRACE_PERIOD_MS);
+    return graceEnd >= now;
+  });
+
+  const pastBookings = bookings.filter((b) => {
+    if (!['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status)) {
+      return true; // Cancelled, completed, no-show go to past
+    }
+    const graceEnd = new Date(new Date(b.start).getTime() + QR_GRACE_PERIOD_MS);
+    return graceEnd < now;
+  });
 
   if (loading) {
     return (

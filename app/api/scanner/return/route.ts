@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
         reason: 'Late equipment return',
       }], { session });
 
-      const user = await User.findById(booking.userId).session(session);
+      // FIX: userId is email, not ObjectId
+      const user = await User.findOne({ email: booking.userId }).session(session);
       if (user) {
         user.penaltyPoints += POLICIES.PENALTY_LATE_RETURN;
 
@@ -100,7 +101,8 @@ export async function POST(req: NextRequest) {
         reason: 'Equipment returned damaged',
       }], { session });
 
-      const user = await User.findById(booking.userId).session(session);
+      // FIX: userId is email, not ObjectId
+      const user = await User.findOne({ email: booking.userId }).session(session);
       if (user) {
         user.penaltyPoints += POLICIES.PENALTY_DAMAGE;
 

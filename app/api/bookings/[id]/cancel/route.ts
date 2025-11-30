@@ -82,7 +82,8 @@ export async function PATCH(
       }], { session });
 
       // Update user penalty points
-      const userRecord = await User.findById(booking.userId).session(session);
+      // FIX: userId is email, not ObjectId
+      const userRecord = await User.findOne({ email: booking.userId }).session(session);
       if (userRecord) {
         userRecord.penaltyPoints += penaltyApplied;
         await userRecord.save({ session });

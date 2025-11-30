@@ -121,9 +121,10 @@ export async function POST(
     // This provides sufficient time for guard pickup while maintaining security
     const expiresAt = new Date(now.getTime() + expiryMinutes * 60000);
 
-    // Save token to DB
+    // Save token to DB - FIX: Include userId (required after EC-69)
     await QRToken.create({
       bookingId: params.id,
+      userId: user.id,
       token,
       expiresAt,
       used: false,

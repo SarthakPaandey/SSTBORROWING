@@ -28,8 +28,10 @@ export default function BookingsPage() {
   const [rescheduleModal, setRescheduleModal] = useState<{
     open: boolean;
     booking?: EnrichedBooking;
-    newStart?: string;
-    newEnd?: string;
+    selectedDate?: string;     // YYYY-MM-DD format
+    selectedSlot?: { start: string; end: string };  // Selected time slot
+    newStart?: string;         // Keep for API call
+    newEnd?: string;           // Keep for API call
   }>({ open: false });
   const [rescheduling, setRescheduling] = useState(false);
   const [confirmedPenalty, setConfirmedPenalty] = useState(false);
@@ -215,6 +217,53 @@ export default function BookingsPage() {
     return { allowed: true };
   };
 
+  // Generate time slots for rescheduling (30-min intervals)
+  const generateRescheduleSlots = (date: string, booking: EnrichedBooking) => {
+    const slots = [];
+    const selectedDateObj = new Date(`${date}T00:00:00+05:30`);
+    const today = getISTNow();
+    const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    // Calculate original duration
+    const originalStart = new Date(booking.start).getTime();
+    const originalEnd = new Date(booking.end).getTime();
+    const durationMs = originalEnd - originalStart;
+
+    // Generate slots from 6 AM to 8 PM (30-min increments)
+    for (let hour = 6; hour < 20; hour++) {
+      for (let minute of [0, 30]) {
+        const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`);
+        const slotEnd = new Date(slotStart.getTime() + durationMs);
+
+        // Skip past slots if today
+        if (date === todayDateStr) {
+          if (slotStart < today) continue;
+
+          // Skip slots within 2-hour reschedule window
+          const hoursUntilSlot = (slotStart.getTime() - today.getTime()) / (1000 * 60 * 60);
+          if (hoursUntilSlot < 2) continue;
+        }
+
+        // Format time label
+        const formatTime = (d: Date) => {
+          const h = d.getHours();
+          const m = d.getMinutes();
+          const period = h >= 12 ? 'PM' : 'AM';
+          const displayHour = h % 12 || 12;
+          return `${displayHour}:${String(m).padStart(2, '0')} ${period}`;
+        };
+
+        slots.push({
+          start: slotStart.toISOString(),
+          end: slotEnd.toISOString(),
+          label: formatTime(slotStart),
+        });
+      }
+    }
+
+    return slots;
+  };
+
   const getStatusBadge = (status: string, approval: string, kind?: string, startTime?: Date | string, endTime?: Date | string) => {
     // Check if booking time has passed for CONFIRMED/PENDING bookings
     const now = getISTNow();
@@ -373,11 +422,15 @@ export default function BookingsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => {
+                              const today = getISTNow();
+                              const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                               setRescheduleModal({
                                 open: true,
                                 booking,
-                                newStart: new Date(booking.start).toISOString().slice(0, 16),
-                                newEnd: new Date(booking.end).toISOString().slice(0, 16),
+                                selectedDate: todayDateStr,
+                                selectedSlot: undefined,
+                                newStart: undefined,
+                                newEnd: undefined,
                               });
                               setConfirmedPenalty(false);
                             }}
@@ -514,49 +567,85 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* New Start Time Input */}
+            {/* Date Picker */}
             <div>
               <label className="block text-sm font-medium text-text-main mb-2">
-                Select New Start Time
+                Select Date
               </label>
               <input
-                type="datetime-local"
-                value={rescheduleModal.newStart || ''}
+                type="date"
+                value={rescheduleModal.selectedDate || ''}
                 onChange={(e) => {
-                  const newStartVal = e.target.value;
-                  if (!newStartVal || !rescheduleModal.booking) {
-                    setRescheduleModal({ ...rescheduleModal, newStart: '', newEnd: '' });
-                    return;
-                  }
-
-                  // Calculate duration from original booking
-                  const originalStart = new Date(rescheduleModal.booking.start).getTime();
-                  const originalEnd = new Date(rescheduleModal.booking.end).getTime();
-                  const durationMs = originalEnd - originalStart;
-
-                  // Calculate new end time
-                  const newStartDate = new Date(newStartVal);
-                  const newEndDate = new Date(newStartDate.getTime() + durationMs);
-
-                  // Convert to datetime-local format (YYYY-MM-DDTHH:mm)
-                  const pad = (n: number) => n < 10 ? '0' + n : n;
-                  const newEndStr = newEndDate.getFullYear() + '-' +
-                    pad(newEndDate.getMonth() + 1) + '-' +
-                    pad(newEndDate.getDate()) + 'T' +
-                    pad(newEndDate.getHours()) + ':' +
-                    pad(newEndDate.getMinutes());
-
                   setRescheduleModal({
                     ...rescheduleModal,
-                    newStart: newStartVal,
-                    newEnd: newEndStr,
+                    selectedDate: e.target.value,
+                    selectedSlot: undefined, // Reset slot when date changes
+                    newStart: undefined,
+                    newEnd: undefined,
                   });
                 }}
+                min={(() => {
+                  const today = getISTNow();
+                  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                })()}
+                max={(() => {
+                  const maxDate = new Date(getISTNow());
+                  maxDate.setDate(maxDate.getDate() + 7); // 7 days advance booking
+                  return `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+                })()}
                 className="w-full px-4 py-2.5 border border-card-border rounded-lg bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all"
               />
             </div>
 
-            {/* Calculated End Time Display (Read-only) */}
+            {/* Time Slot Grid */}
+            {rescheduleModal.selectedDate && rescheduleModal.booking && (
+              <div>
+                <label className="block text-sm font-medium text-text-main mb-2">
+                  Select Time
+                </label>
+                {(() => {
+                  const slots = generateRescheduleSlots(rescheduleModal.selectedDate, rescheduleModal.booking);
+
+                  if (slots.length === 0) {
+                    return (
+                      <div className="p-4 bg-warning/10 rounded-lg border border-warning/30 text-sm text-warning">
+                        No available slots for this date. Slots must be at least 2 hours in the future.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto p-2">
+                      {slots.map((slot, idx) => {
+                        const isSelected = rescheduleModal.selectedSlot?.start === slot.start;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setRescheduleModal({
+                                ...rescheduleModal,
+                                selectedSlot: slot,
+                                newStart: slot.start,
+                                newEnd: slot.end,
+                              });
+                            }}
+                            className={`
+                              px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                              ${isSelected ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/30' : 'bg-bg-secondary hover:bg-accent-blue/20 text-text-main'}
+                            `}
+                          >
+                            {slot.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Calculated End Time Display */}
             {rescheduleModal.newEnd && (
               <div className="p-3 bg-secondary/10 rounded-lg border border-secondary/30">
                 <p className="text-sm font-medium text-secondary">

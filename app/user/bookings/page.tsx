@@ -551,11 +551,8 @@ export default function BookingsPage() {
             {/* Calculated End Time Display (Read-only) */}
             {rescheduleModal.newEnd && (
               <div className="p-3 bg-secondary/10 rounded-lg border border-secondary/30">
-                <p className="text-sm text-text-muted">
-                  <span className="font-medium text-text-main">Duration will be maintained:</span>
-                </p>
-                <p className="text-sm text-secondary font-medium mt-1">
-                  Ends at: {formatDateTime(rescheduleModal.newEnd)}
+                <p className="text-sm font-medium text-secondary">
+                  📅 Ends at: {formatDateTime(rescheduleModal.newEnd)}
                 </p>
               </div>
             )}

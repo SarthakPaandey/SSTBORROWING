@@ -93,10 +93,9 @@ export default function BookingsPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/qr/generate', {
+      const res = await fetch(`/api/bookings/${bookingId}/qr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId }),
       });
 
       const data = await res.json();
@@ -184,7 +183,29 @@ export default function BookingsPage() {
   };
 
 
-  const getStatusBadge = (status: string, approval: string, kind?: string) => {
+  const getStatusBadge = (status: string, approval: string, kind?: string, startTime?: Date | string, endTime?: Date | string) => {
+    // Check if booking time has passed for CONFIRMED/PENDING bookings
+    const now = getISTNow();
+    const start = startTime ? new Date(startTime) : null;
+    const end = endTime ? new Date(endTime) : null;
+
+    // For equipment/library: show "Late" if start time + grace period has passed and not picked up
+    // For facilities/rooms: show "Missed" if end time has passed
+    if (status === 'CONFIRMED' || status === 'PENDING') {
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        if (start) {
+          const graceEndTime = new Date(start.getTime() + 15 * 60 * 1000); // 15 min grace
+          if (now > graceEndTime) {
+            return <Badge variant="destructive">Late - Cannot Pickup</Badge>;
+          }
+        }
+      } else if (kind === 'FACILITY' || kind === 'ROOM') {
+        if (end && now > end) {
+          return <Badge variant="destructive">Missed</Badge>;
+        }
+      }
+    }
+
     if (status === 'PENDING' && approval === 'PENDING') {
       return <Badge variant="warning">Awaiting Approval</Badge>;
     }
@@ -278,7 +299,7 @@ export default function BookingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval, booking.kind)}
+                      {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">
                       {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
@@ -354,7 +375,7 @@ export default function BookingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval, booking.kind)}
+                      {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">
                       {formatDateTime(booking.start)}

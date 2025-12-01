@@ -82,13 +82,45 @@ export async function PATCH(
                 throw new ValidationError(validationResult2.reason || 'Reschedule not allowed');
             }
 
-            // Store old time for potential email notification
+            // Store old time for history
             const oldStart = booking.start;
             const oldEnd = booking.end;
 
             // Update booking times
             booking.start = newStart;
             booking.end = newEnd;
+
+            // NEW: Increment reschedule counter
+            booking.rescheduleCount += 1;
+
+            // NEW: Add to reschedule history
+            if (!booking.rescheduleHistory) {
+                booking.rescheduleHistory = [];
+            }
+            booking.rescheduleHistory.push({
+                oldStart,
+                oldEnd,
+                newStart,
+                newEnd,
+                rescheduledAt: new Date(),
+                rescheduledBy: authSession.user.id,
+                reason: body.reason || undefined, // Optional reason from request
+            });
+
+            // NEW: Add penalty points (3 points per reschedule)
+            const { Penalty } = await import('@/models/Penalty');
+            const { POLICIES } = await import('@/lib/policies');
+
+            await Penalty.create({
+                userId: booking.userId,
+                points: POLICIES.RESCHEDULE_PENALTY_POINTS,
+                reason: `Rescheduled booking for ${resource.name}`,
+                bookingId: booking.id,
+            }, { session });
+
+            // Update user total penalty points
+            user.penaltyPoints += POLICIES.RESCHEDULE_PENALTY_POINTS;
+            await user.save({ session });
 
             // Handle approval revalidation if needed
             let needsApprovalEmail = false;

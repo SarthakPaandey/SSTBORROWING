@@ -38,6 +38,16 @@ export interface IBooking extends Document {
   approvalEmailSent?: boolean; // Track if approval email was sent to admins
   approvalEmailSentAt?: Date; // When approval email was sent
   approvalEmailError?: string; // Error message if email send failed
+  rescheduleCount: number; // Number of times this booking has been rescheduled
+  rescheduleHistory?: {
+    oldStart: Date;
+    oldEnd: Date;
+    newStart: Date;
+    newEnd: Date;
+    rescheduledAt: Date;
+    rescheduledBy: string; // User ID who performed reschedule
+    reason?: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -108,6 +118,22 @@ const BookingSchema = new Schema<IBooking>(
     approvalEmailSent: { type: Boolean, default: false }, // Track email delivery
     approvalEmailSentAt: { type: Date }, // Timestamp of successful send
     approvalEmailError: { type: String }, // Error message if send failed
+    // Reschedule tracking fields
+    rescheduleCount: {
+      type: Number,
+      default: 0,
+      required: true,
+      min: 0
+    },
+    rescheduleHistory: [{
+      oldStart: { type: Date, required: true },
+      oldEnd: { type: Date, required: true },
+      newStart: { type: Date, required: true },
+      newEnd: { type: Date, required: true },
+      rescheduledAt: { type: Date, required: true },
+      rescheduledBy: { type: String, required: true },
+      reason: { type: String }
+    }]
   },
   {
     timestamps: true,

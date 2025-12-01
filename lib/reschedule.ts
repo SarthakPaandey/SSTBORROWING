@@ -36,6 +36,9 @@ export interface RescheduleValidationResult {
 export async function validateReschedule(params: RescheduleParams): Promise<RescheduleValidationResult> {
     const { booking, user, resource, newStart, newEnd, session } = params;
 
+    // Get current time once at the start
+    const now = getNow();
+
     // 1. Status Check: Only CONFIRMED or PENDING bookings can be rescheduled
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
         return {
@@ -44,8 +47,44 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         };
     }
 
+    // NEW: 1a. Per-booking reschedule limit
+    if (booking.rescheduleCount >= POLICIES.MAX_RESCHEDULE_PER_BOOKING) {
+        return {
+            allowed: false,
+            reason: `This booking has already been rescheduled ${booking.rescheduleCount} time(s). Maximum ${POLICIES.MAX_RESCHEDULE_PER_BOOKING} reschedule allowed per booking.`,
+        };
+    }
+
+    // NEW: 1b. Monthly reschedule limit
+    const reschedMonthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+    const reschedMonthEnd = new Date(reschedMonthStart);
+    reschedMonthEnd.setMonth(reschedMonthEnd.getMonth() + 1);
+
+    const monthlyRescheduleCount = await Booking.countDocuments({
+        userId: user.id,
+        rescheduleCount: { $gt: 0 }, // Has been rescheduled at least once
+        'rescheduleHistory.rescheduledAt': { $gte: reschedMonthStart, $lt: reschedMonthEnd }, // Rescheduled this month
+    }).session(session);
+
+    if (monthlyRescheduleCount >= POLICIES.MAX_RESCHEDULE_PER_MONTH) {
+        return {
+            allowed: false,
+            reason: `You can only reschedule ${POLICIES.MAX_RESCHEDULE_PER_MONTH} bookings per month. You have already rescheduled ${monthlyRescheduleCount} booking(s) this month.`,
+        };
+    }
+
+    // NEW: 1c. Time window restriction (cannot reschedule within 2 hours of start)
+    const bookingStart = new Date(booking.start);
+    const hoursUntilStart = (bookingStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (hoursUntilStart < POLICIES.RESCHEDULE_BLOCK_WINDOW_HOURS) {
+        return {
+            allowed: false,
+            reason: `Cannot reschedule within ${POLICIES.RESCHEDULE_BLOCK_WINDOW_HOURS} hours of booking start time. Please cancel and create a new booking instead.`,
+        };
+    }
+
     // 2. Prevent rescheduling to the past
-    const now = getNow();
     if (newStart < now) {
         return {
             allowed: false,

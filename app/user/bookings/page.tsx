@@ -344,7 +344,8 @@ export default function BookingsPage() {
                       <Badge variant="secondary" className="mt-2">
                         Rescheduled {booking.rescheduleCount}x
                       </Badge>
-                    )}\n                  </div>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
                       <Button

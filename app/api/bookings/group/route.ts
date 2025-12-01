@@ -126,8 +126,8 @@ async function postHandler(req: Request) {
       }).session(txSession);
 
       if (conflictingBookings) {
-        // FIX: booking.userId is email, not ObjectId  
-        const conflictUser = await User.findOne({ email: conflictingBookings.userId }).session(txSession);
+        // FIX: conflictingBookings.userId is the ObjectId, not email
+        const conflictUser = await User.findById(conflictingBookings.userId).session(txSession);
         throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
       }
 

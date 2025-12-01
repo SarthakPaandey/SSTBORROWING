@@ -146,8 +146,8 @@ export async function POST(req: NextRequest) {
       // FIX: Single atomic update for user penalty points
       // Previously, if both late AND damaged, we fetched user twice and saved twice
       // which could cause race conditions and incorrect suspension checks
-      // FIX: userId is email address, not ObjectId
-      const user = await User.findOne({ email: booking.userId }).session(session);
+      // FIX: booking.userId is the ObjectId, not email
+      const user = await User.findById(booking.userId).session(session);
       if (user) {
         user.penaltyPoints += totalPenaltyPoints;
 

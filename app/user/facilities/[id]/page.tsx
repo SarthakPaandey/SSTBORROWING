@@ -10,6 +10,7 @@ import { ArrowLeft, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
+import { Resource } from '@/types/frontend';
 
 interface Params {
   id: string;
@@ -19,7 +20,7 @@ const TEAM_SPORTS = POLICIES.GROUP_BOOKING_TEAM_SPORTS;
 
 export default function FacilityBookingPage({ params }: { params: Params }) {
   const router = useRouter();
-  const [resource, setResource] = useState<any>(null);
+  const [resource, setResource] = useState<Resource | null>(null);
   const [date, setDate] = useState(getISTToday());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,9 +28,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   const [success, setSuccess] = useState(false);
 
   // Group booking state
-  const [isGroupBooking, setIsGroupBooking] = useState(false);
   const [memberEmails, setMemberEmails] = useState<string[]>(['']); // Start with just one field
-  const [emailInput, setEmailInput] = useState('');
 
   useEffect(() => {
     fetchResource();
@@ -52,14 +51,12 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   const fetchResource = async () => {
     const res = await fetch(`/api/resources?type=FACILITY`);
     const data = await res.json();
-    const found = data.resources.find((r: any) => r._id === params.id);
+    const found = data.resources.find((r: Resource) => r._id === params.id);
     setResource(found);
 
     // Automatically set group booking to true for team sports
-    const isTeamSport = found && TEAM_SPORTS.includes(found.name);
-    if (isTeamSport) {
-      setIsGroupBooking(true);
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // const isTeamSport = found && TEAM_SPORTS.includes(found.name as any);
   };
 
   const handleBook = async () => {
@@ -75,7 +72,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
       return;
     }
 
-    const isTeamSport = resource && TEAM_SPORTS.includes(resource.name);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isTeamSport = resource && TEAM_SPORTS.includes(resource.name as any);
 
     // For team sports, validate group booking requirements
     if (isTeamSport) {
@@ -117,8 +115,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
         setSuccess(true);
         setTimeout(() => router.push('/user/bookings'), 2000);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
@@ -147,17 +145,17 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
         setSuccess(true);
         setTimeout(() => router.push('/user/bookings'), 2000);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const addEmailField = () => {
-    setMemberEmails([...memberEmails, '']);
-  };
+  // const addEmailField = () => {
+  //   setMemberEmails([...memberEmails, '']);
+  // };
 
   const removeEmailField = (index: number) => {
     const updated = memberEmails.filter((_, i) => i !== index);
@@ -175,7 +173,8 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     }
   };
 
-  const isTeamSport = resource && TEAM_SPORTS.includes(resource.name);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isTeamSport = resource && TEAM_SPORTS.includes(resource.name as any);
 
   if (!resource) {
     return (

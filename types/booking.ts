@@ -15,7 +15,8 @@ export interface BookingItem {
  * Booking enriched with resource and user information
  * Used in API responses and components
  */
-export interface EnrichedBooking extends Omit<IBooking, 'items'> {
+export interface EnrichedBooking extends Omit<IBooking, 'items' | '_id'> {
+    _id: string;
     resourceName: string;
     userEmail?: string | null;
     userName?: string | null;

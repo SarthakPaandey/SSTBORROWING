@@ -8,18 +8,19 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Plus, Edit, Trash2, BookOpen } from 'lucide-react';
+import { Resource, LibraryBook } from '@/types/frontend';
 
 type ModalMode = 'add' | 'edit' | null;
 
 export default function LibraryManagementPage() {
-  const [resources, setResources] = useState<any[]>([]);
-  const [books, setBooks] = useState<any[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Book modal state
   const [bookModal, setBookModal] = useState(false);
   const [bookMode, setBookMode] = useState<ModalMode>(null);
-  const [selectedBook, setSelectedBook] = useState<any>(null);
+  const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
   const [bookForm, setBookForm] = useState({
     name: '',
     qtyTotal: '',
@@ -31,7 +32,7 @@ export default function LibraryManagementPage() {
 
   // Delete confirmation
   const [deleteModal, setDeleteModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LibraryBook | null>(null);
 
   useEffect(() => {
     fetchLibraryResources();
@@ -52,7 +53,7 @@ export default function LibraryManagementPage() {
       const res = await fetch('/api/admin/equipment');
       const data = await res.json();
       // FIX EC-4: Filter only library books using resources
-      const libraryBooks = (data.items || []).filter((item: any) =>
+      const libraryBooks = (data.items || []).filter((item: LibraryBook) =>
         resources.some(r => r._id === item.resourceId && r.type === 'LIBRARY')
       );
       setBooks(libraryBooks);
@@ -68,6 +69,7 @@ export default function LibraryManagementPage() {
     if (resources.length > 0) {
       fetchBooks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resources]);
 
   // Book handlers
@@ -84,7 +86,7 @@ export default function LibraryManagementPage() {
     setBookModal(true);
   };
 
-  const openEditBook = (book: any) => {
+  const openEditBook = (book: LibraryBook) => {
     setSelectedBook(book);
     setBookForm({
       name: book.name,
@@ -103,7 +105,17 @@ export default function LibraryManagementPage() {
       const url = bookMode === 'add' ? '/api/admin/equipment' : `/api/admin/equipment`;
       const method = bookMode === 'add' ? 'POST' : 'PATCH';
 
-      const body: any = {
+      interface SaveBookBody {
+        resourceId: string;
+        name: string;
+        qtyTotal: number;
+        qtyAvailable: number;
+        safety: boolean;
+        restricted: boolean;
+        itemId?: string;
+      }
+
+      const body: SaveBookBody = {
         resourceId: bookForm.resourceId,
         name: bookForm.name,
         qtyTotal: parseInt(bookForm.qtyTotal),
@@ -112,7 +124,7 @@ export default function LibraryManagementPage() {
         restricted: bookForm.restricted,
       };
 
-      if (bookMode === 'edit') {
+      if (bookMode === 'edit' && selectedBook) {
         body.itemId = selectedBook._id;
       }
 
@@ -135,12 +147,14 @@ export default function LibraryManagementPage() {
     }
   };
 
-  const confirmDelete = (book: any) => {
+  const confirmDelete = (book: LibraryBook) => {
     setDeleteTarget(book);
     setDeleteModal(true);
   };
 
   const deleteBook = async () => {
+    if (!deleteTarget) return;
+
     try {
       const res = await fetch(`/api/admin/equipment/${deleteTarget._id}`, {
         method: 'DELETE',
@@ -172,7 +186,7 @@ export default function LibraryManagementPage() {
   const nonFictionBooks = books.filter(b => nonFictionResource && b.resourceId === nonFictionResource._id);
   const textbooks = books.filter(b => textbooksResource && b.resourceId === textbooksResource._id);
 
-  const renderBookList = (bookList: any[], resourceId: string, categoryName: string) => (
+  const renderBookList = (bookList: LibraryBook[], resourceId: string, categoryName: string) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
@@ -252,15 +266,15 @@ export default function LibraryManagementPage() {
         </TabsList>
 
         <TabsContent value="fiction">
-          {renderBookList(fictionBooks, fictionResource?._id, 'Fiction Books')}
+          {renderBookList(fictionBooks, fictionResource?._id || '', 'Fiction Books')}
         </TabsContent>
 
         <TabsContent value="non-fiction">
-          {renderBookList(nonFictionBooks, nonFictionResource?._id, 'Non-Fiction Books')}
+          {renderBookList(nonFictionBooks, nonFictionResource?._id || '', 'Non-Fiction Books')}
         </TabsContent>
 
         <TabsContent value="textbooks">
-          {renderBookList(textbooks, textbooksResource?._id, 'Textbooks')}
+          {renderBookList(textbooks, textbooksResource?._id || '', 'Textbooks')}
         </TabsContent>
       </Tabs>
 

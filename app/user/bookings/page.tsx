@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
-import { QrCode, X, Clock } from 'lucide-react';
+import { QrCode, Clock } from 'lucide-react';
+import { EnrichedBooking, BookingItem } from '@/types/booking';
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [qrModal, setQrModal] = useState<{ open: boolean; qrImage?: string; booking?: any; expiresAt?: string }>({
+  const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
+  const [qrModal, setQrModal] = useState<{ open: boolean; qrImage?: string; booking?: EnrichedBooking; expiresAt?: string }>({
     open: false,
   });
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,7 @@ export default function BookingsPage() {
         alert(data.error || 'Failed to generate QR code');
       }
     } catch (error) {
+      console.error(error);
       alert('Failed to generate QR code');
     }
   };
@@ -95,6 +97,7 @@ export default function BookingsPage() {
         alert(data.error || 'Failed to cancel booking');
       }
     } catch (error) {
+      console.error(error);
       alert('Failed to cancel booking');
     }
   };
@@ -193,7 +196,7 @@ export default function BookingsPage() {
                     )}
                     {booking.items && booking.items.length > 0 && (
                       <div className="mt-2 text-sm text-gray-600">
-                        Items: {booking.items.map((item: any) => `${item.name} (${item.qty})`).join(', ')}
+                        Items: {booking.items.map((item: BookingItem) => `${item.name} (${item.qty})`).join(', ')}
                       </div>
                     )}
                   </div>
@@ -273,6 +276,7 @@ export default function BookingsPage() {
 
             {/* QR Code */}
             <div className="flex justify-center p-6 bg-white rounded-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qrModal.qrImage} alt="QR Code" className="w-64 h-64" />
             </div>
 

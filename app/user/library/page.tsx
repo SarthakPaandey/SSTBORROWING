@@ -167,6 +167,7 @@ export default function LibraryPage() {
           onChange={setStartTime}
           minTime="09:00"
           maxTime="20:00"
+          stepMinutes={30}
           label="Pickup Time"
           helperText="Only remaining pickup times for today are shown. Available between 9:00 AM - 8:00 PM • 14-day borrowing period"
         />

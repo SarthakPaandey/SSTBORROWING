@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { QrCode, CheckCircle, XCircle, Camera, X, Keyboard } from 'lucide-react';
+import { CheckCircle, XCircle, Camera, X, Keyboard } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { QRValidationResult } from '@/types/booking';
 
 export default function ScannerPage() {
   const [token, setToken] = useState('');
-  const [bookingId, setBookingId] = useState('');
+  // const [bookingId, setBookingId] = useState('');
   const [result, setResult] = useState<QRValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,7 +48,7 @@ export default function ScannerPage() {
           stopScanner();
         }
       }
-    } catch (err) {
+    } catch {
       setError('Failed to validate QR code');
     } finally {
       setLoading(false);
@@ -91,18 +91,20 @@ export default function ScannerPage() {
           },
           (errorMessage) => {
             // Ignore scan errors (happens continuously while scanning)
+            console.debug(errorMessage);
           }
         );
-      } catch (err: any) {
+      } catch (err) {
         console.error('Camera error:', err);
         setCameraError(
-          (err as Error).message || 'Failed to start camera. Please check permissions and try again.'
+          (err instanceof Error ? err.message : String(err)) || 'Failed to start camera. Please check permissions and try again.'
         );
         setIsScanning(false);
       }
     };
 
     initCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScanning]);
 
   const stopScanner = async () => {
@@ -122,6 +124,7 @@ export default function ScannerPage() {
     return () => {
       stopScanner();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 

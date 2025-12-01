@@ -53,8 +53,8 @@ export default function GroupInvitationsPage() {
 
       // Refresh invitations
       await fetchInvitations();
-    } catch (err: any) {
-      setError((err as Error).message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setResponding(null);
     }

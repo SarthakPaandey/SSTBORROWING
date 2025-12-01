@@ -269,6 +269,7 @@ export default function EquipmentPage() {
                   onChange={setStartTime}
                   minTime="09:00"
                   maxTime="20:00"
+                  stepMinutes={30}
                   label="Pickup Time"
                   helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />
@@ -368,6 +369,7 @@ export default function EquipmentPage() {
                   onChange={setStartTime}
                   minTime="09:00"
                   maxTime="20:00"
+                  stepMinutes={30}
                   label="Pickup Time"
                   helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />

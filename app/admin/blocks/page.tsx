@@ -10,11 +10,12 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { TimePicker } from '@/components/ui/TimePicker';
 import { formatDateTime } from '@/lib/utils';
 import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle, Check, X } from 'lucide-react';
-import { getISTTodayStart, getISTNow } from '@/lib/timezone-client';
+import { getISTTodayStart } from '@/lib/timezone-client';
+import { Block, Resource } from '@/types/frontend';
 
 export default function BlocksPage() {
-  const [blocks, setBlocks] = useState<any[]>([]);
-  const [resources, setResources] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<'ALL' | 'MAINTENANCE' | 'EVENT'>('ALL');
   const [selectedResources, setSelectedResources] = useState<string[]>([]);
@@ -39,13 +40,14 @@ export default function BlocksPage() {
     if (resources.length > 0) {
       fetchBlocks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resources]);
 
   const fetchBlocks = async () => {
     const res = await fetch('/api/admin/blocks');
     const data = await res.json();
     // Enrich blocks with resource names
-    const enrichedBlocks = (data.blocks || []).map((block: any) => {
+    const enrichedBlocks = (data.blocks || []).map((block: Block) => {
       const resource = resources.find(r => r._id === block.resourceId);
       return {
         ...block,
@@ -114,7 +116,7 @@ export default function BlocksPage() {
       } else {
         alert(`Created ${results.length - failed.length} blocks, but ${failed.length} failed`);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to create blocks');
     } finally {
       setLoading(false);
@@ -136,7 +138,7 @@ export default function BlocksPage() {
         const data = await res.json();
         alert(data.error || 'Failed to delete block');
       }
-    } catch (error) {
+    } catch {
       alert('Failed to delete block');
     } finally {
       setDeleting(null);
@@ -166,8 +168,8 @@ export default function BlocksPage() {
     const BUSINESS_START_TIME = '08:00';
     const BUSINESS_END_TIME = '20:00';
 
-    let newStartDate = new Date(today);
-    let newEndDate = new Date(today);
+    const newStartDate = new Date(today);
+    const newEndDate = new Date(today);
 
     if (type === 'today') {
       // Today 8 AM - 8 PM
@@ -265,7 +267,7 @@ export default function BlocksPage() {
       </div>
 
       {/* Filter Tabs */}
-      <Tabs value={filterType} onValueChange={(v) => setFilterType(v as any)}>
+      <Tabs value={filterType} onValueChange={(v) => setFilterType(v as 'ALL' | 'MAINTENANCE' | 'EVENT')}>
         <TabsList>
           <TabsTrigger value="ALL">All Blocks</TabsTrigger>
           <TabsTrigger value="MAINTENANCE">Maintenance</TabsTrigger>

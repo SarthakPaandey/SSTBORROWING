@@ -5,6 +5,11 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
 
+// Check for required environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('[Auth Config] CRITICAL: NEXTAUTH_SECRET is not set!');
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
@@ -99,6 +104,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        console.log('[Auth] JWT callback - User logged in:', { id: user.id, role: user.role });
       }
       return token;
     },
@@ -106,6 +112,7 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        console.log('[Auth] Session callback - Session created for:', { id: token.id, role: token.role });
       }
       return session;
     },

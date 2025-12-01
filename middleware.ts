@@ -6,6 +6,10 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const path = request.nextUrl.pathname;
 
+  // Debug logging
+  console.log('[Middleware] Path:', path);
+  console.log('[Middleware] Token:', token ? `exists (role: ${token.role})` : 'null');
+
   // Public routes
   // Note: /api/approve uses email token auth, /api/cron and /api/group-bookings/expire use Bearer token auth
   // All should be accessible without NextAuth session
@@ -17,11 +21,13 @@ export async function middleware(request: NextRequest) {
     path === '/api/cron' ||
     path === '/api/group-bookings/expire' // Uses CRON_SECRET for auth
   ) {
+    console.log('[Middleware] Public route, allowing access');
     return NextResponse.next();
   }
 
   // Protect all routes except login
   if (!token && path !== '/') {
+    console.log('[Middleware] No token, redirecting to /login');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -31,20 +37,24 @@ export async function middleware(request: NextRequest) {
 
     // Guard routes
     if (path.startsWith('/guard') && role !== 'GUARD') {
+      console.log('[Middleware] Guard route access denied, redirecting to /');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
     // Admin routes
     if (path.startsWith('/admin') && role !== 'ADMIN') {
+      console.log('[Middleware] Admin route access denied, redirecting to /');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
     // User routes
     if (path.startsWith('/user') && role !== 'STUDENT' && role !== 'ADMIN') {
+      console.log('[Middleware] User route access denied, redirecting to /');
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
+  console.log('[Middleware] Access granted');
   return NextResponse.next();
 }
 

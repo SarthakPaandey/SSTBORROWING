@@ -171,6 +171,17 @@ export default function BookingsPage() {
         throw new Error(data.error || 'Failed to reschedule booking');
       }
 
+      // Success - refresh bookings and close modal
+      await fetchBookings();
+      setRescheduleModal({ open: false });
+      setConfirmedPenalty(false);
+
+      // Show success message
+      if (data.requiresApproval) {
+        alert('Booking rescheduled successfully! Since the new time requires approval, your booking status has been reset to "Awaiting Approval".');
+      } else {
+        alert('Booking rescheduled successfully!');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to reschedule booking';
       setError(errorMessage);

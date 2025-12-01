@@ -104,21 +104,22 @@ export async function PATCH(
                 newEnd,
                 rescheduledAt: new Date(),
                 rescheduledBy: authSession.user.id,
-                reason: body.reason || undefined, // Optional reason from request
+                reason: body.reason,
             });
 
             // NEW: Add penalty points (3 points per reschedule)
             const { Penalty } = await import('@/models/Penalty');
             const { POLICIES } = await import('@/lib/policies');
 
-            await Penalty.create({
+            // Create penalty record
+            await Penalty.create([{
                 userId: booking.userId,
                 points: POLICIES.RESCHEDULE_PENALTY_POINTS,
                 reason: `Rescheduled booking for ${resource.name}`,
                 bookingId: booking.id,
-            }, { session });
+            }], { session });
 
-            // Update user total penalty points
+            // Update user's total penalty points
             user.penaltyPoints += POLICIES.RESCHEDULE_PENALTY_POINTS;
             await user.save({ session });
 

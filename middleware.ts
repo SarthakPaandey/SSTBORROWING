@@ -6,10 +6,6 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const path = request.nextUrl.pathname;
 
-  // Debug logging
-  console.log('[Middleware] Path:', path);
-  console.log('[Middleware] Token:', token ? `exists (role: ${token.role})` : 'null');
-
   // Public routes
   // Note: /api/approve uses email token auth, /api/cron and /api/group-bookings/expire use Bearer token auth
   // All should be accessible without NextAuth session
@@ -54,7 +50,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  console.log('[Middleware] Access granted');
   return NextResponse.next();
 }
 

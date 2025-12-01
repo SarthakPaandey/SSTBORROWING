@@ -104,7 +104,6 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        console.log('[Auth] JWT callback - User logged in:', { id: user.id, role: user.role });
       }
       return token;
     },
@@ -112,7 +111,6 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
-        console.log('[Auth] Session callback - Session created for:', { id: token.id, role: token.role });
       }
       return session;
     },

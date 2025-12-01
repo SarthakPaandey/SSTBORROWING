@@ -68,16 +68,17 @@ export async function POST(
     const bookingEnd = new Date(booking.end).getTime();
     const bookingStart = new Date(booking.start).getTime();
 
-    const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes grace period
+    // Use policy for QR validity window (set to 1440 min / 24 hours for testing)
+    const GRACE_PERIOD_MS = POLICIES.QR_VALIDITY_BEFORE_START * 60 * 1000;
 
     // Allow QR generation:
-    // - Starting 15 minutes BEFORE booking start (for early arrivals)
+    // - Starting GRACE_PERIOD_MS before booking start (24 hours in testing mode)
     // - Up to 15 minutes AFTER booking start (grace period for pickup)
     const earliestGenTime = bookingStart - GRACE_PERIOD_MS;
-    const latestGenTime = bookingStart + GRACE_PERIOD_MS; // 15 min after START, not END
+    const latestGenTime = bookingStart + (15 * 60 * 1000); // 15 min after START
 
     if (now.getTime() < earliestGenTime) {
-      throw new ValidationError('QR code can be generated starting 15 minutes before your booking time');
+      throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time`);
     }
 
     if (now.getTime() > latestGenTime) {

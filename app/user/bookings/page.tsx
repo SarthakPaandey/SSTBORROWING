@@ -12,11 +12,26 @@ import { EnrichedBooking, BookingItem } from '@/types/booking';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
-  const [qrModal, setQrModal] = useState<{ open: boolean; qrImage?: string; booking?: EnrichedBooking; expiresAt?: string }>({
+  const [qrModal, setQrModal] = useState<{
+    open: boolean;
+    qrImage?: string;
+    booking?: EnrichedBooking;
+    expiresAt?: string;
+    token?: string;
+  }>({
     open: false,
   });
   const [loading, setLoading] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [generatingQR, setGeneratingQR] = useState<string | null>(null);
+  const [rescheduleModal, setRescheduleModal] = useState<{
+    open: boolean;
+    booking?: EnrichedBooking;
+    newStart?: string;
+    newEnd?: string;
+  }>({ open: false });
+  const [rescheduling, setRescheduling] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -58,27 +73,51 @@ export default function BookingsPage() {
     return () => clearInterval(timer);
   }, [qrModal.open, qrModal.expiresAt]);
 
-  const handleGenerateQR = async (bookingId: string) => {
+  const handleGenerateQR = async (bookingId: string, startTime: string) => {
+    // In development mode, bypass the 15-minute check
+    const isDev = process.env.NODE_ENV === 'development';
+
+    if (!isDev) {
+      const start = new Date(startTime).getTime();
+      const now = new Date().getTime();
+      const timeUntilStart = start - now;
+      const minutesUntilStart = timeUntilStart / (1000 * 60);
+
+      if (minutesUntilStart > 15) {
+        setError('QR code can only be generated 15 minutes before the booking start time');
+        return;
+      }
+    }
+
+    setGeneratingQR(bookingId);
+    setError('');
+
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/qr`, {
+      const res = await fetch('/api/qr/generate', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
       });
+
       const data = await res.json();
 
-      if (res.ok) {
-        const booking = bookings.find((b) => b._id === bookingId);
-        setQrModal({
-          open: true,
-          qrImage: data.qrImage,
-          booking,
-          expiresAt: data.expiresAt
-        });
-      } else {
-        alert(data.error || 'Failed to generate QR code');
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate QR code');
       }
-    } catch (error) {
-      console.error(error);
-      alert('Failed to generate QR code');
+
+      const booking = bookings.find((b) => b._id === bookingId);
+      setQrModal({
+        open: true,
+        qrImage: data.qrImage, // Assuming the API still returns qrImage
+        booking,
+        expiresAt: data.expiresAt,
+        token: data.token // Store the token if available
+      });
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate QR code');
+    } finally {
+      setGeneratingQR(null);
     }
   };
 
@@ -102,17 +141,73 @@ export default function BookingsPage() {
     }
   };
 
-  const getStatusBadge = (status: string, approval: string) => {
+  const handleReschedule = async () => {
+    if (!rescheduleModal.booking || !rescheduleModal.newStart || !rescheduleModal.newEnd) {
+      return;
+    }
+
+    setRescheduling(true);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/bookings/${rescheduleModal.booking._id}/reschedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start: rescheduleModal.newStart,
+          end: rescheduleModal.newEnd,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to reschedule booking');
+      }
+
+      // Show success message with approval info if needed
+      if (data.requiresApproval) {
+        alert('Booking rescheduled successfully! Since the new time requires approval, your booking status has been reset to "Awaiting Approval". You will be notified once an admin reviews your request.');
+      } else {
+        alert('Booking rescheduled successfully!');
+      }
+
+      fetchBookings(); // Refresh bookings list
+      setRescheduleModal({ open: false }); // Close modal
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reschedule booking';
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
+
+  const getStatusBadge = (status: string, approval: string, kind?: string) => {
     if (status === 'PENDING' && approval === 'PENDING') {
       return <Badge variant="warning">Awaiting Approval</Badge>;
     }
     if (status === 'CONFIRMED') {
+      // For equipment/library, make it clear the item is awaiting pickup
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="warning">Awaiting Pickup</Badge>;
+      }
+      // For facilities/rooms, "Confirmed" is appropriate
       return <Badge variant="success">Confirmed</Badge>;
     }
     if (status === 'CHECKED_IN') {
+      // For equipment/library, it means the user has the item
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="default">Picked Up</Badge>;
+      }
       return <Badge variant="default">Checked In</Badge>;
     }
     if (status === 'COMPLETED') {
+      // For equipment/library, it means returned
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="secondary">Returned</Badge>;
+      }
       return <Badge variant="secondary">Completed</Badge>;
     }
     if (status === 'CANCELLED') {
@@ -183,7 +278,7 @@ export default function BookingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval)}
+                      {getStatusBadge(booking.status, booking.approval, booking.kind)}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">
                       {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
@@ -204,20 +299,35 @@ export default function BookingsPage() {
                     {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
                       <Button
                         size="sm"
-                        onClick={() => handleGenerateQR(booking._id)}
+                        onClick={() => handleGenerateQR(booking._id, new Date(booking.start).toISOString())}
                       >
                         <QrCode className="mr-2 h-4 w-4" />
                         Get QR
                       </Button>
                     )}
                     {['CONFIRMED', 'PENDING'].includes(booking.status) && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleCancel(booking._id)}
-                      >
-                        Cancel
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setRescheduleModal({
+                            open: true,
+                            booking,
+                            newStart: new Date(booking.start).toISOString().slice(0, 16),
+                            newEnd: new Date(booking.end).toISOString().slice(0, 16),
+                          })}
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          Reschedule
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleCancel(booking._id)}
+                        >
+                          Cancel
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -244,7 +354,7 @@ export default function BookingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval)}
+                      {getStatusBadge(booking.status, booking.approval, booking.kind)}
                     </div>
                     <p className="mt-1 text-sm text-gray-600">
                       {formatDateTime(booking.start)}
@@ -289,6 +399,86 @@ export default function BookingsPage() {
               <p className="text-xs text-danger">
                 ⚠️ QR code expires in 10 minutes. You can generate QR code maximum 2 times per booking.
               </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Reschedule Modal */}
+      <Modal
+        isOpen={rescheduleModal.open}
+        onClose={() => setRescheduleModal({ open: false })}
+        title="Reschedule Booking"
+        size="md"
+      >
+        {rescheduleModal.booking && (
+          <div className="space-y-4">
+            <div className="p-4 bg-accent-blue/10 rounded-lg border border-accent-blue/30">
+              <p className="font-medium text-text-main">{rescheduleModal.booking.resourceName}</p>
+              <p className="text-sm text-text-muted mt-1">
+                Current time: {formatDateTime(rescheduleModal.booking.start)}
+                {rescheduleModal.booking.kind !== 'EQUIPMENT' && ` - ${formatDateTime(rescheduleModal.booking.end)}`}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-main mb-2">
+                New Start Time
+              </label>
+              <input
+                type="datetime-local"
+                value={rescheduleModal.newStart || ''}
+                onChange={(e) => setRescheduleModal({
+                  ...rescheduleModal,
+                  newStart: e.target.value,
+                })}
+                className="w-full px-3 py-2 border border-card-border rounded-md bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-main mb-2">
+                New End Time
+              </label>
+              <input
+                type="datetime-local"
+                value={rescheduleModal.newEnd || ''}
+                onChange={(e) => setRescheduleModal({
+                  ...rescheduleModal,
+                  newEnd: e.target.value,
+                })}
+                className="w-full px-3 py-2 border border-card-border rounded-md bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue"
+              />
+            </div>
+
+            {rescheduleModal.booking.requiresApproval && rescheduleModal.booking.status === 'CONFIRMED' && (
+              <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">
+                <p className="text-sm text-warning">
+                  ⚠️ Note: Rescheduling may require admin approval again depending on the new time slot.
+                </p>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-danger/10 rounded-lg border border-danger/30">
+                <p className="text-sm text-danger">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRescheduleModal({ open: false })}
+                disabled={rescheduling}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReschedule}
+                disabled={rescheduling || !rescheduleModal.newStart || !rescheduleModal.newEnd}
+              >
+                {rescheduling ? 'Rescheduling...' : 'Reschedule'}
+              </Button>
             </div>
           </div>
         )}

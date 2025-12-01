@@ -20,11 +20,29 @@ export default function AdminBookingsPage() {
     setLoading(false);
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'CONFIRMED') return <Badge variant="success">Confirmed</Badge>;
+  const getStatusBadge = (status: string, kind?: string) => {
+    if (status === 'CONFIRMED') {
+      // For equipment/library, make it clear the item is awaiting pickup
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="warning">Awaiting Pickup</Badge>;
+      }
+      return <Badge variant="success">Confirmed</Badge>;
+    }
     if (status === 'PENDING') return <Badge variant="warning">Pending</Badge>;
-    if (status === 'CHECKED_IN') return <Badge variant="default">Checked In</Badge>;
-    if (status === 'COMPLETED') return <Badge variant="secondary">Completed</Badge>;
+    if (status === 'CHECKED_IN') {
+      // For equipment/library, it means the user has the item
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="default">Picked Up</Badge>;
+      }
+      return <Badge variant="default">Checked In</Badge>;
+    }
+    if (status === 'COMPLETED') {
+      // For equipment/library, it means returned
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        return <Badge variant="secondary">Returned</Badge>;
+      }
+      return <Badge variant="secondary">Completed</Badge>;
+    }
     if (status === 'CANCELLED') return <Badge variant="destructive">Cancelled</Badge>;
     if (status === 'NO_SHOW') return <Badge variant="destructive">No Show</Badge>;
     return <Badge>{status}</Badge>;
@@ -60,7 +78,7 @@ export default function AdminBookingsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-text-main">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status)}
+                      {getStatusBadge(booking.status, booking.kind)}
                     </div>
                     {studentInfo ? (
                       <div className="mt-2 space-y-1">

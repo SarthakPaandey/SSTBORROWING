@@ -32,3 +32,15 @@ export const groupBookingSchema = z.object({
     message: "End time must be after start time",
     path: ["end"],
 });
+
+export const rescheduleSchema = z.object({
+    start: z.string().datetime("Invalid start date"),
+    end: z.string().datetime("Invalid end date"),
+}).refine((data: { start: string; end: string }) => {
+    const start = new Date(data.start);
+    const end = new Date(data.end);
+    return end > start;
+}, {
+    message: "End time must be after start time",
+    path: ["end"],
+});

@@ -187,10 +187,34 @@ async function postHandler(req: Request) {
       }
 
       // Check total active bookings limit (use UTC for DB comparison)
+      // FIX: Equipment/Library bookings are only active if:
+      //   - CHECKED_IN (user has the item), OR
+      //   - CONFIRMED/PENDING and within pickup window (start time + 15 min grace period > now)
+      // Facilities/Rooms are active until their end time (unchanged)
+      const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+      const graceCutoff = new Date(new Date().getTime() - GRACE_PERIOD_MS);
+
       const totalActiveBookings = await Booking.countDocuments({
         userId: user.id,
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        end: { $gt: new Date() }, // Future bookings only
+        $or: [
+          // Facilities/Rooms: Active until end time
+          {
+            kind: { $in: ['FACILITY', 'ROOM'] },
+            status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+            end: { $gt: new Date() },
+          },
+          // Equipment/Library: CHECKED_IN (user has the item)
+          {
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            status: 'CHECKED_IN',
+          },
+          // Equipment/Library: CONFIRMED/PENDING and still within pickup window
+          {
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            status: { $in: ['CONFIRMED', 'PENDING'] },
+            start: { $gt: graceCutoff }, // Still within pickup window
+          },
+        ],
       }).session(session);
 
       if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
@@ -241,11 +265,22 @@ async function postHandler(req: Request) {
       // Check library book limits
       if (kind === 'LIBRARY') {
         // Check if user already has an active book borrowing (use UTC for DB comparison)
+        // FIX: Only count as active if CHECKED_IN or within pickup window
+        const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+        const graceCutoff = new Date(new Date().getTime() - GRACE_PERIOD_MS);
+
         const activeBookBorrowings = await Booking.countDocuments({
           userId: user.id,
           kind: 'LIBRARY',
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-          end: { $gt: new Date() },
+          $or: [
+            // User has picked up the book
+            { status: 'CHECKED_IN' },
+            // Booking is still within pickup window
+            {
+              status: { $in: ['CONFIRMED', 'PENDING'] },
+              start: { $gt: graceCutoff },
+            },
+          ],
         }).session(session);
 
         if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {

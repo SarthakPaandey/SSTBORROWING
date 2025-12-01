@@ -23,8 +23,8 @@ export default async function UserDashboard() {
 
   await connectDB();
 
-  // FIX: session.user.id is email, not ObjectId
-  const user = await User.findOne({ email: session.user.id });
+  // FIX: session.user.id is the ObjectId, not email
+  const user = await User.findById(session.user.id);
   if (!user) {
     redirect('/login');
   }

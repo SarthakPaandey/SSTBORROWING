@@ -41,8 +41,8 @@ async function postHandler(req: Request) {
     return await withTransaction(conn, async (txSession) => {
 
       // Get organizer within transaction
-      // FIX: session.user.id is email, not ObjectId
-      const organizer = await User.findOne({ email: session.user.id }).session(txSession);
+      // FIX: session.user.id is the ObjectId, not email
+      const organizer = await User.findById(session.user.id).session(txSession);
       if (!organizer || organizer.role !== 'STUDENT') {
         throw new AuthorizationError('Only students can create group bookings');
       }

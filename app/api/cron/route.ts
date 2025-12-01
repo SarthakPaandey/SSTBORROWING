@@ -75,8 +75,8 @@ export async function GET(req: NextRequest) {
                 });
 
                 // Update user points
-                // FIX: userId is email, not ObjectId
-                const user = await User.findOne({ email: booking.userId });
+                // FIX: booking.userId is the ObjectId, not email
+                const user = await User.findById(booking.userId);
                 if (user) {
                     user.penaltyPoints += POLICIES.PENALTY_NO_SHOW;
                     if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
@@ -132,8 +132,8 @@ export async function GET(req: NextRequest) {
                 });
 
                 // Update user penalty points
-                // FIX: userId is email, not ObjectId
-                const user = await User.findOne({ email: booking.userId });
+                // FIX: booking.userId is the ObjectId, not email
+                const user = await User.findById(booking.userId);
                 if (user) {
                     user.penaltyPoints += POLICIES.PENALTY_BOOK_NO_PICKUP;
                     if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {

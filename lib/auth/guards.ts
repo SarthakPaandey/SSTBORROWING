@@ -17,8 +17,8 @@ export async function requireAuth(allowedRoles?: UserRole[]) {
   // We must verify against the database to prevent banned/demoted users from accessing resources
   await connectDB();
 
-  // FIX: session.user.id contains email, not ObjectId
-  const dbUser = await User.findOne({ email: session.user.id }).select('role suspendedUntil penaltyPoints blocked');
+  // FIX: session.user.id is the ObjectId, not email
+  const dbUser = await User.findById(session.user.id).select('role suspendedUntil penaltyPoints blocked');
 
   if (!dbUser) {
     throw new AuthenticationError('User not found');

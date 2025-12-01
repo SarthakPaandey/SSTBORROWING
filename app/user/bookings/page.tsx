@@ -485,43 +485,80 @@ export default function BookingsPage() {
       >
         {rescheduleModal.booking && (
           <div className="space-y-4">
-            <div className="p-4 bg-accent-blue/10 rounded-lg border border-accent-blue/30">
-              <p className="font-medium text-text-main">{rescheduleModal.booking.resourceName}</p>
-              <p className="text-sm text-text-muted mt-1">
-                Current time: {formatDateTime(rescheduleModal.booking.start)}
-                {rescheduleModal.booking.kind !== 'EQUIPMENT' && ` - ${formatDateTime(rescheduleModal.booking.end)}`}
-              </p>
+            {/* Current Booking Info Card - Enhanced */}
+            <div className="p-4 bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 rounded-lg border border-accent-blue/30">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-accent-blue/20 rounded-lg flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-accent-blue" />
+                </div>
+                <div>
+                  <p className="font-semibold text-text-main">{rescheduleModal.booking.resourceName}</p>
+                  <p className="text-sm text-text-muted mt-1">
+                    <span className="font-medium">Current:</span> {formatDateTime(rescheduleModal.booking.start)}
+                    {rescheduleModal.booking.kind !== 'EQUIPMENT' && ` - ${formatDateTime(rescheduleModal.booking.end)}`}
+                  </p>
+                  {rescheduleModal.booking.kind === 'EQUIPMENT' && (
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Return by: {formatDateTime(rescheduleModal.booking.end)}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
+            {/* New Start Time Input */}
             <div>
               <label className="block text-sm font-medium text-text-main mb-2">
-                New Start Time
+                Select New Start Time
               </label>
               <input
                 type="datetime-local"
                 value={rescheduleModal.newStart || ''}
-                onChange={(e) => setRescheduleModal({
-                  ...rescheduleModal,
-                  newStart: e.target.value,
-                })}
-                className="w-full px-3 py-2 border border-card-border rounded-md bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                onChange={(e) => {
+                  const newStartVal = e.target.value;
+                  if (!newStartVal || !rescheduleModal.booking) {
+                    setRescheduleModal({ ...rescheduleModal, newStart: '', newEnd: '' });
+                    return;
+                  }
+
+                  // Calculate duration from original booking
+                  const originalStart = new Date(rescheduleModal.booking.start).getTime();
+                  const originalEnd = new Date(rescheduleModal.booking.end).getTime();
+                  const durationMs = originalEnd - originalStart;
+
+                  // Calculate new end time
+                  const newStartDate = new Date(newStartVal);
+                  const newEndDate = new Date(newStartDate.getTime() + durationMs);
+
+                  // Convert to datetime-local format (YYYY-MM-DDTHH:mm)
+                  const pad = (n: number) => n < 10 ? '0' + n : n;
+                  const newEndStr = newEndDate.getFullYear() + '-' +
+                    pad(newEndDate.getMonth() + 1) + '-' +
+                    pad(newEndDate.getDate()) + 'T' +
+                    pad(newEndDate.getHours()) + ':' +
+                    pad(newEndDate.getMinutes());
+
+                  setRescheduleModal({
+                    ...rescheduleModal,
+                    newStart: newStartVal,
+                    newEnd: newEndStr,
+                  });
+                }}
+                className="w-full px-4 py-2.5 border border-card-border rounded-lg bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-main mb-2">
-                New End Time
-              </label>
-              <input
-                type="datetime-local"
-                value={rescheduleModal.newEnd || ''}
-                onChange={(e) => setRescheduleModal({
-                  ...rescheduleModal,
-                  newEnd: e.target.value,
-                })}
-                className="w-full px-3 py-2 border border-card-border rounded-md bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue"
-              />
-            </div>
+            {/* Calculated End Time Display (Read-only) */}
+            {rescheduleModal.newEnd && (
+              <div className="p-3 bg-secondary/10 rounded-lg border border-secondary/30">
+                <p className="text-sm text-text-muted">
+                  <span className="font-medium text-text-main">Duration will be maintained:</span>
+                </p>
+                <p className="text-sm text-secondary font-medium mt-1">
+                  Ends at: {formatDateTime(rescheduleModal.newEnd)}
+                </p>
+              </div>
+            )}
 
             {/* Penalty Policy Warning */}
             <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">

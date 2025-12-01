@@ -77,19 +77,14 @@ export default function BookingsPage() {
   }, [qrModal.open, qrModal.expiresAt]);
 
   const handleGenerateQR = async (bookingId: string, startTime: string) => {
-    // In development mode, bypass the 15-minute check
-    const isDev = process.env.NODE_ENV === 'development';
+    const start = new Date(startTime).getTime();
+    const now = new Date().getTime();
+    const timeUntilStart = start - now;
+    const minutesUntilStart = timeUntilStart / (1000 * 60);
 
-    if (!isDev) {
-      const start = new Date(startTime).getTime();
-      const now = new Date().getTime();
-      const timeUntilStart = start - now;
-      const minutesUntilStart = timeUntilStart / (1000 * 60);
-
-      if (minutesUntilStart > 15) {
-        setError('QR code can only be generated 15 minutes before the booking start time');
-        return;
-      }
+    if (minutesUntilStart > 15) {
+      setError('QR code can only be generated 15 minutes before the booking start time');
+      return;
     }
 
     setGeneratingQR(bookingId);

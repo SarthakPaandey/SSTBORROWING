@@ -146,34 +146,31 @@ export default function BookingsPage() {
       return;
     }
 
-    setRescheduling(true);
-    setError('');
-
     try {
-      const res = await fetch(`/api/bookings/${rescheduleModal.booking._id}/reschedule`, {
+      setRescheduling(true);
+      setError('');
+
+      // Convert datetime-local format to ISO strings
+      const startISO = new Date(rescheduleModal.newStart).toISOString();
+      const endISO = new Date(rescheduleModal.newEnd).toISOString();
+
+      const response = await fetch(`/api/bookings/${rescheduleModal.booking._id}/reschedule`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          start: rescheduleModal.newStart,
-          end: rescheduleModal.newEnd,
+          start: startISO,
+          end: endISO,
         }),
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error(data.error || 'Failed to reschedule booking');
       }
 
-      // Show success message with approval info if needed
-      if (data.requiresApproval) {
-        alert('Booking rescheduled successfully! Since the new time requires approval, your booking status has been reset to "Awaiting Approval". You will be notified once an admin reviews your request.');
-      } else {
-        alert('Booking rescheduled successfully!');
-      }
-
-      fetchBookings(); // Refresh bookings list
-      setRescheduleModal({ open: false }); // Close modal
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to reschedule booking';
       setError(errorMessage);

@@ -6,19 +6,26 @@ import { POLICIES, calculateSuspensionDate, isGroupBookingExpired } from './poli
 import { getNow } from './timezone';
 
 /**
- * Recalculate a user's penalty points from the Penalty collection
- * FIX Issue #8: Ensures penalty points are always in sync with actual penalty records
+ * Recalculate a user's penalty points and apply escalating suspensions
+ * FIX: Implements three-strike system with automatic point reset
+ *
+ * Level 0 (Fresh): 20 points -> 7 day suspension -> Level 1, points reset
+ * Level 1 (Probation): 10 points -> 10 day suspension -> Level 2, points reset
+ * Level 2 (Final Warning): 10 points -> Permanent block
  *
  * This is the single source of truth for penalty point calculation.
  * Call this after any penalty modification (add, waive, etc.)
  */
 export async function recalculatePenaltyPoints(userId: string): Promise<number> {
-  // Calculate total points from non-waived penalties
+  const now = getNow();
+
+  // Calculate total points from non-waived AND non-served penalties
   const result = await Penalty.aggregate([
     {
       $match: {
         userId: userId,
         waivedBy: null, // Only count non-waived penalties
+        served: false,  // Only count penalties that haven't been served yet
       }
     },
     {
@@ -29,28 +36,81 @@ export async function recalculatePenaltyPoints(userId: string): Promise<number> 
     }
   ]);
 
-  const totalPoints = result.length > 0 ? result[0].totalPoints : 0;
+  const activePoints = result.length > 0 ? result[0].totalPoints : 0;
 
-  // Update the user's penalty points to match
+  // Get the user
   const user = await User.findById(userId);
-  if (user) {
-    user.penaltyPoints = totalPoints;
-
-    // Update suspension status based on recalculated points
-    if (totalPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-      // Only set suspension if not already suspended (using IST timezone)
-      if (!user.suspendedUntil || user.suspendedUntil < getNow()) {
-        user.suspendedUntil = calculateSuspensionDate();
-      }
-    } else {
-      // Clear suspension if points are below threshold
-      user.suspendedUntil = undefined;
-    }
-
-    await user.save();
+  if (!user) {
+    return activePoints;
   }
 
-  return totalPoints;
+  // Update user's penalty points
+  user.penaltyPoints = activePoints;
+
+  // Determine threshold based on current suspension level
+  const currentLevel = user.suspensionLevel || 0;
+  let threshold: number;
+  let suspensionDays: number;
+
+  switch (currentLevel) {
+    case 0: // Fresh - First offense
+      threshold = POLICIES.PENALTY_THRESHOLD_LEVEL_0; // 20 points
+      suspensionDays = POLICIES.SUSPENSION_DURATION_LEVEL_0; // 7 days
+      break;
+    case 1: // Probation - Second offense
+      threshold = POLICIES.PENALTY_THRESHOLD_LEVEL_1; // 10 points
+      suspensionDays = POLICIES.SUSPENSION_DURATION_LEVEL_1; // 10 days
+      break;
+    case 2: // Final warning - Third offense = permanent block
+      threshold = POLICIES.PENALTY_THRESHOLD_LEVEL_2; // 10 points
+      suspensionDays = 0; // Will be blocked instead
+      break;
+    default:
+      threshold = POLICIES.PENALTY_THRESHOLD_LEVEL_0;
+      suspensionDays = POLICIES.SUSPENSION_DURATION_LEVEL_0;
+  }
+
+  // Check if user has exceeded the threshold for their current level
+  if (activePoints >= threshold) {
+    if (currentLevel === 2) {
+      // Level 2 -> Permanent block
+      user.blocked = true;
+      user.blockedAt = now;
+      user.suspendedUntil = undefined; // Clear suspension, they're blocked
+
+      // Mark all active penalties as served
+      await Penalty.updateMany(
+        { userId, served: false, waivedBy: null },
+        { served: true, servedAt: now }
+      );
+    } else {
+      // Level 0 or 1 -> Suspend and escalate
+      const suspensionDate = new Date(now);
+      suspensionDate.setDate(suspensionDate.getDate() + suspensionDays);
+      user.suspendedUntil = suspensionDate;
+
+      // Increment suspension level
+      user.suspensionLevel = currentLevel + 1;
+
+      // Mark all active penalties as served (this resets the point counter)
+      await Penalty.updateMany(
+        { userId, served: false, waivedBy: null },
+        { served: true, servedAt: now }
+      );
+
+      // Reset penalty points to 0 since all penalties are now served
+      user.penaltyPoints = 0;
+    }
+  } else {
+    // Below threshold, clear suspension if it has expired
+    if (user.suspendedUntil && user.suspendedUntil < now) {
+      user.suspendedUntil = undefined;
+    }
+  }
+
+  await user.save();
+
+  return user.penaltyPoints;
 }
 
 /**
@@ -88,15 +148,8 @@ export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> 
       reason: 'Group booking no-show',
     });
 
-    // Update user penalty points
-    const user = await User.findById(userId);
-    if (user) {
-      user.penaltyPoints += POLICIES.PENALTY_NO_SHOW;
-      if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-        user.suspendedUntil = calculateSuspensionDate();
-      }
-      await user.save();
-    }
+    // Recalculate penalty points with new escalating logic
+    await recalculatePenaltyPoints(userId);
   }
 }
 
@@ -134,14 +187,8 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
       reason: 'Group booking late return',
     });
 
-    const user = await User.findById(userId);
-    if (user) {
-      user.penaltyPoints += POLICIES.PENALTY_LATE_RETURN;
-      if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-        user.suspendedUntil = calculateSuspensionDate();
-      }
-      await user.save();
-    }
+    // Recalculate penalty points with new escalating logic
+    await recalculatePenaltyPoints(userId);
   }
 }
 

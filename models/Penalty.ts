@@ -7,6 +7,8 @@ export interface IPenalty extends Document {
   reason: string;
   waivedBy?: string; // Admin who waived
   waivedAt?: Date;
+  served: boolean; // Has this penalty been served (counted towards a suspension)?
+  servedAt?: Date; // When it was marked as served
   createdAt: Date;
 }
 
@@ -25,6 +27,8 @@ const PenaltySchema = new Schema<IPenalty>(
     reason: { type: String, required: true },
     waivedBy: { type: String, ref: 'User' },
     waivedAt: { type: Date },
+    served: { type: Boolean, default: false },
+    servedAt: { type: Date },
   },
   {
     timestamps: true,

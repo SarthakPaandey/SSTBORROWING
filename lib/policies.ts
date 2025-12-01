@@ -55,6 +55,18 @@ export const POLICIES = {
   PENALTY_LATE_CANCELLATION_POINTS: 2, // 0.5 points (not used, kept for reference)
   PENALTY_BOOK_LATE_RETURN: 8, // 2 points (+ payment required)
   PENALTY_BOOK_NO_PICKUP: 2,   // 0.5 points
+
+  // Escalating penalty system (Three-Strike System)
+  // Level 0 (Fresh): 20 points -> 7 day suspension -> Level 1
+  // Level 1 (Probation): 10 points -> 10 day suspension -> Level 2
+  // Level 2 (Final Warning): 10 points -> Permanent block
+  PENALTY_THRESHOLD_LEVEL_0: 20,  // First offense threshold
+  PENALTY_THRESHOLD_LEVEL_1: 10,  // Second offense threshold
+  PENALTY_THRESHOLD_LEVEL_2: 10,  // Third offense threshold -> Ban
+  SUSPENSION_DURATION_LEVEL_0: 7,  // 7 days for first suspension
+  SUSPENSION_DURATION_LEVEL_1: 10, // 10 days for second suspension
+
+  // Legacy constant (kept for backward compatibility)
   PENALTY_THRESHOLD_FOR_SUSPENSION: 20, // 5 points (5 x 4)
   SUSPENSION_DAYS: 7,
 

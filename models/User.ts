@@ -10,6 +10,7 @@ export interface IUser extends Document {
   password?: string; // For guards only (bcrypt hash)
   penaltyPoints: number;
   suspendedUntil?: Date;
+  suspensionLevel: number; // 0=fresh, 1=probation, 2=final warning
   blocked: boolean; // Permanent block
   blockedAt?: Date; // When blocked
   blockedBy?: string; // Admin who blocked
@@ -31,6 +32,7 @@ const UserSchema = new Schema<IUser>(
     password: { type: String }, // Only for guards
     penaltyPoints: { type: Number, default: 0 },
     suspendedUntil: { type: Date },
+    suspensionLevel: { type: Number, default: 0 },
     blocked: { type: Boolean, default: false },
     blockedAt: { type: Date },
     blockedBy: { type: String, ref: 'User' },

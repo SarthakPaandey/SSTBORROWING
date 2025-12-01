@@ -31,6 +31,16 @@ export interface Booking {
         qty: number;
     }[];
     qrIssued?: boolean;
+    rescheduleCount?: number;
+    rescheduleHistory?: {
+        oldStart: Date;
+        oldEnd: Date;
+        newStart: Date;
+        newEnd: Date;
+        rescheduledAt: Date;
+        rescheduledBy: string;
+        reason?: string;
+    }[];
 }
 
 export interface User {

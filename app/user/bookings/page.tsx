@@ -32,6 +32,7 @@ export default function BookingsPage() {
     newEnd?: string;
   }>({ open: false });
   const [rescheduling, setRescheduling] = useState(false);
+  const [confirmedPenalty, setConfirmedPenalty] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -183,6 +184,29 @@ export default function BookingsPage() {
   };
 
 
+  const canReschedule = (booking: EnrichedBooking): { allowed: boolean, reason?: string } => {
+    // Status check
+    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
+      return { allowed: false, reason: 'Only confirmed or pending bookings can be rescheduled' };
+    }
+
+    // Reschedule count check (max 1 per booking)
+    if ((booking.rescheduleCount || 0) >= 1) {
+      return { allowed: false, reason: 'Booking has already been rescheduled once (maximum limit reached)' };
+    }
+
+    // Time window check (2 hours before start)
+    const now = getISTNow();
+    const start = new Date(booking.start);
+    const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (hoursUntilStart < 2) {
+      return { allowed: false, reason: 'Cannot reschedule within 2 hours of start time' };
+    }
+
+    return { allowed: true };
+  };
+
   const getStatusBadge = (status: string, approval: string, kind?: string, startTime?: Date | string, endTime?: Date | string) => {
     // Check if booking time has passed for CONFIRMED/PENDING bookings
     const now = getISTNow();
@@ -315,7 +339,12 @@ export default function BookingsPage() {
                         Items: {booking.items.map((item: BookingItem) => `${item.name} (${item.qty})`).join(', ')}
                       </div>
                     )}
-                  </div>
+                    {/* Show reschedule count badge if applicable */}
+                    {(booking.rescheduleCount || 0) > 0 && (
+                      <Badge variant="secondary" className="mt-2">
+                        Rescheduled {booking.rescheduleCount}x
+                      </Badge>
+                    )}\n                  </div>
                   <div className="flex gap-2">
                     {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
                       <Button
@@ -326,29 +355,50 @@ export default function BookingsPage() {
                         Get QR
                       </Button>
                     )}
+                    {/* Reschedule button with validation */}
+                    {(() => {
+                      const rescheduleCheck = canReschedule(booking);
+                      if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
+                        return rescheduleCheck.allowed ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setRescheduleModal({
+                                open: true,
+                                booking,
+                                newStart: new Date(booking.start).toISOString().slice(0, 16),
+                                newEnd: new Date(booking.end).toISOString().slice(0, 16),
+                              });
+                              setConfirmedPenalty(false);
+                            }}
+                          >
+                            <Clock className="mr-2 h-4 w-4" />
+                            Reschedule
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            title={rescheduleCheck.reason}
+                          >
+                            <Clock className="mr-2 h-4 w-4" />
+                            Reschedule
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {/* Cancel button */}
                     {['CONFIRMED', 'PENDING'].includes(booking.status) && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setRescheduleModal({
-                            open: true,
-                            booking,
-                            newStart: new Date(booking.start).toISOString().slice(0, 16),
-                            newEnd: new Date(booking.end).toISOString().slice(0, 16),
-                          })}
-                        >
-                          <Clock className="mr-2 h-4 w-4" />
-                          Reschedule
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleCancel(booking._id)}
-                        >
-                          Cancel
-                        </Button>
-                      </>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleCancel(booking._id)}
+                      >
+                        Cancel
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -472,6 +522,32 @@ export default function BookingsPage() {
               />
             </div>
 
+            {/* Penalty Policy Warning */}
+            <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">
+              <p className="text-sm font-medium text-warning mb-2">
+                ⚠️ Rescheduling Policies:
+              </p>
+              <ul className="text-xs text-warning space-y-1 list-disc list-inside">
+                <li>You can only reschedule this booking <strong>1 time</strong></li>
+                <li><strong>3 penalty points</strong> will be added to your account</li>
+                <li>Maximum <strong>3 reschedules allowed per month</strong></li>
+                <li>Cannot reschedule within <strong>2 hours</strong> of start time</li>
+              </ul>
+            </div>
+
+            {/* Confirmation Checkbox */}
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmedPenalty}
+                onChange={(e) => setConfirmedPenalty(e.target.checked)}
+                className="mt-1"
+              />
+              <span className="text-sm text-text-main">
+                I understand that <strong>3 penalty points</strong> will be added to my account and this booking can only be rescheduled once.
+              </span>
+            </label>
+
             {rescheduleModal.booking.requiresApproval && rescheduleModal.booking.status === 'CONFIRMED' && (
               <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">
                 <p className="text-sm text-warning">
@@ -496,7 +572,7 @@ export default function BookingsPage() {
               </Button>
               <Button
                 onClick={handleReschedule}
-                disabled={rescheduling || !rescheduleModal.newStart || !rescheduleModal.newEnd}
+                disabled={rescheduling || !rescheduleModal.newStart || !rescheduleModal.newEnd || !confirmedPenalty}
               >
                 {rescheduling ? 'Rescheduling...' : 'Reschedule'}
               </Button>

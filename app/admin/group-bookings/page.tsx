@@ -193,10 +193,10 @@ export default function AdminGroupBookingsPage() {
 
                   <CardContent className="space-y-4">
                     {/* Booking Details */}
-                    <div className="grid md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="grid md:grid-cols-2 gap-4 p-4 bg-gradient-to-br from-accent-blue/5 to-transparent rounded-lg border border-accent-blue/10">
                       <div>
                         <span className="text-sm text-text-muted">Organizer</span>
-                        <p className="font-medium flex items-center gap-2">
+                        <p className="font-medium flex items-center gap-2 text-text-main">
                           <Mail className="h-4 w-4 text-accent-blue" />
                           {gb.organizerName}
                         </p>
@@ -204,21 +204,21 @@ export default function AdminGroupBookingsPage() {
                       </div>
                       <div>
                         <span className="text-sm text-text-muted">Booking Time</span>
-                        <p className="font-medium flex items-center gap-2">
+                        <p className="font-medium flex items-center gap-2 text-text-main">
                           <Calendar className="h-4 w-4 text-accent-blue" />
                           {gb.bookingStart ? formatDate(gb.bookingStart) : 'N/A'}
                         </p>
                       </div>
                       <div>
                         <span className="text-sm text-text-muted">Confirmations</span>
-                        <p className="font-medium flex items-center gap-2">
+                        <p className="font-medium flex items-center gap-2 text-text-main">
                           <Users className="h-4 w-4 text-accent-blue" />
                           {gb.confirmedCount} / {gb.requiredMinimum} required
                         </p>
                       </div>
                       <div>
                         <span className="text-sm text-text-muted">Created</span>
-                        <p className="font-medium">{formatDate(gb.createdAt)}</p>
+                        <p className="font-medium text-text-main">{formatDate(gb.createdAt)}</p>
                       </div>
                     </div>
 
@@ -230,11 +230,11 @@ export default function AdminGroupBookingsPage() {
                       </h4>
                       <div className="space-y-2">
                         {/* Organizer */}
-                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/10 to-accent-blue/5 rounded-lg border border-accent-blue/20">
                           <div className="flex items-center gap-3">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                             <div>
-                              <p className="font-medium text-sm">{gb.organizerName}</p>
+                              <p className="font-medium text-sm text-text-main">{gb.organizerName}</p>
                               <p className="text-xs text-text-muted">{gb.organizerEmail}</p>
                             </div>
                           </div>
@@ -245,12 +245,12 @@ export default function AdminGroupBookingsPage() {
                         {gb.members.map((member: any, index: number) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            className="flex items-center justify-between p-3 bg-gradient-to-r from-white/[0.03] to-transparent rounded-lg border border-white/[0.05] hover:border-white/10 transition-colors"
                           >
                             <div className="flex items-center gap-3">
                               {getMemberStatusIcon(member.status)}
                               <div>
-                                <p className="font-medium text-sm">{member.userName}</p>
+                                <p className="font-medium text-sm text-text-main">{member.userName}</p>
                                 <p className="text-xs text-text-muted">{member.email}</p>
                               </div>
                             </div>
@@ -280,12 +280,12 @@ export default function AdminGroupBookingsPage() {
 
                     {/* Additional Info */}
                     {gb.status === 'PENDING_CONFIRMATIONS' && (
-                      <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm">
-                        <p className="font-semibold text-yellow-800 mb-1">
+                      <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/30 p-3 text-sm">
+                        <p className="font-semibold text-yellow-400 mb-1">
                           <AlertCircle className="inline h-4 w-4 mr-1" />
                           Waiting for confirmations
                         </p>
-                        <p className="text-yellow-700">
+                        <p className="text-yellow-300/80">
                           {gb.confirmedCount} of {gb.requiredMinimum} minimum members confirmed.
                           Expires: {formatDate(gb.expiresAt)}
                         </p>
@@ -293,7 +293,7 @@ export default function AdminGroupBookingsPage() {
                     )}
 
                     {gb.status === 'CONFIRMED' && (
-                      <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                      <div className="rounded-lg bg-green-500/10 border border-green-500/30 p-3 text-sm text-green-400">
                         <CheckCircle className="inline h-4 w-4 mr-1" />
                         Group booking confirmed with {gb.confirmedCount} members
                       </div>

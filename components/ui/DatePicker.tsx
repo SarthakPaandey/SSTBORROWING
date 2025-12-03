@@ -105,7 +105,10 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-4 py-2.5 rounded-lg bg-bg-dark border border-card-border text-text-main focus:border-accent-blue focus:outline-none transition-colors flex items-center justify-between hover:border-accent-blue/50 ${className}`}
+        className={`w-full px-4 py-2.5 rounded-lg bg-bg-dark border border-card-border text-text-main focus:border-accent-blue focus:outline-none transition-colors flex items-center justify-between hover:border-accent-blue/50 cursor-pointer ${className}`}
+        aria-label="Select date"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <span className={value ? 'text-text-main' : 'text-text-muted'}>
           {value ? formatDate(value) : placeholder}
@@ -113,14 +116,11 @@ export function DatePicker({
         <CalendarIcon className={`h-4 w-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
+
       {isOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center" onClick={() => setIsOpen(false)}>
           <div
-            className="absolute w-[280px] p-4 bg-[#1a1d29] border-2 border-accent-blue/30 rounded-xl shadow-2xl"
-            style={{
-              top: containerRef.current ? containerRef.current.getBoundingClientRect().bottom + 8 : 0,
-              left: containerRef.current ? containerRef.current.getBoundingClientRect().left : 0,
-            }}
+            className="w-[280px] p-4 bg-[#1a1d29] border-2 border-accent-blue/30 rounded-xl shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Month Navigation */}

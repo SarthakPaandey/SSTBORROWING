@@ -109,7 +109,7 @@ export async function canBorrowSportCategory(options: {
                     allowed: false,
                     reason: `You have an active ${bookingSport} equipment booking. Please return it or cancel the booking before borrowing ${requestedSport} equipment.`,
                     conflictingSport: bookingSport,
-                    activeBookingIds: [booking._id.toString()],
+                    activeBookingIds: [(booking as any)._id.toString()],
                 };
             }
         }

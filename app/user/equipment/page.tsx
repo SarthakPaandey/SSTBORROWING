@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
 export default function EquipmentPage() {
@@ -18,7 +19,7 @@ export default function EquipmentPage() {
   const [labItems, setLabItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
   // FIX: Use IST timezone for accurate date display
-  const [date, setDate] = useState(getISTToday());
+  const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,14 @@ export default function EquipmentPage() {
   useEffect(() => {
     // FIX: Use IST timezone for accurate today check
     const today = getISTToday();
-    if (date === today) {
+    const formatISTDate = (d: Date): string => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const dateStr = formatISTDate(date);
+    if (dateStr === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
       // FIX: Use IST time for both selectedTime and now to ensure consistent comparison
       const now = getISTNow();
@@ -86,7 +94,14 @@ export default function EquipmentPage() {
 
   const fetchItems = async (sportsRes = sportsResources, labRes = labResources) => {
     // Build time window for availability check
-    const start = new Date(`${date}T${startTime}:00+05:30`);
+    const formatISTDate = (d: Date): string => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const dateStr = formatISTDate(date);
+    const start = new Date(`${dateStr}T${startTime}:00+05:30`);
     const startHour = parseInt(startTime.split(':')[0]);
     const end = new Date(start);
 
@@ -157,13 +172,20 @@ export default function EquipmentPage() {
     try {
       // FIX: Create date in IST timezone by specifying +05:30 offset
       // This ensures the backend receives the correct IST time regardless of browser timezone
-      const start = new Date(`${date}T${startTime}:00+05:30`);
+      const formatISTDate = (d: Date): string => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const dateStr = formatISTDate(date);
+      const start = new Date(`${dateStr}T${startTime}:00+05:30`);
       const startHour = parseInt(startTime.split(':')[0]);
       // FIX: Use IST timezone for today check
       const today = getISTToday();
 
       // Check if booking is in the past for today
-      if (date === today && start < getISTNow()) {
+      if (dateStr === today && start < getISTNow()) {
         setError('Pickup time must be in the future for today');
         setLoading(false);
         return;
@@ -256,15 +278,14 @@ export default function EquipmentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 {/* FIX: Use IST today for accurate minimum date */}
-                <Input
-                  type="date"
+                <DatePicker
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  min={getISTToday()}
-                  className="mb-2"
+                  onChange={setDate}
+                  minDate={getISTNow()}
+                  placeholder="Select a date"
                 />
                 <TimePicker
-                  date={date}
+                  date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                   value={startTime}
                   onChange={setStartTime}
                   minTime="09:00"
@@ -356,15 +377,14 @@ export default function EquipmentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 {/* FIX: Use IST today for accurate minimum date */}
-                <Input
-                  type="date"
+                <DatePicker
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  min={getISTToday()}
-                  className="mb-2"
+                  onChange={setDate}
+                  minDate={getISTNow()}
+                  placeholder="Select a date"
                 />
                 <TimePicker
-                  date={date}
+                  date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                   value={startTime}
                   onChange={setStartTime}
                   minTime="09:00"

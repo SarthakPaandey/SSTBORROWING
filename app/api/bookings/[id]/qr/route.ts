@@ -55,11 +55,11 @@ export async function POST(
 
     // Check if booking is confirmed or approved
     if (booking.status === 'PENDING' && booking.approval !== 'APPROVED') {
-      throw new ValidationError('Booking requires approval before QR can be issued');
+      throw new ValidationError('Booking is pending admin approval. QR code cannot be generated until approved.');
     }
 
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
-      throw new ValidationError('Booking must be confirmed to generate QR');
+      throw new ValidationError(`Cannot generate QR code. Booking status is ${booking.status}. QR codes can only be generated for confirmed or approved bookings.`);
     }
 
 
@@ -85,6 +85,16 @@ export async function POST(
       throw new ValidationError('QR generation window closed. Must generate within 15 minutes of booking start time.');
     }
 
+    // Clean up any expired or used tokens for this booking to prevent confusion
+    // This helps avoid "Token already used" errors when users accidentally scan old QRs
+    await QRToken.deleteMany({
+      bookingId: params.id,
+      $or: [
+        { used: true },
+        { expiresAt: { $lt: new Date() } }
+      ]
+    });
+
     // Check if already has valid QR for THIS specific booking
     // This prevents confusion when user has multiple bookings
     const existingToken = await QRToken.findOne({
@@ -94,6 +104,7 @@ export async function POST(
     }).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {
+      console.log(`Reusing existing valid QR token for booking ${params.id}, expires: ${existingToken.expiresAt}`);
       const qrImage = await generateQRCodeImage(existingToken.token);
       return NextResponse.json({
         token: existingToken.token,
@@ -101,6 +112,7 @@ export async function POST(
         expiresAt: existingToken.expiresAt,
       });
     }
+
 
     // Check QR generation limit (2 per day) - using IST timezone for accurate day boundaries
     const todayStart = getTodayStart();
@@ -135,6 +147,8 @@ export async function POST(
       expiresAt,
       used: false,
     });
+
+    console.log(`Generated new QR token for booking ${params.id}, expires: ${expiresAt.toISOString()}`);
 
     // Update booking
     booking.qrIssued = true;

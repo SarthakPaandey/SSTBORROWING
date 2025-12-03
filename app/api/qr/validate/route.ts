@@ -27,8 +27,11 @@ export async function POST(req: NextRequest) {
     // Verify token signature and expiry
     const verification = verifyQRToken(token);
     if (!verification.valid || !verification.payload) {
+      console.warn(`QR token verification failed: ${verification.error}`);
       throw new ValidationError(verification.error || 'Invalid token');
     }
+
+    console.log(`QR validation started for booking: ${verification.payload.bid}, user: ${verification.payload.uid}`);
 
     // Start transaction for atomicity
     await session.startTransaction();
@@ -42,11 +45,14 @@ export async function POST(req: NextRequest) {
 
     if (dbToken.used) {
       await session.abortTransaction();
-      throw new ConflictError('Token already used');
+      const usedAtStr = dbToken.usedAt ? new Date(dbToken.usedAt).toISOString() : 'unknown time';
+      console.warn(`QR scan attempted with already-used token. BookingId: ${dbToken.bookingId}, UsedAt: ${usedAtStr}`);
+      throw new ConflictError(`This QR code was already scanned at ${usedAtStr}. Please generate a new QR code from your bookings page.`);
     }
 
     if (new Date().getTime() > new Date(dbToken.expiresAt).getTime()) {
       await session.abortTransaction();
+      console.warn(`QR scan attempted with expired token. BookingId: ${dbToken.bookingId}, ExpiredAt: ${new Date(dbToken.expiresAt).toISOString()}`);
       throw new ValidationError('Token expired');
     }
 
@@ -72,6 +78,7 @@ export async function POST(req: NextRequest) {
     // Check if booking is in valid state
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
       await session.abortTransaction();
+      console.warn(`QR validation failed: invalid booking status. BookingId: ${booking._id}, Status: ${booking.status}`);
       throw new ValidationError('Booking is not in a valid state for check-in');
     }
 
@@ -142,6 +149,8 @@ export async function POST(req: NextRequest) {
 
     // Commit transaction
     await session.commitTransaction();
+
+    console.log(`QR validation successful. BookingId: ${booking._id}, UserId: ${booking.userId}, Status: ${booking.status}`);
 
     return NextResponse.json({
       success: true,

@@ -12,6 +12,7 @@ import { withRateLimit } from '@/lib/ratelimit';
 import { withTransaction } from '@/lib/transaction';
 import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
 import { getNow, getTodayStart } from '@/lib/timezone';
+import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
 
 async function postHandler(req: Request) {
   try {
@@ -131,36 +132,21 @@ async function postHandler(req: Request) {
         throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
       }
 
-      // Check daily limits within transaction (using IST timezone)
-      const today = getTodayStart();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // Per-user, per-category caps for all members (group booking is always FACILITY)
+      const startDateForCaps = new Date(start);
+      const endDateForCaps = new Date(end);
 
       for (const member of [...members, organizer]) {
-        const todayBookings = await Booking.countDocuments({
+        const capsCheck = await canUserCreateBookingWithCaps({
           userId: member.id,
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-          start: { $gte: today, $lt: tomorrow },
-        }).session(txSession);
+          kind: 'FACILITY',
+          start: startDateForCaps,
+          end: endDateForCaps,
+          session: txSession,
+        });
 
-        if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-          throw new ValidationError(`${member.email} has reached their daily booking limit (${POLICIES.MAX_BOOKINGS_PER_DAY}/day)`);
-        }
-      }
-
-      // Check weekly limits within transaction (using IST timezone)
-      const weekAgo = getNow();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-
-      for (const member of [...members, organizer]) {
-        const weekBookings = await Booking.countDocuments({
-          userId: member.id,
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-          start: { $gte: weekAgo },
-        }).session(txSession);
-
-        if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-          throw new ValidationError(`${member.email} has reached their weekly booking limit (${POLICIES.MAX_BOOKINGS_PER_WEEK}/week)`);
+        if (!capsCheck.allowed) {
+          throw new ValidationError(`${member.email}: ${capsCheck.reason || 'Booking limits exceeded'}`);
         }
       }
 

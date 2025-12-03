@@ -24,6 +24,8 @@ import { handleApiError, ValidationError, AuthenticationError, NotFoundError, Co
 import { BookingQuery } from '@/types/api';
 import { BookingItem } from '@/types/booking';
 import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
+import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
+import { canBorrowSportCategory } from '@/lib/sportCategoryRules';
 
 export async function GET(req: NextRequest) {
   try {
@@ -157,35 +159,6 @@ async function postHandler(req: Request) {
         throw new ValidationError('This resource is only available to students');
       }
 
-      // Check daily limit (using IST timezone for accurate day boundaries)
-      const today = getTodayStart();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const todayBookings = await Booking.countDocuments({
-        userId: user.id,
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $gte: today, $lt: tomorrow },
-      }).session(session);
-
-      if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-        throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`);
-      }
-
-      // Check weekly limit (using IST timezone)
-      const weekAgo = getNow();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-
-      const weekBookings = await Booking.countDocuments({
-        userId: user.id,
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-        start: { $gte: weekAgo },
-      }).session(session);
-
-      if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-        throw new ValidationError(`You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`);
-      }
-
       // Check total active bookings limit (use UTC for DB comparison)
       // FIX: Equipment/Library bookings are only active if:
       //   - CHECKED_IN (user has the item), OR
@@ -221,45 +194,17 @@ async function postHandler(req: Request) {
         throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
       }
 
-      // Check monthly limits based on resource type (using IST timezone)
-      const now = getNow();
-      const monthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
-
-      const monthEnd = new Date(monthStart);
-      monthEnd.setMonth(monthEnd.getMonth() + 1);
-
-      const monthlyBookings = await Booking.find({
+      // Per-user, per-category daily & monthly caps
+      const capsCheck = await canUserCreateBookingWithCaps({
         userId: user.id,
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-        start: { $gte: monthStart, $lt: monthEnd },
-      }).session(session);
+        kind,
+        start: startDate,
+        end: endDate,
+        session,
+      });
 
-      if (kind === 'FACILITY') {
-        const facilityBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'FACILITY');
-        const totalHours = calculateTotalHours(facilityBookings);
-        const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-
-        if (totalHours + newHours > POLICIES.MAX_FACILITY_HOURS_PER_MONTH) {
-          throw new ValidationError(`Monthly facility limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hours this month.`);
-        }
-      }
-
-      if (kind === 'ROOM') {
-        const roomBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'ROOM');
-        const totalHours = calculateTotalHours(roomBookings);
-        const newHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-
-        if (totalHours + newHours > POLICIES.MAX_ROOM_HOURS_PER_MONTH) {
-          throw new ValidationError(`Monthly room limit exceeded. You have used ${totalHours.toFixed(1)} hours out of ${POLICIES.MAX_ROOM_HOURS_PER_MONTH} hours this month.`);
-        }
-      }
-
-      if (kind === 'EQUIPMENT') {
-        const equipmentBookings = monthlyBookings.filter((b: IBooking) => b.kind === 'EQUIPMENT');
-
-        if (equipmentBookings.length >= POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH) {
-          throw new ValidationError(`Monthly equipment limit exceeded. You can only borrow equipment ${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH} times per month.`);
-        }
+      if (!capsCheck.allowed) {
+        throw new ValidationError(capsCheck.reason || 'Booking limits exceeded');
       }
 
       // Check library book limits
@@ -407,6 +352,22 @@ async function postHandler(req: Request) {
 
         if (!availabilityCheck.success) {
           throw new ConflictError(availabilityCheck.message || 'Items not available for selected time');
+        }
+
+        // FIX: Check sport category exclusivity for SPORTS_EQUIPMENT
+        // Users can only borrow from ONE sport at a time (e.g., Basketball OR Badminton, not both)
+        // This only applies to SPORTS_EQUIPMENT, not LAB_EQUIPMENT
+        if (resource.type === 'SPORTS_EQUIPMENT') {
+          const itemIds = items.map(i => i.itemId.toString());
+          const sportCategoryCheck = await canBorrowSportCategory({
+            userId: user.id,
+            requestedItemIds: itemIds,
+            session,
+          });
+
+          if (!sportCategoryCheck.allowed) {
+            throw new ValidationError(sportCategoryCheck.reason || 'Sport category conflict');
+          }
         }
 
         // Build enriched items (no qtyReserved update needed)

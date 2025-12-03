@@ -172,16 +172,16 @@ async function seed() {
     });
 
     const sportsItems = [
-      { name: 'Football', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false },
-      { name: 'Basketball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
-      { name: 'Badminton Racket', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false },
-      { name: 'Shuttlecocks', qtyTotal: 12, qtyAvailable: 12, safety: false, restricted: false },
-      { name: 'TT Paddle', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false },
-      { name: 'TT Balls', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false },
-      { name: 'Cricket Bat', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
-      { name: 'Cricket Pads', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false },
-      { name: 'Cricket Helmet', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false },
-      { name: 'Cricket Ball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'Football', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'FOOTBALL' },
+      { name: 'Basketball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'BASKETBALL' },
+      { name: 'Badminton Racket', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false, sportCategory: 'BADMINTON' },
+      { name: 'Shuttlecocks', qtyTotal: 12, qtyAvailable: 12, safety: false, restricted: false, sportCategory: 'BADMINTON' },
+      { name: 'TT Paddle', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
+      { name: 'TT Balls', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
+      { name: 'Cricket Bat', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Cricket Pads', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Cricket Helmet', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Cricket Ball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'CRICKET' },
     ];
 
     for (const item of sportsItems) {

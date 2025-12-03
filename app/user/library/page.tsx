@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
@@ -154,11 +155,15 @@ export default function LibraryPage() {
   const renderBookList = (books: any[], resourceId: string) => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          min={getISTToday()}
+        <DatePicker
+          value={new Date(date)}
+          onChange={(newDate) => {
+            // Format date as YYYY-MM-DD for consistency with existing state
+            const dateStr = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+            setDate(dateStr);
+          }}
+          minDate={getISTToday()}
+          placeholder="Select pickup date"
           className="mb-2"
         />
         <TimePicker

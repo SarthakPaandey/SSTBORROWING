@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
 import { QrCode, Clock } from 'lucide-react';
@@ -567,28 +568,20 @@ export default function BookingsPage() {
               <label className="block text-sm font-medium text-text-main mb-2">
                 Select Date
               </label>
-              <input
-                type="date"
-                value={rescheduleModal.selectedDate || ''}
-                onChange={(e) => {
+              <DatePicker
+                value={rescheduleModal.selectedDate ? new Date(`${rescheduleModal.selectedDate}T00:00:00`) : getISTNow()}
+                onChange={(date) => {
+                  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                   setRescheduleModal({
                     ...rescheduleModal,
-                    selectedDate: e.target.value,
+                    selectedDate: dateStr,
                     selectedSlot: undefined, // Reset slot when date changes
                     newStart: undefined,
                     newEnd: undefined,
                   });
                 }}
-                min={(() => {
-                  const today = getISTNow();
-                  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                })()}
-                max={(() => {
-                  const maxDate = new Date(getISTNow());
-                  maxDate.setDate(maxDate.getDate() + 7); // 7 days advance booking
-                  return `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
-                })()}
-                className="w-full px-4 py-2.5 border border-card-border rounded-lg bg-bg-main text-text-main focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all"
+                minDate={getISTNow()}
+                placeholder="Select a date"
               />
             </div>
 

@@ -9,26 +9,41 @@ vi.mock('next-auth/next', () => ({
     getServerSession: vi.fn(),
 }));
 
+// Mock DB connection
+vi.mock('@/lib/db', () => ({
+    connectDB: vi.fn(),
+}));
+
+// Mock User model
+const { mockUserFindById } = vi.hoisted(() => {
+    return { mockUserFindById: vi.fn() };
+});
+
+vi.mock('@/models/User', () => ({
+    User: {
+        findById: mockUserFindById,
+    },
+}));
+
 import { getServerSession } from 'next-auth/next';
 
 describe('Security Improvements Tests', () => {
     describe('Stale Session Detection', () => {
         it('should reject suspended users even with valid JWT', async () => {
-            await connectDB();
-
-            // Create suspended user
-            const suspendedUser = await User.create({
-                name: 'Suspended User',
-                email: 'suspended@test.com',
-                role: 'STUDENT',
-                penaltyPoints: 100,
-                suspendedUntil: new Date(Date.now() + 86400000), // Tomorrow
+            // Mock suspended user in DB
+            mockUserFindById.mockReturnValue({
+                select: vi.fn().mockResolvedValue({
+                    id: 'suspended-user-id',
+                    role: 'STUDENT',
+                    suspendedUntil: new Date(Date.now() + 86400000), // Tomorrow
+                    penaltyPoints: 100,
+                }),
             });
 
             // Mock valid session
             (getServerSession as any).mockResolvedValue({
                 user: {
-                    id: suspendedUser.id,
+                    id: 'suspended-user-id',
                     email: 'suspended@test.com',
                     role: 'STUDENT',
                 }
@@ -37,26 +52,22 @@ describe('Security Improvements Tests', () => {
             // Should throw because user is suspended in DB
             await expect(requireAuth()).rejects.toThrow(AuthorizationError);
             await expect(requireAuth()).rejects.toThrow('suspended');
-
-            // Cleanup
-            await User.findByIdAndDelete(suspendedUser.id);
-        }, 15000); // 15 second timeout
+        });
 
         it('should reject users whose role changed since token issued', async () => {
-            await connectDB();
-
-            // Create user
-            const user = await User.create({
-                name: 'Demoted User',
-                email: 'demoted@test.com',
-                role: 'STUDENT', // Currently student in DB
-                penaltyPoints: 0,
+            // Mock user with STUDENT role in DB
+            mockUserFindById.mockReturnValue({
+                select: vi.fn().mockResolvedValue({
+                    id: 'demoted-user-id',
+                    role: 'STUDENT',
+                    penaltyPoints: 0,
+                }),
             });
 
             // Mock session with ADMIN role (old token)
             (getServerSession as any).mockResolvedValue({
                 user: {
-                    id: user.id,
+                    id: 'demoted-user-id',
                     email: 'demoted@test.com',
                     role: 'ADMIN', // Token says admin
                 }
@@ -65,24 +76,21 @@ describe('Security Improvements Tests', () => {
             // Should throw because role mismatch
             await expect(requireAuth()).rejects.toThrow(AuthorizationError);
             await expect(requireAuth()).rejects.toThrow('permissions have changed');
-
-            // Cleanup
-            await User.findByIdAndDelete(user.id);
-        }, 15000); // 15 second timeout
+        });
 
         it('should accept valid users with matching session', async () => {
-            await connectDB();
-
-            const validUser = await User.create({
-                name: 'Valid User',
-                email: 'valid@test.com',
-                role: 'STUDENT',
-                penaltyPoints: 0,
+            // Mock valid user in DB
+            mockUserFindById.mockReturnValue({
+                select: vi.fn().mockResolvedValue({
+                    id: 'valid-user-id',
+                    role: 'STUDENT',
+                    penaltyPoints: 0,
+                }),
             });
 
             (getServerSession as any).mockResolvedValue({
                 user: {
-                    id: validUser.id,
+                    id: 'valid-user-id',
                     email: 'valid@test.com',
                     name: 'Valid User',
                     role: 'STUDENT',
@@ -90,12 +98,9 @@ describe('Security Improvements Tests', () => {
             });
 
             const result = await requireAuth();
-            expect(result.id).toBe(validUser.id);
+            expect(result.id).toBe('valid-user-id');
             expect(result.role).toBe('STUDENT');
-
-            // Cleanup
-            await User.findByIdAndDelete(validUser.id);
-        }, 15000); // 15 second timeout
+        });
     });
 
     describe('Typed Error Classes', () => {

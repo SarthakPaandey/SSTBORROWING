@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getISTToday } from '@/lib/timezone-client';
 
 interface DatePickerProps {
   value: Date;
   onChange: (date: Date) => void;
-  minDate?: Date;
+  minDate?: Date | string;
   placeholder?: string;
   className?: string;
 }
@@ -23,19 +25,15 @@ export function DatePicker({
   const [currentMonth, setCurrentMonth] = useState(value || new Date());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close popover when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
+  // Normalize minDate to start of day for accurate comparison
+  const normalizedMinDate = minDate ? new Date(minDate) : null;
+  if (normalizedMinDate) {
+    normalizedMinDate.setHours(0, 0, 0, 0);
+  }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
+  // Close popover when clicking outside is handled by the backdrop in the Portal
+  // The previous useEffect for document.mousedown caused issues because the Portal content
+  // is not inside containerRef, so every click was considered "outside"
 
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
@@ -88,8 +86,8 @@ export function DatePicker({
   };
 
   const isDisabled = (date: Date) => {
-    if (!minDate) return false;
-    return date < minDate;
+    if (!normalizedMinDate) return false;
+    return date < normalizedMinDate;
   };
 
   const goToPreviousMonth = () => {
@@ -100,8 +98,14 @@ export function DatePicker({
     setCurrentMonth(new Date(year, month + 1, 1));
   };
 
+  // Handle hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative cursor-pointer">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -117,18 +121,34 @@ export function DatePicker({
       </button>
 
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center" onClick={() => setIsOpen(false)}>
+      {isOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center" onClick={() => setIsOpen(false)}>
           <div
-            className="w-[280px] p-4 bg-[#1a1d29] border-2 border-accent-blue/30 rounded-xl shadow-2xl relative"
+            className="w-[320px] p-4 bg-[#1a1d29] border-2 border-accent-blue/30 rounded-xl shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Month Navigation */}
+            {/* Header with Close Button */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-card-border">
+              <h3 className="text-lg font-bold text-white">Select Date</h3>
               <button
                 type="button"
-                onClick={goToPreviousMonth}
-                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors text-gray-400"
+                aria-label="Close calendar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-4 px-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPreviousMonth();
+                }}
+                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors bg-bg-dark border border-card-border"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -137,8 +157,11 @@ export function DatePicker({
               </span>
               <button
                 type="button"
-                onClick={goToNextMonth}
-                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextMonth();
+                }}
+                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors bg-bg-dark border border-card-border"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -154,7 +177,7 @@ export function DatePicker({
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 mb-4">
               {calendarDays.map((date, index) => {
                 if (!date) {
                   return <div key={`empty-${index}`} className="aspect-square" />;
@@ -168,10 +191,13 @@ export function DatePicker({
                   <button
                     key={date.toISOString()}
                     type="button"
-                    onClick={() => !disabled && handleDateClick(date)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!disabled) handleDateClick(date);
+                    }}
                     disabled={disabled}
                     className={cn(
-                      'aspect-square rounded-lg text-sm font-semibold transition-all',
+                      'aspect-square rounded-lg text-sm font-semibold transition-all relative',
                       'hover:bg-accent-blue/20 hover:text-white hover:scale-105',
                       disabled && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-gray-600 hover:scale-100',
                       selected && 'bg-accent-blue text-white shadow-lg shadow-accent-blue/30 scale-105',
@@ -180,12 +206,38 @@ export function DatePicker({
                     )}
                   >
                     {date.getDate()}
+                    {today && !selected && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent-blue rounded-full" />
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-card-border">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const todayStr = getISTToday();
+                  handleDateClick(new Date(todayStr));
+                }}
+                className="text-sm font-medium text-accent-blue hover:text-accent-blue/80 transition-colors px-3 py-1.5 hover:bg-accent-blue/10 rounded-md"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-white/5 rounded-md"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

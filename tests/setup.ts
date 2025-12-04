@@ -1,4 +1,7 @@
 // Test setup file
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
+
 // Mock environment variables for testing
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test-sst-booking';
 process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'test-secret-key-for-testing-only';

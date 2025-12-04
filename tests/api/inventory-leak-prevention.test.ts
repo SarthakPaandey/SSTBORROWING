@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 describe('Inventory Leak Prevention Tests', () => {
     beforeAll(async () => {
         await connectDB();
-    });
+    }, 30000);
 
     afterAll(async () => {
         // Cleanup
@@ -19,7 +19,7 @@ describe('Inventory Leak Prevention Tests', () => {
         await Resource.deleteMany({ name: { $regex: /Test Inventory/ } });
         await EquipmentItem.deleteMany({ name: { $regex: /Test Inventory/ } });
         await mongoose.connection.close();
-    });
+    }, 30000);
 
     describe('QR Validation Inventory Release', () => {
         it('should decrement both qtyAvailable AND qtyReserved on check-in', async () => {

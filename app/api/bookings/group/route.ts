@@ -11,7 +11,7 @@ import { groupBookingSchema } from '@/lib/validations';
 import { withRateLimit } from '@/lib/ratelimit';
 import { withTransaction } from '@/lib/transaction';
 import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
-import { getNow, getTodayStart } from '@/lib/timezone';
+import { getNow, getTodayStart, toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
 
 async function postHandler(req: Request) {
@@ -68,8 +68,45 @@ async function postHandler(req: Request) {
 
       // Check advance window
       const startDate = new Date(start);
+      const endDate = new Date(end);
+      
       if (!isWithinAdvanceWindow(startDate)) {
         throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+      }
+
+      // Validate working hours (8 AM - 8 PM IST)
+      const startIST = toIST(startDate);
+      const endIST = toIST(endDate);
+      const startHour = startIST.getHours();
+      const endHour = endIST.getHours();
+      const endMinutes = endIST.getMinutes();
+      
+      // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
+      const WORKING_HOURS_START = 8;  // 8:00 AM
+      const WORKING_HOURS_END = 20;   // 8:00 PM
+
+      if (startHour < WORKING_HOURS_START) {
+        throw new ValidationError(`Bookings cannot start before ${WORKING_HOURS_START}:00 AM`);
+      }
+
+      // End time can be exactly 8:00 PM (20:00) but not after
+      if (endHour > WORKING_HOURS_END || (endHour === WORKING_HOURS_END && endMinutes > 0)) {
+        throw new ValidationError(`Bookings cannot end after ${WORKING_HOURS_END % 12 || 12}:00 PM`);
+      }
+
+      // Validate booking duration
+      const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+      
+      if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+        throw new ValidationError(
+          `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes.`
+        );
+      }
+
+      if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
+        throw new ValidationError(
+          `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours).`
+        );
       }
 
       // Check if group booking can be created (enough time before start)
@@ -147,6 +184,24 @@ async function postHandler(req: Request) {
 
         if (!capsCheck.allowed) {
           throw new ValidationError(`${member.email}: ${capsCheck.reason || 'Booking limits exceeded'}`);
+        }
+      }
+
+      // Check active booking count for all members
+      // This prevents users from bypassing the "3 active facilities/rooms" limit via group bookings
+      for (const member of [...members, organizer]) {
+        const activeCount = await Booking.countDocuments({
+          userId: member.id,
+          kind: { $in: ['FACILITY', 'ROOM'] },
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          end: { $gt: new Date() },
+        }).session(txSession);
+
+        if (activeCount >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+          throw new ValidationError(
+            `${member.email} already has ${activeCount} active facility/room bookings. ` +
+            `Maximum allowed is ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS}. Please cancel an existing booking first.`
+          );
         }
       }
 

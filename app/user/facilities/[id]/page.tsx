@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowLeft, Users, X } from 'lucide-react';
+import { ArrowLeft, Users, X, Calendar, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
 import { Resource } from '@/types/frontend';
+import TimeRangePicker from '@/components/booking/TimeRangePicker';
 
 interface Params {
   id: string;
@@ -30,22 +31,17 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   // Group booking state
   const [memberEmails, setMemberEmails] = useState<string[]>(['']); // Start with just one field
 
+  // Availability data for TimeRangePicker
+  const [busySlots, setBusySlots] = useState<Array<{ start: string; end: string }>>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
   useEffect(() => {
     fetchResource();
   }, [params.id]);
 
-  // Reset selected slot if it becomes invalid when date changes
+  // Reset selected slot when date changes
   useEffect(() => {
-    if (selectedSlot) {
-      const today = getISTToday();
-      const slotStart = new Date(selectedSlot.start);
-      const now = getISTNow();
-
-      if (date === today && slotStart < now) {
-        setSelectedSlot(null);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedSlot(null);
   }, [date]);
 
   const fetchResource = async () => {
@@ -53,11 +49,38 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     const data = await res.json();
     const found = data.resources.find((r: Resource) => r._id === params.id);
     setResource(found);
-
-    // Automatically set group booking to true for team sports
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // const isTeamSport = found && TEAM_SPORTS.includes(found.name as any);
   };
+
+  // Fetch availability data for TimeRangePicker
+  const fetchAvailability = async () => {
+    if (!resource?._id || !date) return;
+
+    setLoadingAvailability(true);
+    try {
+      const res = await fetch(`/api/availability?resourceId=${resource._id}&date=${date}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setBusySlots(data.busySlots || []);
+      } else {
+        console.error('Failed to fetch availability:', data);
+        setBusySlots([]);
+      }
+    } catch (err) {
+      console.error('Error fetching availability:', err);
+      setBusySlots([]);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  // Fetch availability when resource or date changes
+  useEffect(() => {
+    if (resource) {
+      fetchAvailability();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resource, date]);
 
   const handleBook = async () => {
     if (!selectedSlot) return;
@@ -153,10 +176,6 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     }
   };
 
-  // const addEmailField = () => {
-  //   setMemberEmails([...memberEmails, '']);
-  // };
-
   const removeEmailField = (index: number) => {
     const updated = memberEmails.filter((_, i) => i !== index);
     setMemberEmails(updated);
@@ -176,6 +195,11 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isTeamSport = resource && TEAM_SPORTS.includes(resource.name as any);
 
+  // Calculate max date (7 days from today)
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + POLICIES.ADVANCE_BOOKING_DAYS);
+  const maxDateStr = maxDate.toISOString().split('T')[0];
+
   if (!resource) {
     return (
       <div className="space-y-6">
@@ -185,223 +209,219 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     );
   }
 
-  // Generate time slots (6am - 8pm, 30-minute intervals, 1-hour duration)
-  const generateSlots = () => {
-    const slots = [];
-    const today = getISTToday();
-    const now = getISTNow();
-
-    // Iterate by 30-minute increments
-    const startMinutes = 6 * 60; // 6:00 AM in minutes
-    const endMinutes = 20 * 60;  // 8:00 PM in minutes
-
-    for (let totalMinutes = startMinutes; totalMinutes < endMinutes; totalMinutes += 30) {
-      const startHour = Math.floor(totalMinutes / 60);
-      const startMinute = totalMinutes % 60;
-
-      // End time is 1 hour after start
-      const endTotalMinutes = totalMinutes + 60;
-      const endHour = Math.floor(endTotalMinutes / 60);
-      const endMinute = endTotalMinutes % 60;
-
-      // FIX: Create dates in IST timezone by specifying +05:30 offset
-      const start = new Date(`${date}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00+05:30`);
-      const end = new Date(`${date}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00+05:30`);
-
-      // Filter out past slots if date is today
-      if (date === today) {
-        if (start < now) {
-          continue;
-        }
-
-        // For group bookings, enforce 3-hour advance notice
-        if (isTeamSport) {
-          const minAdvanceMs = (POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS) * 60 * 60 * 1000;
-          if (start.getTime() - now.getTime() < minAdvanceMs) {
-            continue;
-          }
-        }
-      }
-
-      // Format label
-      const formatTime = (hour: number, minute: number) =>
-        `${hour}:${minute.toString().padStart(2, '0')}`;
-
-      slots.push({
-        start: start.toISOString(),
-        end: end.toISOString(),
-        label: `${formatTime(startHour, startMinute)} - ${formatTime(endHour, endMinute)}`,
-      });
-    }
-    return slots;
-  };
-
-  const slots = generateSlots();
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Link href="/user/facilities">
-        <Button variant="ghost" size="sm">
-          <ArrowLeft className="mr-2 h-4 w-4" />
+        <Button variant="ghost" size="sm" className="group">
+          <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
           Back to Facilities
         </Button>
       </Link>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{resource.name}</CardTitle>
+      {/* Resource Info Card */}
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-accent-blue/20 via-accent-blue/10 to-transparent p-6 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl mb-2">{resource.name}</CardTitle>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                {resource.location && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-accent-blue" />
+                    {resource.location}
+                  </div>
+                )}
+                {resource.capacity && (
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-accent-blue" />
+                    {resource.capacity} people
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-accent-blue" />
+                  8:00 AM – 8:00 PM
+                </div>
+              </div>
+            </div>
             {isTeamSport && (
-              <Badge variant="default">
+              <Badge variant="default" className="flex-shrink-0">
                 <Users className="mr-1 h-3 w-3" />
                 Group Booking Required
               </Badge>
             )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+
+        <CardContent className="p-6 space-y-6">
+          {/* Group Booking Notice */}
           {isTeamSport && (
-            <div className="rounded-lg bg-blue-50 p-4 border-2 border-blue-300">
-              <div className="flex items-start space-x-3">
-                <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-5 border border-blue-500/20">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-5 w-5 text-blue-400" />
+                </div>
                 <div>
-                  <p className="text-sm font-semibold text-blue-900">
+                  <p className="text-sm font-semibold text-text-main mb-1">
                     Group Booking Required (Minimum 6 people)
                   </p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 1 hour in advance. Friends have 30 minutes to confirm. All members share penalties for no-shows.
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 1 hour in advance. 
+                    Friends have 30 minutes to confirm. All members share penalties for no-shows.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">Select Date</label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={getISTToday()}
-            />
+          {/* Date Selection */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-text-main">
+              <Calendar className="h-4 w-4 text-accent-blue" />
+              Select Date
+            </label>
+            <div className="relative">
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                min={getISTToday()}
+                max={maxDateStr}
+                className="w-full sm:w-auto"
+              />
+            </div>
+            <p className="text-xs text-text-muted">
+              You can book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance
+            </p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">Available Slots</label>
+          {/* Time Selection */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-text-main">
+              <Clock className="h-4 w-4 text-accent-blue" />
+              Select Time
+            </label>
+            
             {date === getISTToday() && (
-              <p className="text-xs text-text-muted mb-2">Only remaining time slots for today are shown {isTeamSport && '(Group bookings require 1 hour advance notice)'}</p>
+              <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>
+                  Only remaining time slots for today are shown
+                  {isTeamSport && ' (Group bookings require 1 hour advance notice)'}
+                </span>
+              </div>
             )}
-            {slots.length === 0 ? (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm">
-                <p className="font-semibold text-amber-900 mb-1">No available slots for this date</p>
-                {isTeamSport && date === getISTToday() && (
-                  <p className="text-amber-700 text-xs">
-                    Group bookings require 1 hour advance notice. Please select a future date or try again later today when slots become available.
-                  </p>
-                )}
-                {!isTeamSport && date === getISTToday() && (
-                  <p className="text-amber-700 text-xs">
-                    All remaining time slots for today have passed. Please select a future date.
-                  </p>
-                )}
-                {date !== getISTToday() && (
-                  <p className="text-amber-700 text-xs">
-                    This facility may be unavailable on this date. Please try another date.
-                  </p>
-                )}
+
+            {loadingAvailability ? (
+              <div className="h-48 flex items-center justify-center bg-white/5 rounded-xl">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin"></div>
+                  <p className="text-sm text-text-muted">Loading availability...</p>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot, idx) => (
-                  <Button
-                    key={idx}
-                    variant={
-                      selectedSlot?.start === slot.start ? 'default' : 'outline'
-                    }
-                    onClick={() => setSelectedSlot(slot)}
-                    size="sm"
-                    className={selectedSlot?.start === slot.start ? 'shadow-lg shadow-accent-blue/30' : ''}
-                  >
-                    {slot.label}
-                  </Button>
-                ))}
-              </div>
+              <TimeRangePicker
+                date={date}
+                busySlots={busySlots}
+                workingHours={{ start: '08:00', end: '20:00' }}
+                onSelect={(start, end) => {
+                  setSelectedSlot({
+                    start: start.toISOString(),
+                    end: end.toISOString(),
+                  });
+                }}
+                resourceId={params.id}
+                isGroupBooking={isTeamSport || false}
+              />
             )}
           </div>
 
+          {/* Group Member Emails */}
           {isTeamSport && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium">
-                Friend Emails (minimum 5, you'll be the 6th)
+            <div className="space-y-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-text-main">
+                <Users className="h-4 w-4 text-accent-blue" />
+                Friend Emails (minimum 5, you&apos;ll be the 6th)
               </label>
-              {memberEmails.map((email, index) => {
-                // Only show this field if:
-                // 1. It's the first field, OR
-                // 2. The previous field has content
-                const shouldShow = index === 0 || memberEmails[index - 1].trim() !== '';
+              
+              <div className="space-y-2">
+                {memberEmails.map((email, index) => {
+                  // Only show this field if:
+                  // 1. It's the first field, OR
+                  // 2. The previous field has content
+                  const shouldShow = index === 0 || memberEmails[index - 1].trim() !== '';
 
-                if (!shouldShow) return null;
+                  if (!shouldShow) return null;
 
-                return (
-                  <div key={index} className="flex gap-2 items-center">
-                    <div className="flex-1">
-                      <Input
-                        type="email"
-                        placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
-                        value={email}
-                        onChange={(e) => updateEmail(index, e.target.value)}
-                        onKeyDown={(e) => {
-                          // Move to next field on Enter
-                          if (e.key === 'Enter' && email.trim() !== '') {
-                            e.preventDefault();
-                            const nextInput = document.querySelector<HTMLInputElement>(
-                              `input[placeholder="Friend ${index + 2} email (@sst.scaler.com)"]`
-                            );
-                            if (nextInput) {
-                              nextInput.focus();
+                  return (
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <Input
+                          type="email"
+                          placeholder={`Friend ${index + 1} email (@sst.scaler.com)`}
+                          value={email}
+                          onChange={(e) => updateEmail(index, e.target.value)}
+                          onKeyDown={(e) => {
+                            // Move to next field on Enter
+                            if (e.key === 'Enter' && email.trim() !== '') {
+                              e.preventDefault();
+                              const nextInput = document.querySelector<HTMLInputElement>(
+                                `input[placeholder="Friend ${index + 2} email (@sst.scaler.com)"]`
+                              );
+                              if (nextInput) {
+                                nextInput.focus();
+                              }
                             }
-                          }
-                        }}
-                      />
+                          }}
+                        />
+                      </div>
+                      {index > 4 && email.trim() === '' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEmailField(index)}
+                          className="flex-shrink-0 text-text-muted hover:text-danger"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-                    {index > 4 && email.trim() === '' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEmailField(index)}
-                        className="flex-shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
 
-              <p className="text-xs text-muted-foreground">
-                Total: {memberEmails.filter(e => e.trim()).length + 1} people
-                (including you)
+              <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
+                <Users className="h-4 w-4 text-accent-blue" />
+                <p className="text-sm text-text-muted">
+                  Total: <span className="font-semibold text-text-main">{memberEmails.filter(e => e.trim()).length + 1} people</span> (including you)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4">
+              <p className="text-sm text-emerald-300">
+                ✓ Booking successful! Redirecting to your bookings...
               </p>
             </div>
           )}
 
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
-              Booking successful! Redirecting...
-            </div>
-          )}
-
+          {/* Book Button */}
           <Button
             onClick={handleBook}
             disabled={!selectedSlot || loading}
             className="w-full"
             size="lg"
+            variant="gradient"
           >
             {loading
               ? (isTeamSport ? 'Creating Group Booking...' : 'Booking...')

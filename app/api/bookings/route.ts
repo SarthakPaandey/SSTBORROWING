@@ -117,9 +117,53 @@ async function postHandler(req: Request) {
       const startDate = new Date(start);
       const endDate = new Date(end);
 
-      // Check if booking is in the past (use UTC for comparison)
-      if (startDate < new Date()) {
+      // Grace period for network latency (2 minutes)
+      const GRACE_PERIOD_MS = 2 * 60 * 1000;
+      const nowWithGrace = new Date(Date.now() - GRACE_PERIOD_MS);
+
+      // Check if booking is in the past (with 2-minute grace period)
+      if (startDate < nowWithGrace) {
         throw new ValidationError('Cannot book in the past');
+      }
+
+      // Validate working hours (8 AM - 8 PM IST)
+      // Convert to IST for validation
+      const startIST = toIST(startDate);
+      const endIST = toIST(endDate);
+      const startHour = startIST.getHours();
+      const endHour = endIST.getHours();
+      const endMinutes = endIST.getMinutes();
+      
+      // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
+      const WORKING_HOURS_START = 8;  // 8:00 AM
+      const WORKING_HOURS_END = 20;   // 8:00 PM
+
+      if (startHour < WORKING_HOURS_START) {
+        throw new ValidationError(`Bookings cannot start before ${WORKING_HOURS_START}:00 AM`);
+      }
+
+      // End time can be exactly 8:00 PM (20:00) but not after
+      if (endHour > WORKING_HOURS_END || (endHour === WORKING_HOURS_END && endMinutes > 0)) {
+        throw new ValidationError(`Bookings cannot end after ${WORKING_HOURS_END % 12 || 12}:00 PM`);
+      }
+
+      // Validate booking duration for FACILITY and ROOM bookings (dynamic slot system)
+      const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+
+      // Check minimum duration (15 minutes)
+      if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+        throw new ValidationError(
+          `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
+          `Current duration: ${Math.round(durationMinutes)} minutes.`
+        );
+      }
+
+      // Check maximum duration (2 hours per booking)
+      if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
+        throw new ValidationError(
+          `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
+          `Current duration: ${Math.round(durationMinutes)} minutes.`
+        );
       }
 
       // Get user with penalty info
@@ -160,38 +204,19 @@ async function postHandler(req: Request) {
       }
 
       // Check total active bookings limit (use UTC for DB comparison)
-      // FIX: Equipment/Library bookings are only active if:
-      //   - CHECKED_IN (user has the item), OR
-      //   - CONFIRMED/PENDING and within pickup window (start time + 15 min grace period > now)
-      // Facilities/Rooms are active until their end time (unchanged)
-      const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
-      const graceCutoff = new Date(new Date().getTime() - GRACE_PERIOD_MS);
+      // Updated: Only count FACILITY and ROOM bookings as "active slots"
+      // Equipment and Library have their own separate quantity limits and should not
+      // block users from booking facilities/rooms while holding items
 
       const totalActiveBookings = await Booking.countDocuments({
         userId: user.id,
-        $or: [
-          // Facilities/Rooms: Active until end time
-          {
-            kind: { $in: ['FACILITY', 'ROOM'] },
-            status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-            end: { $gt: new Date() },
-          },
-          // Equipment/Library: CHECKED_IN (user has the item)
-          {
-            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
-            status: 'CHECKED_IN',
-          },
-          // Equipment/Library: CONFIRMED/PENDING and still within pickup window
-          {
-            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
-            status: { $in: ['CONFIRMED', 'PENDING'] },
-            start: { $gt: graceCutoff }, // Still within pickup window
-          },
-        ],
+        kind: { $in: ['FACILITY', 'ROOM'] },
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        end: { $gt: new Date() },
       }).session(session);
 
       if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
-        throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active bookings at a time. Please cancel or complete existing bookings first.`);
+        throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active facility/room bookings at a time. Please cancel or complete existing bookings first.`);
       }
 
       // Per-user, per-category daily & monthly caps
@@ -267,6 +292,64 @@ async function postHandler(req: Request) {
       if (conflictingBlocks) {
         throw new ConflictError(`Resource is blocked: ${conflictingBlocks.reason}`);
       }
+
+      // ========== LOGICAL CONFLICT CHECKS ==========
+      // Rule 1: Physical Presence - Cannot be in two locations at once
+      if (kind === 'FACILITY' || kind === 'ROOM') {
+        const locationConflict = await Booking.findOne({
+          userId: user.id,
+          kind: { $in: ['FACILITY', 'ROOM'] },
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
+
+        if (locationConflict) {
+          const conflictResourceData = await Resource.findById(locationConflict.resourceId).session(session);
+          throw new ConflictError(`You already have a booking for ${conflictResourceData?.name || 'another location'} at this time. You cannot be in two places at once.`);
+        }
+      }
+
+      // Rule 2: Activity Context - Sports equipment incompatible with meeting rooms
+      if (kind === 'ROOM') {
+        // Check if user has active sports equipment booking
+        const sportsEquipmentResources = await Resource.find({
+          type: 'SPORTS_EQUIPMENT',
+          status: 'ACTIVE'
+        }).session(session);
+        const sportsEquipmentIds = sportsEquipmentResources.map(r => r.id);
+
+        const sportsConflict = await Booking.findOne({
+          userId: user.id,
+          resourceId: { $in: sportsEquipmentIds },
+          kind: 'EQUIPMENT',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
+
+        if (sportsConflict) {
+          const conflictResourceData = await Resource.findById(sportsConflict.resourceId).session(session);
+          throw new ConflictError(`You have sports equipment (${conflictResourceData?.name || 'unknown item'}) booked at this time. Cannot book a meeting room while holding sports equipment.`);
+        }
+      }
+
+      if (kind === 'EQUIPMENT' && resource.type === 'SPORTS_EQUIPMENT') {
+        // Check if user has active room booking
+        const roomConflict = await Booking.findOne({
+          userId: user.id,
+          kind: 'ROOM',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
+
+        if (roomConflict) {
+          const conflictResourceData = await Resource.findById(roomConflict.resourceId).session(session);
+          throw new ConflictError(`You have a meeting room (${conflictResourceData?.name || 'unknown room'}) booked at this time. Cannot borrow sports equipment while in a meeting room.`);
+        }
+      }
+      // ========== END LOGICAL CONFLICT CHECKS ==========
 
       // Check for conflicts with existing bookings
       // FIX: Time-slot conflicts only apply to FACILITY and ROOM bookings

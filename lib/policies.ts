@@ -15,13 +15,17 @@ export const POLICIES = {
   MAX_TOTAL_ACTIVE_BOOKINGS: 3, // Max 3 active bookings across all types
 
   // Monthly limits (hours)
-  MAX_FACILITY_HOURS_PER_MONTH: 10, // 10 hours of facility time per month
+  MAX_FACILITY_HOURS_PER_MONTH: 15, // 15 hours of facility time per month
   MAX_ROOM_HOURS_PER_MONTH: 8,      // 8 hours of room time per month
   MAX_EQUIPMENT_BORROWS_PER_MONTH: 20, // 20 equipment borrows per month
 
   // Consecutive booking prevention
   MIN_GAP_BETWEEN_BOOKINGS_MINUTES: 0, // Gap removed to allow back-to-back bookings
   MAX_CONSECUTIVE_SLOTS: 2, // Can't book more than 2 consecutive slots for same resource type
+
+  // Dynamic slot booking constraints
+  MIN_BOOKING_DURATION_MINUTES: 15, // Minimum 15 minutes per booking
+  MAX_BOOKING_DURATION_MINUTES: 120, // Maximum 2 hours per booking
 
   // Cancellation limits
   MAX_CANCELLATIONS_PER_WEEK: 2, // NOTE: No longer enforced - kept for reference only

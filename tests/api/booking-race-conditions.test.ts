@@ -9,7 +9,9 @@ import mongoose from 'mongoose';
 describe('Race Condition Protection Tests', () => {
     beforeAll(async () => {
         await connectDB();
-    });
+        // Ensure indexes are created in test database
+        await Booking.syncIndexes();
+    }, 30000);
 
     afterAll(async () => {
         // Clean up test data
@@ -19,7 +21,7 @@ describe('Race Condition Protection Tests', () => {
         await Resource.deleteMany({ name: { $regex: /Test Race/ } });
         await EquipmentItem.deleteMany({ name: { $regex: /Test Race Equipment/ } });
         await mongoose.connection.close();
-    });
+    }, 30000);
 
     describe('Unique Index Protection', () => {
         it('should prevent duplicate bookings on same time slot using database index', async () => {

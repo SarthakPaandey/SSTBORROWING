@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 describe('Equipment Deletion Protection Tests', () => {
     beforeAll(async () => {
         await connectDB();
-    });
+    }, 30000);
 
     afterAll(async () => {
         await connectDB(); // Ensure connection before cleanup
@@ -16,7 +16,7 @@ describe('Equipment Deletion Protection Tests', () => {
         await User.deleteMany({ email: { $regex: /test-deletion-/ } });
         await EquipmentItem.deleteMany({ name: { $regex: /Test Deletion/ } });
         await mongoose.connection.close();
-    });
+    }, 30000);
 
     it('should prevent deletion of equipment with active bookings', async () => {
         const equipItem = await EquipmentItem.create({

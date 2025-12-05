@@ -7,11 +7,60 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { CheckCircle, XCircle, Camera, X, Keyboard } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { QRValidationResult } from '@/types/booking';
+interface QRValidationResult {
+  success: boolean;
+  booking: {
+    id: string;
+    kind: string;
+    status: string;
+    items?: { name: string; qty: number }[];
+    resourceName: string;
+    returnBy: string;
+  };
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    rollNumber?: string;
+  };
+}
+
+// Audio feedback for scans
+const playSound = (type: 'success' | 'error') => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'success') {
+      // Pleasant ascending chime
+      oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.4);
+    } else {
+      // Error buzz
+      oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+      oscillator.type = 'square';
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    }
+  } catch (e) {
+    // Audio not supported, fail silently
+    console.debug('Audio feedback not available');
+  }
+};
 
 export default function ScannerPage() {
   const [token, setToken] = useState('');
-  // const [bookingId, setBookingId] = useState('');
   const [result, setResult] = useState<QRValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -40,9 +89,11 @@ export default function ScannerPage() {
 
       if (!res.ok) {
         setError(data.error || 'Validation failed');
+        playSound('error');
       } else {
         setResult(data);
         setToken('');
+        playSound('success');
         // Stop camera after successful scan
         if (isScanning) {
           stopScanner();
@@ -50,6 +101,7 @@ export default function ScannerPage() {
       }
     } catch {
       setError('Failed to validate QR code');
+      playSound('error');
     } finally {
       setLoading(false);
     }
@@ -231,39 +283,60 @@ export default function ScannerPage() {
             )}
 
             {result && (
-              <div className="rounded-lg bg-success/10 border-2 border-success/30 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="h-6 w-6 text-success" />
-                  <p className="font-bold text-lg text-success">Check-in Successful!</p>
+              <div className="rounded-lg bg-success/10 border-2 border-success/30 p-4 animate-fade-in">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                    <CheckCircle className="h-7 w-7 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-success">✅ Check-in Successful!</p>
+                    <p className="text-xs text-text-muted">{result.booking.resourceName}</p>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="bg-bg-dark rounded-lg p-3 space-y-1">
-                    <p className="text-text-muted">Booking ID:</p>
-                    <p className="text-text-main font-mono font-semibold">
-                      {result.booking.id.slice(-8)}
-                    </p>
-                  </div>
-                  <div className="bg-bg-dark rounded-lg p-3 space-y-1">
-                    <p className="text-text-muted">Student ID:</p>
-                    <p className="text-text-main font-semibold">{result.booking.userId}</p>
-                  </div>
-                  {result.booking.items && result.booking.items.length > 0 && (
-                    <div className="bg-bg-dark rounded-lg p-3">
-                      <p className="text-text-muted mb-2 font-medium">Items Issued:</p>
-                      <div className="space-y-1">
-                        {result.booking.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
-                          >
-                            <span className="text-text-main font-medium">{item.name}</span>
-                            <Badge variant="default">×{item.qty}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                
+                {/* Student Info - Important for guard verification */}
+                <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-accent-blue font-medium mb-1">👤 STUDENT</p>
+                  <p className="text-lg font-bold text-text-main">{result.student.name}</p>
+                  <p className="text-sm text-text-muted">{result.student.email}</p>
+                  {result.student.rollNumber && (
+                    <p className="text-sm text-text-muted">Roll: {result.student.rollNumber}</p>
                   )}
                 </div>
+
+                {/* Return Deadline - Critical info */}
+                <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-warning font-medium mb-1">⏰ RETURN BY</p>
+                  <p className="text-lg font-bold text-warning">
+                    {new Date(result.booking.returnBy).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                      timeZone: 'Asia/Kolkata'
+                    })}
+                  </p>
+                </div>
+
+                {result.booking.items && result.booking.items.length > 0 && (
+                  <div className="bg-bg-dark rounded-lg p-3 mb-3">
+                    <p className="text-xs text-text-muted font-medium mb-2">📦 ITEMS ISSUED</p>
+                    <div className="space-y-1">
+                      {result.booking.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
+                        >
+                          <span className="text-text-main font-medium">{item.name}</span>
+                          <Badge variant="success">×{item.qty}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-text-muted bg-bg-dark rounded p-2 mb-3">
+                  <span className="font-mono">ID: {result.booking.id.slice(-8)}</span>
+                </div>
+
                 <Button
                   onClick={() => {
                     setResult(null);
@@ -273,7 +346,7 @@ export default function ScannerPage() {
                     }
                   }}
                   variant="gradient"
-                  className="w-full mt-4 btn-ripple"
+                  className="w-full btn-ripple"
                 >
                   Scan Next QR Code
                 </Button>
@@ -316,39 +389,56 @@ export default function ScannerPage() {
             )}
 
             {result && (
-              <div className="rounded-lg bg-success/10 border-2 border-success/30 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="h-6 w-6 text-success" />
-                  <p className="font-bold text-lg text-success">Check-in Successful!</p>
+              <div className="rounded-lg bg-success/10 border-2 border-success/30 p-4 animate-fade-in">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                    <CheckCircle className="h-7 w-7 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-success">✅ Check-in Successful!</p>
+                    <p className="text-xs text-text-muted">{result.booking.resourceName}</p>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="bg-bg-dark rounded-lg p-3 space-y-1">
-                    <p className="text-text-muted">Booking ID:</p>
-                    <p className="text-text-main font-mono font-semibold">
-                      {result.booking.id.slice(-8)}
-                    </p>
-                  </div>
-                  <div className="bg-bg-dark rounded-lg p-3 space-y-1">
-                    <p className="text-text-muted">Student ID:</p>
-                    <p className="text-text-main font-semibold">{result.booking.userId}</p>
-                  </div>
-                  {result.booking.items && result.booking.items.length > 0 && (
-                    <div className="bg-bg-dark rounded-lg p-3">
-                      <p className="text-text-muted mb-2 font-medium">Items Issued:</p>
-                      <div className="space-y-1">
-                        {result.booking.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
-                          >
-                            <span className="text-text-main font-medium">{item.name}</span>
-                            <Badge variant="default">×{item.qty}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                
+                {/* Student Info */}
+                <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-accent-blue font-medium mb-1">👤 STUDENT</p>
+                  <p className="text-lg font-bold text-text-main">{result.student.name}</p>
+                  <p className="text-sm text-text-muted">{result.student.email}</p>
+                  {result.student.rollNumber && (
+                    <p className="text-sm text-text-muted">Roll: {result.student.rollNumber}</p>
                   )}
                 </div>
+
+                {/* Return Deadline */}
+                <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-warning font-medium mb-1">⏰ RETURN BY</p>
+                  <p className="text-lg font-bold text-warning">
+                    {new Date(result.booking.returnBy).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                      timeZone: 'Asia/Kolkata'
+                    })}
+                  </p>
+                </div>
+
+                {result.booking.items && result.booking.items.length > 0 && (
+                  <div className="bg-bg-dark rounded-lg p-3 mb-3">
+                    <p className="text-xs text-text-muted font-medium mb-2">📦 ITEMS ISSUED</p>
+                    <div className="space-y-1">
+                      {result.booking.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
+                        >
+                          <span className="text-text-main font-medium">{item.name}</span>
+                          <Badge variant="success">×{item.qty}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   onClick={() => {
                     setResult(null);
@@ -356,7 +446,7 @@ export default function ScannerPage() {
                     setToken('');
                   }}
                   variant="gradient"
-                  className="w-full mt-4 btn-ripple"
+                  className="w-full btn-ripple"
                 >
                   Validate Another Token
                 </Button>

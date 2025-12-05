@@ -44,8 +44,8 @@ export const POLICIES = {
   NO_SHOW_GRACE_MINUTES: 15,
 
   // QR validity windows (minutes)
-  QR_VALIDITY_BEFORE_START: 1440, // TESTING: Allow QR generation anytime (was 15 min)
-  QR_VALIDITY_AFTER_START: 15,
+  QR_VALIDITY_BEFORE_START: 15, // Can generate QR 15 min before booking start
+  QR_VALIDITY_AFTER_START: 15,  // Can generate QR up to 15 min after booking start
   QR_EQUIPMENT_PICKUP_WINDOW: 10, // QR expires 10 min after generation
 
   // Reschedule policies

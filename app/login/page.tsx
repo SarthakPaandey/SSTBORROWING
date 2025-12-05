@@ -1,8 +1,8 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -24,9 +24,12 @@ const FloatingParticle = ({ delay, size, left, duration }: { delay: number; size
   />
 );
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isGuardLogin, setIsGuardLogin] = useState(false);
+  const [guardAccessValid, setGuardAccessValid] = useState(false);
+  const [validatingKey, setValidatingKey] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,6 +39,73 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Extract the specific parameter value to avoid dependency on entire searchParams object
+  const accessKey = searchParams.get('gk');
+
+  // Separate effect for guard access key validation
+  // Uses AbortController to prevent race conditions from concurrent requests
+  useEffect(() => {
+    // Reset state when key is removed from URL
+    if (!accessKey) {
+      setGuardAccessValid(false);
+      setIsGuardLogin(false);
+      return;
+    }
+
+    // Create abort controller to cancel stale requests
+    const abortController = new AbortController();
+    let isCancelled = false;
+
+    // Validate the key server-side before revealing guard login
+    const validateKey = async () => {
+      setValidatingKey(true);
+      try {
+        const res = await fetch('/api/auth/validate-guard-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessKey }),
+          signal: abortController.signal,
+        });
+        
+        // Don't update state if request was cancelled
+        if (isCancelled) return;
+        
+        const data = await res.json();
+        
+        if (data.valid) {
+          setGuardAccessValid(true);
+          setIsGuardLogin(true);
+        } else {
+          // Invalid key - don't show guard login
+          setGuardAccessValid(false);
+          setIsGuardLogin(false);
+        }
+      } catch (err) {
+        // Don't update state if request was aborted
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        // On error, don't reveal guard login
+        if (!isCancelled) {
+          setGuardAccessValid(false);
+          setIsGuardLogin(false);
+        }
+      } finally {
+        if (!isCancelled) {
+          setValidatingKey(false);
+        }
+      }
+    };
+
+    validateKey();
+
+    // Cleanup: cancel pending request if accessKey changes or component unmounts
+    return () => {
+      isCancelled = true;
+      abortController.abort();
+    };
+  }, [accessKey]); // Depend on the specific value, not the entire searchParams object
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -47,16 +117,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    const accessKey = searchParams.get('gk');
+    
     const result = await signIn('guard-credentials', {
       username,
       password,
+      accessKey: accessKey || '',
       redirect: false,
     });
 
     setLoading(false);
 
     if (result?.error) {
-      setError('Invalid credentials');
+      setError('Invalid credentials or access denied');
     } else {
       router.push('/guard/scanner');
     }
@@ -98,6 +171,13 @@ export default function LoginPage() {
       <Card className={`relative w-full max-w-md transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
         {/* Animated border glow */}
         <div className="absolute -inset-[1px] bg-gradient-to-r from-accent-blue via-accent-purple-1 to-accent-blue rounded-2xl opacity-20 blur-sm animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
+        
+        {/* Show loading spinner while validating guard key */}
+        {validatingKey && (
+          <div className="absolute inset-0 z-50 bg-bg-dark/80 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+            <div className="animate-spin h-8 w-8 border-2 border-accent-blue border-t-transparent rounded-full" />
+          </div>
+        )}
         
         <div className="relative bg-bg-dark rounded-2xl overflow-hidden">
           <CardHeader className="text-center space-y-6 pt-8">
@@ -194,15 +274,17 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Guard login link */}
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsGuardLogin(true)}
-                  className="w-full text-text-muted hover:text-accent-blue group"
-                >
-                  <Shield className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
-                  Guard Login
-                </Button>
+                {/* Guard login link - only shown when accessed with valid key */}
+                {guardAccessValid && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setIsGuardLogin(true)}
+                    className="w-full text-text-muted hover:text-accent-blue group"
+                  >
+                    <Shield className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                    Guard Login
+                  </Button>
+                )}
               </div>
             ) : (
               <form onSubmit={handleGuardLogin} className="space-y-5 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
@@ -265,19 +347,21 @@ export default function LoginPage() {
                   Login
                 </Button>
 
-                {/* Back button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsGuardLogin(false);
-                    setError('');
-                  }}
-                  className="w-full text-text-muted hover:text-accent-blue group"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                  Back to Student/Admin Login
-                </Button>
+                {/* Back button - show whenever user is on guard form */}
+                {isGuardLogin && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setIsGuardLogin(false);
+                      setError('');
+                    }}
+                    className="w-full text-text-muted hover:text-accent-blue group"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                    Back to Student/Admin Login
+                  </Button>
+                )}
               </form>
             )}
           </CardContent>
@@ -291,5 +375,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#0a1628] via-[#0d1b2a] to-[#05060b]">
+        <div className="animate-spin h-8 w-8 border-2 border-accent-blue border-t-transparent rounded-full" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

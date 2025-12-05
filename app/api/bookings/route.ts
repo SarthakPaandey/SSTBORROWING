@@ -200,17 +200,38 @@ async function postHandler(req: Request) {
           );
         }
       } else if (kind === 'EQUIPMENT') {
-        // Fixed durations: 75 min for sports, 1440 min (24h) for lab equipment
+        // Duration validation for equipment
         const isSportsEquipment = resource.type === 'SPORTS_EQUIPMENT';
-        const expectedDuration = isSportsEquipment
-          ? POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES
-          : POLICIES.LAB_EQUIPMENT_BORROW_MINUTES;
-
-        if (durationMinutes !== expectedDuration) {
-          throw new ValidationError(
-            `Equipment borrow duration must be exactly ${expectedDuration} minutes. ` +
-            `Current duration: ${Math.round(durationMinutes)} minutes.`
-          );
+        
+        if (isSportsEquipment) {
+          // Sports equipment: 15-75 minutes (dynamic based on closing time)
+          // Allows shorter durations when booking close to 8 PM closing
+          const maxDuration = POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES; // 75 min
+          const minDuration = POLICIES.MIN_BOOKING_DURATION_MINUTES; // 15 min
+          
+          if (durationMinutes < minDuration) {
+            throw new ValidationError(
+              `Sports equipment borrow duration must be at least ${minDuration} minutes. ` +
+              `Current duration: ${Math.round(durationMinutes)} minutes.`
+            );
+          }
+          
+          if (durationMinutes > maxDuration) {
+            throw new ValidationError(
+              `Sports equipment borrow duration cannot exceed ${maxDuration} minutes. ` +
+              `Current duration: ${Math.round(durationMinutes)} minutes.`
+            );
+          }
+        } else {
+          // Lab equipment: Fixed 24-hour duration
+          const expectedDuration = POLICIES.LAB_EQUIPMENT_BORROW_MINUTES; // 1440 min (24h)
+          
+          if (durationMinutes !== expectedDuration) {
+            throw new ValidationError(
+              `Lab equipment borrow duration must be exactly ${expectedDuration} minutes (24 hours). ` +
+              `Current duration: ${Math.round(durationMinutes)} minutes.`
+            );
+          }
         }
       } else if (kind === 'LIBRARY') {
         // Fixed duration: 14 days (20160 minutes)

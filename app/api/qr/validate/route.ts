@@ -8,6 +8,7 @@ import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { verifyQRToken } from '@/lib/qr';
 import { handleApiError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
+import { parseStudentEmail } from '@/lib/utils';
 import mongoose from 'mongoose';
 import { getNow } from '@/lib/timezone';
 
@@ -155,14 +156,27 @@ export async function POST(req: NextRequest) {
 
     console.log(`QR validation successful. BookingId: ${booking._id}, UserId: ${booking.userId}, Status: ${booking.status}`);
 
+    // Get resource name for display
+    const resourceName = resource?.name || 'Unknown Resource';
+
+    // Extract roll number from email (format: name.rollnumber@domain.com)
+    const studentInfo = parseStudentEmail(bookingOwner.email);
+
     return NextResponse.json({
       success: true,
       booking: {
         id: booking._id,
-        userId: booking.userId,
         kind: booking.kind,
         status: booking.status,
         items: booking.items,
+        resourceName,
+        returnBy: booking.end, // When equipment should be returned
+      },
+      student: {
+        id: bookingOwner._id,
+        name: bookingOwner.name,
+        email: bookingOwner.email,
+        rollNumber: studentInfo?.rollNumber || null, // Extracted from email
       },
     });
   } catch (error) {

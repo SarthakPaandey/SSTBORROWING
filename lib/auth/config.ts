@@ -4,6 +4,18 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+
+/**
+ * Timing-safe string comparison that doesn't leak length information.
+ * Uses HMAC comparison to ensure constant-time execution.
+ */
+function timingSafeCompare(a: string, b: string): boolean {
+  const key = 'timing-safe-auth-comparison';
+  const hashA = crypto.createHmac('sha256', key).update(a).digest();
+  const hashB = crypto.createHmac('sha256', key).update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 // Check for required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
@@ -22,10 +34,26 @@ export const authOptions: AuthOptions = {
       credentials: {
         username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        accessKey: { label: 'Access Key', type: 'text' },
       },
       async authorize(credentials) {
         try {
           if (!credentials?.username || !credentials?.password) {
+            return null;
+          }
+
+          // Validate the guard access key for security using timing-safe comparison
+          const guardAccessKey = process.env.GUARD_ACCESS_KEY;
+          if (!guardAccessKey) {
+            console.error('[Auth] GUARD_ACCESS_KEY is not configured!');
+            // Perform dummy comparison to maintain consistent timing
+            timingSafeCompare(credentials.accessKey || '', 'dummy-key');
+            return null;
+          }
+
+          // Use timing-safe comparison to prevent timing attacks
+          if (!timingSafeCompare(credentials.accessKey || '', guardAccessKey)) {
+            console.log('[Auth] Invalid guard access key attempted');
             return null;
           }
 

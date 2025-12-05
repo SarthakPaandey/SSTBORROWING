@@ -225,8 +225,8 @@ export default function BookingsPage() {
     const originalEnd = new Date(booking.end).getTime();
     const durationMs = originalEnd - originalStart;
 
-    // Generate slots from 6 AM to 8 PM (30-min increments)
-    for (let hour = 6; hour < 20; hour++) {
+    // Generate slots from 8 AM to 8 PM (30-min increments) - matches backend working hours
+    for (let hour = 8; hour < 20; hour++) {
       for (let minute of [0, 30]) {
         const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`);
         const slotEnd = new Date(slotStart.getTime() + durationMs);

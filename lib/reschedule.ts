@@ -120,15 +120,36 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     } else if (booking.kind === 'EQUIPMENT') {
         // Determine if sports or lab equipment based on resource type
         const isSportsEquipment = resource.type === 'SPORTS_EQUIPMENT';
-        const expectedDuration = isSportsEquipment
-            ? POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES
-            : POLICIES.LAB_EQUIPMENT_BORROW_MINUTES;
-
-        if (duration !== expectedDuration) {
-            return {
-                allowed: false,
-                reason: `Equipment borrow duration must be exactly ${expectedDuration} minutes`,
-            };
+        
+        if (isSportsEquipment) {
+            // Sports equipment: 15-75 minutes (dynamic based on closing time)
+            // Must match the booking creation logic to allow rescheduling
+            const maxDuration = POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES; // 75 min
+            const minDuration = POLICIES.MIN_BOOKING_DURATION_MINUTES; // 15 min
+            
+            if (duration < minDuration) {
+                return {
+                    allowed: false,
+                    reason: `Sports equipment borrow duration must be at least ${minDuration} minutes`,
+                };
+            }
+            
+            if (duration > maxDuration) {
+                return {
+                    allowed: false,
+                    reason: `Sports equipment borrow duration cannot exceed ${maxDuration} minutes`,
+                };
+            }
+        } else {
+            // Lab equipment: Fixed 24-hour duration
+            const expectedDuration = POLICIES.LAB_EQUIPMENT_BORROW_MINUTES; // 1440 min (24h)
+            
+            if (duration !== expectedDuration) {
+                return {
+                    allowed: false,
+                    reason: `Lab equipment borrow duration must be exactly ${expectedDuration} minutes (24 hours)`,
+                };
+            }
         }
     } else if (booking.kind === 'LIBRARY') {
         if (duration !== POLICIES.LIBRARY_BOOK_BORROW_MINUTES) {

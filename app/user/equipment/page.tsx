@@ -126,9 +126,9 @@ export default function EquipmentPage() {
     const start = new Date(`${dateStr}T${startTime}:00+05:30`);
     const end = new Date(start);
 
-    // Dynamic duration: min(75 minutes, time until 8 PM closing)
-    const closingTime = new Date(start);
-    closingTime.setHours(20, 0, 0, 0); // 8:00 PM
+    // Dynamic duration: min(75 minutes, time until 8 PM IST closing)
+    // FIX: Create closing time explicitly in IST to avoid browser timezone issues
+    const closingTime = new Date(`${dateStr}T20:00:00+05:30`); // 8:00 PM IST
     
     const maxEndWithDuration = new Date(start);
     maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
@@ -225,14 +225,14 @@ export default function EquipmentPage() {
       // Calculate end time based on equipment type
       const end = new Date(start);
       if (isSports) {
-        // Dynamic duration: min(75 minutes, time until 8 PM)
-        const closingTime = new Date(start);
-        closingTime.setHours(20, 0, 0, 0); // 8:00 PM
+        // Dynamic duration: min(75 minutes, time until 8 PM IST)
+        // FIX: Create closing time explicitly in IST to avoid browser timezone issues
+        const closingTime = new Date(`${dateStr}T20:00:00+05:30`); // 8:00 PM IST
         
         const maxEndWithDuration = new Date(start);
         maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
         
-        // Use the earlier of: 75 min from pickup OR 8 PM closing
+        // Use the earlier of: 75 min from pickup OR 8 PM IST closing
         if (maxEndWithDuration <= closingTime) {
           end.setMinutes(end.getMinutes() + 75);
         } else {
@@ -369,7 +369,15 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      <Tabs defaultValue="sports" className="animate-fade-in">
+      <Tabs 
+        defaultValue="sports" 
+        className="animate-fade-in"
+        onValueChange={() => {
+          // Clear selected items when switching between tabs to avoid confusion
+          setSelectedItems({});
+          setError('');
+        }}
+      >
         <TabsList className="mb-6">
           <TabsTrigger value="sports" icon={<Trophy className="h-4 w-4" />}>
             Sports Equipment

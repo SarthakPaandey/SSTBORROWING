@@ -110,6 +110,7 @@ QR_HMAC_SECRET=your-qr-secret-generate-with-openssl
 
 # Guard Authentication
 GUARD_DEFAULT_PASSWORD_HASH=$2a$10$rKzVmCk7HF.6bGGvqGhYWOqWJ5M0aZ5qLxQxZpGvXFVJYtRYJMGVO
+GUARD_ACCESS_KEY=your-secret-access-key-here
 
 # Email Configuration (Optional)
 SMTP_HOST=smtp.gmail.com
@@ -171,9 +172,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### As a Guard
 
-1. **Sign In**: Navigate to guard login and use credentials:
+1. **Sign In**: Navigate to the secure guard login URL and use credentials:
+   - URL: `/login?gk=YOUR_GUARD_ACCESS_KEY` (get this from your admin)
    - Username: `guard-1` or `guard-2`
    - Password: `123456`
+   
+   > **Security Note**: The guard login is hidden from the main login page. Guards must use the special URL with the access key (`?gk=...`) to access the guard login form.
 2. **Scan QR Code**: 
    - Enter the QR token manually or scan with camera
    - System validates the booking and time window
@@ -401,6 +405,7 @@ npm run lint
 - 🔒 Domain-restricted OAuth (students and admins from specific domains)
 - 🔒 HMAC-signed QR codes to prevent forgery
 - 🔒 Bcrypt password hashing for guard accounts
+- 🔒 **Hidden guard portal** with secret access key (prevents unauthorized login attempts)
 - 🔒 API rate limiting on critical endpoints
 - 🔒 Zod schema validation on all inputs
 - 🔒 Role-based access control via middleware

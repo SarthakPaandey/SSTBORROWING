@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function GuardLoginPage() {
-  redirect('/login');
+  // Don't reveal guard routes - redirect to home
+  redirect('/');
 }

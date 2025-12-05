@@ -2,13 +2,14 @@ import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'gradient' | 'success';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'gradient' | 'success' | 'glow' | 'aurora';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   loading?: boolean;
+  animated?: boolean;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', loading = false, children, disabled, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', loading = false, animated = false, children, disabled, ...props }, ref) => {
     return (
       <button
         className={cn(
@@ -19,6 +20,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'disabled:pointer-events-none disabled:opacity-50',
           'active:scale-[0.98]',
           'relative overflow-hidden',
+          // Animated entrance
+          animated && 'animate-fade-in-up',
           // Variant styles
           {
             // Default - Blue with glow
@@ -42,6 +45,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             // Gradient - Purple with shimmer effect
             'bg-gradient-purple text-white shadow-glow-purple hover:shadow-glow-purple-lg hover:-translate-y-1 hover:scale-[1.02] btn-shiny':
               variant === 'gradient',
+            // Glow - Pulsing blue glow effect
+            'bg-accent-blue text-white shadow-[0_0_20px_rgba(13,140,232,0.4)] hover:shadow-[0_0_40px_rgba(13,140,232,0.6),0_0_60px_rgba(13,140,232,0.3)] hover:-translate-y-1':
+              variant === 'glow',
+            // Aurora - Gradient border with animation
+            'bg-bg-dark text-text-main border-2 border-transparent hover:border-accent-blue/50 hover:shadow-[0_0_30px_rgba(13,140,232,0.2),0_0_60px_rgba(122,60,255,0.1)]':
+              variant === 'aurora',
           },
           // Size styles
           {
@@ -50,7 +59,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'h-12 rounded-2xl px-8 text-base gap-2': size === 'lg',
             'h-10 w-10 p-0': size === 'icon',
           },
-          variant === 'gradient' && 'rounded-full',
+          (variant === 'gradient' || variant === 'glow') && 'rounded-full',
           loading && 'cursor-wait',
           className
         )}

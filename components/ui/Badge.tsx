@@ -60,7 +60,11 @@ export function Badge({
       )}
       {...props}
     >
-      {icon && <span className="text-sm">{icon}</span>}
+      {icon && (
+        <span className="text-sm leading-none opacity-90" aria-hidden>
+          {icon}
+        </span>
+      )}
       {children}
     </div>
   );

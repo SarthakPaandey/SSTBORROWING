@@ -372,7 +372,7 @@ export default function EquipmentPage() {
               <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-text-main">
                   <Clock className="h-4 w-4 text-success" />
-                  📅 Select Pickup Time
+                  Select Pickup Time
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <DatePicker
@@ -549,7 +549,7 @@ export default function EquipmentPage() {
                   <span className="flex items-center gap-2">
                     <Package className="h-5 w-5 group-hover:scale-110 transition-transform" />
                     {Object.values(selectedItems).some((v) => v > 0) 
-                      ? `🎾 Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
+                      ? `Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
                       : 'Select Items to Book'
                     }
                   </span>
@@ -597,7 +597,7 @@ export default function EquipmentPage() {
               <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-text-main">
                   <Clock className="h-4 w-4 text-accent-purple-1" />
-                  📅 Select Pickup Time
+                  Select Pickup Time
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <DatePicker
@@ -748,7 +748,7 @@ export default function EquipmentPage() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <FlaskConical className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    🔬 Request Lab Equipment
+                    Request Lab Equipment
                   </span>
                 )}
               </Button>

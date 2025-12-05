@@ -2,17 +2,20 @@ import { HTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'glow' | 'gradient-border' | 'interactive';
+  variant?: 'default' | 'glow' | 'gradient-border' | 'interactive' | 'shine' | 'aurora' | 'frosted';
   hoverEffect?: boolean;
+  animated?: boolean;
 }
 
 const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'default', hoverEffect = false, ...props }, ref) => (
+  ({ className, variant = 'default', hoverEffect = false, animated = false, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
         'card-glass text-card-foreground',
         'transition-all duration-400 ease-out',
+        // Animated entrance
+        animated && 'animate-fade-in-up',
         // Variant styles
         {
           // Default - subtle hover
@@ -23,6 +26,12 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           'card-animated-border': variant === 'gradient-border',
           // Interactive - scale and lift
           'cursor-pointer hover:scale-[1.02] hover:-translate-y-1 hover:shadow-card-glow active:scale-[0.99]': variant === 'interactive',
+          // Shine - shimmer effect on hover
+          'card-glow-animated': variant === 'shine',
+          // Aurora - subtle gradient border animation
+          'gradient-border': variant === 'aurora',
+          // Frosted - strong glass effect
+          'card-frosted': variant === 'frosted',
         },
         // Optional hover effect
         hoverEffect && 'card-scale-hover cursor-pointer',
@@ -61,7 +70,14 @@ const CardTitle = forwardRef<HTMLParagraphElement, CardTitleProps>(
       )}
       {...props}
     >
-      {emoji && <span className="mr-2 inline-block animate-bounce-subtle">{emoji}</span>}
+      {emoji && (
+        <span
+          className="mr-2 inline-block text-2xl leading-none opacity-90 align-text-bottom"
+          aria-hidden
+        >
+          {emoji}
+        </span>
+      )}
       {children}
     </h3>
   )

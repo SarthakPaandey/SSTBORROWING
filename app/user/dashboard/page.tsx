@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
 import { getNow } from '@/lib/timezone';
 import { EnrichedBooking } from '@/types/booking';
+import { POLICIES } from '@/lib/policies';
 
 // Quick action cards with emojis and colors
 const quickActions = [
@@ -69,6 +70,16 @@ export default async function UserDashboard() {
   }
 
   const now = getNow();
+  const suspensionLevel = user.suspensionLevel || 0;
+  const thresholdByLevel = [
+    POLICIES.PENALTY_THRESHOLD_LEVEL_0,
+    POLICIES.PENALTY_THRESHOLD_LEVEL_1,
+    POLICIES.PENALTY_THRESHOLD_LEVEL_2,
+  ];
+  const threshold = thresholdByLevel[suspensionLevel] ?? POLICIES.PENALTY_THRESHOLD_LEVEL_0;
+  const levelLabel = ['Level 0 • Fresh', 'Level 1 • Probation', 'Level 2 • Final warning'][suspensionLevel] || 'Current level';
+  const nextAction = suspensionLevel >= 2 ? 'Permanent block' : 'Suspension';
+  const penaltyProgress = Math.min((user.penaltyPoints / threshold) * 100, 100);
 
   // Get upcoming bookings
   const upcomingBookings = await Booking.find({
@@ -117,7 +128,7 @@ export default async function UserDashboard() {
             Welcome back, <span className="text-gradient">{user.name?.split(' ')[0]}</span>! ✨
           </h1>
           <p className="text-text-muted text-lg">
-            Ready to book facilities, rooms, or equipment? Let&apos;s get started! 🚀
+            Ready to book facilities, rooms, or equipment? Let&apos;s get started.
           </p>
         </div>
       </div>
@@ -132,14 +143,14 @@ export default async function UserDashboard() {
               </div>
               <div>
                 <CardTitle className="text-lg text-danger flex items-center gap-2">
-                  ⚠️ Penalty Points: {user.penaltyPoints}/5
+                  ⚠️ Penalty Points: {user.penaltyPoints}/{threshold}
                 </CardTitle>
                 <CardDescription className="text-text-muted">
                   {user.suspendedUntil && now < user.suspendedUntil
                     ? `🚫 You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}`
-                    : user.penaltyPoints >= 5
-                      ? '🛑 Maximum penalty points reached. Please contact admin.'
-                      : '💡 Tip: Avoid no-shows and late returns to prevent suspension.'}
+                    : user.penaltyPoints >= threshold
+                      ? `🛑 ${nextAction} threshold reached. Please contact admin.`
+                      : `💡 Next ${nextAction.toLowerCase()} at ${threshold} points (${levelLabel}).`}
                 </CardDescription>
               </div>
             </div>
@@ -147,7 +158,7 @@ export default async function UserDashboard() {
             <div className="mt-4 h-2 bg-danger/20 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-danger to-red-400 rounded-full transition-all duration-500"
-                style={{ width: `${(user.penaltyPoints / 5) * 100}%` }}
+                style={{ width: `${penaltyProgress}%` }}
               />
             </div>
           </CardHeader>
@@ -222,9 +233,9 @@ export default async function UserDashboard() {
               </p>
               <Link href="/user/facilities">
                 <Button variant="gradient" size="lg" className="btn-ripple group">
-                  <span className="mr-2">🏟️</span>
+                  <Sparkles className="mr-2 h-4 w-4" />
                   Book a Facility
-                  <Sparkles className="ml-2 h-4 w-4 group-hover:animate-spin" />
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </div>

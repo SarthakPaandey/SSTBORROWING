@@ -127,12 +127,12 @@ export default function LoginPage() {
                 {isGuardLogin ? (
                   <>
                     <Shield className="h-4 w-4 text-accent-purple-1" />
-                    Guard Portal 🛡️
+                    Guard Portal
                   </>
                 ) : (
                   <>
                     <User className="h-4 w-4 text-accent-blue" />
-                    Student & Admin Portal 🎓
+                    Student & Admin Portal
                   </>
                 )}
               </CardDescription>
@@ -287,7 +287,7 @@ export default function LoginPage() {
       {/* Footer */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
         <p className="text-xs text-text-muted/50">
-          ✨ SST Borrowing System • Made with 💙
+          SST Borrowing System
         </p>
       </div>
     </div>

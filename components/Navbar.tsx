@@ -167,7 +167,7 @@ export function Navbar() {
                 
                 {/* Icon */}
                 <span className={cn(
-                  'text-sm transition-transform duration-300',
+                  'text-base leading-none opacity-90 transition-transform duration-300',
                   pathname === link.href ? 'animate-bounce-subtle' : 'group-hover:scale-110'
                 )}>
                   {navIcons[link.href] || '📌'}
@@ -215,8 +215,13 @@ export function Navbar() {
                 <User className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="font-medium text-foreground truncate max-w-[120px]">{session.user.name}</span>
-              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                {role === 'ADMIN' ? '👑 Admin' : role === 'GUARD' ? '🛡️ Guard' : '🎓 Student'}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                <span className="text-sm leading-none opacity-90" aria-hidden>
+                  {role === 'ADMIN' ? '👑' : role === 'GUARD' ? '🛡️' : '🎓'}
+                </span>
+                <span>
+                  {role === 'ADMIN' ? 'Admin' : role === 'GUARD' ? 'Guard' : 'Student'}
+                </span>
               </span>
             </div>
 
@@ -297,7 +302,7 @@ export function Navbar() {
               >
                 <span className="flex items-center gap-2">
                   <Bell className="h-5 w-5" />
-                  🔔 Pending Lab Approvals
+                  Pending Lab Approvals
                 </span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger text-xs font-bold text-white shadow-lg shadow-danger/50">
                   {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
@@ -314,7 +319,12 @@ export function Navbar() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">{session.user.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {role === 'ADMIN' ? '👑 Administrator' : role === 'GUARD' ? '🛡️ Security Guard' : '🎓 Student'}
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-sm leading-none opacity-90" aria-hidden>
+                        {role === 'ADMIN' ? '👑' : role === 'GUARD' ? '🛡️' : '🎓'}
+                      </span>
+                      <span>{role === 'ADMIN' ? 'Administrator' : role === 'GUARD' ? 'Security Guard' : 'Student'}</span>
+                    </span>
                   </p>
                 </div>
               </div>

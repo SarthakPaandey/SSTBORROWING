@@ -106,7 +106,7 @@ export default async function AdminDashboard() {
               <span className="text-text-muted">{greeting.text}, Admin</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              Admin Dashboard <span className="text-gradient">👑</span>
+              Admin Dashboard <span className="text-gradient text-2xl leading-none align-text-bottom opacity-90" aria-hidden>👑</span>
             </h1>
             <p className="text-text-muted text-lg">
               System overview and management controls
@@ -117,7 +117,7 @@ export default async function AdminDashboard() {
           {pendingApprovals > 0 && (
             <Link href="/admin/lab-approvals">
               <div className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 animate-pulse hover:scale-105 transition-transform">
-                <span className="text-2xl">🔔</span>
+                <span className="text-2xl leading-none opacity-90" aria-hidden>🔔</span>
                 <div>
                   <p className="font-semibold text-warning">{pendingApprovals} Pending</p>
                   <p className="text-xs text-text-muted">Approvals waiting</p>
@@ -145,7 +145,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 rounded-xl bg-emerald-500/20 group-hover:bg-emerald-500/30 transition-colors group-hover:scale-110 group-hover:rotate-6 duration-300">
-              <span className="text-2xl">📅</span>
+              <span className="text-2xl leading-none opacity-90" aria-hidden>📅</span>
             </div>
           </div>
         </div>
@@ -164,7 +164,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 rounded-xl bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors group-hover:scale-110 group-hover:rotate-6 duration-300">
-              <span className="text-2xl">⏳</span>
+              <span className="text-2xl leading-none opacity-90" aria-hidden>⏳</span>
             </div>
           </div>
           {pendingApprovals > 0 && (
@@ -186,7 +186,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 rounded-xl bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors group-hover:scale-110 group-hover:rotate-6 duration-300">
-              <span className="text-2xl">👥</span>
+              <span className="text-2xl leading-none opacity-90" aria-hidden>👥</span>
             </div>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="p-3 rounded-xl bg-red-500/20 group-hover:bg-red-500/30 transition-colors group-hover:scale-110 group-hover:rotate-6 duration-300">
-              <span className="text-2xl">⚠️</span>
+              <span className="text-2xl leading-none opacity-90" aria-hidden>⚠️</span>
             </div>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default async function AdminDashboard() {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="p-2 rounded-lg bg-white/5 group-hover:scale-110 transition-transform">
-                  <span className="text-2xl">{action.emoji}</span>
+                  <span className="text-2xl leading-none opacity-90" aria-hidden>{action.emoji}</span>
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-text-main group-hover:text-accent-blue transition-colors">
@@ -285,7 +285,7 @@ export default async function AdminDashboard() {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-xl leading-none opacity-90" aria-hidden>{item.icon}</span>
                   <span className="text-text-muted">{item.label}</span>
                 </div>
                 <div className="flex items-center gap-2">

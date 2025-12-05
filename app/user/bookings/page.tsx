@@ -360,7 +360,7 @@ export default function BookingsPage() {
           <span className="text-4xl animate-bounce-subtle">📋</span>
           My Bookings
         </h1>
-        <p className="text-text-muted mt-1">View and manage your reservations ✨</p>
+        <p className="text-text-muted mt-1">View and manage your reservations.</p>
       </div>
 
       {/* Quick Stats */}
@@ -399,7 +399,7 @@ export default function BookingsPage() {
             <div className="empty-state py-12">
               <div className="empty-state-icon text-6xl">📭</div>
               <h3 className="text-xl font-semibold text-text-main mb-2">No Upcoming Bookings</h3>
-              <p className="text-text-muted mb-6">Your schedule is clear! Time to book something? 🚀</p>
+              <p className="text-text-muted mb-6">Your schedule is clear! Time to book something?</p>
               <Button variant="gradient" onClick={() => window.location.href = '/user/facilities'}>
                 <Sparkles className="mr-2 h-4 w-4" />
                 Browse Facilities
@@ -550,7 +550,7 @@ export default function BookingsPage() {
         <CardContent>
           {pastBookings.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-text-muted">No past bookings yet 🌱</p>
+                <p className="text-text-muted">No past bookings yet.</p>
             </div>
           ) : (
             <div className="space-y-3">

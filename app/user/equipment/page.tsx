@@ -280,7 +280,9 @@ export default function EquipmentPage() {
                 {/* FIX: Use IST today for accurate minimum date */}
                 <DatePicker
                   value={date}
-                  onChange={setDate}
+                  onChange={(newDate) => {
+                    if (newDate instanceof Date) setDate(newDate);
+                  }}
                   minDate={getISTNow()}
                   placeholder="Select a date"
                 />
@@ -439,7 +441,9 @@ export default function EquipmentPage() {
                 {/* FIX: Use IST today for accurate minimum date */}
                 <DatePicker
                   value={date}
-                  onChange={setDate}
+                  onChange={(newDate) => {
+                    if (newDate instanceof Date) setDate(newDate);
+                  }}
                   minDate={getISTNow()}
                   placeholder="Select a date"
                 />

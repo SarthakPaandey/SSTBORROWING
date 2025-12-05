@@ -6,6 +6,11 @@ import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError } from '@/lib/errors';
 
+// Dynamic route: reads auth headers/cookies for guards/admins
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
     try {
         await requireAuth(['GUARD', 'ADMIN']);

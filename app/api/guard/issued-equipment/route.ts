@@ -6,6 +6,11 @@ import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 
+// Dynamic route: relies on auth headers/cookies for guard role checks
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();

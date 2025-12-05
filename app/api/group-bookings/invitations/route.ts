@@ -6,6 +6,11 @@ import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError } from '@/lib/errors';
 
+// Dynamic route since we rely on auth headers/cookies
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth(['STUDENT']);

@@ -5,6 +5,11 @@ import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 import mongoose from 'mongoose';
 
+// Dynamic route: uses auth headers/cookies for admin auth
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }

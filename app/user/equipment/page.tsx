@@ -275,6 +275,7 @@ export default function EquipmentPage() {
                   maxTime="20:00"
                   stepMinutes={30}
                   label="Pickup Time"
+                  durationHint="Sports: 75 min • Lab: 24 hours"
                 />
               </div>
 
@@ -436,6 +437,7 @@ export default function EquipmentPage() {
                   maxTime="20:00"
                   stepMinutes={30}
                   label="Pickup Time"
+                  durationHint="Lab: 24 hours"
                 />
               </div>
 

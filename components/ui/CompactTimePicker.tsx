@@ -15,6 +15,8 @@ interface CompactTimePickerProps {
     stepMinutes?: number;
     label?: string;
     className?: string;
+    /** Optional hint about duration policy (e.g., "Sports: 75 min • Lab: 24 hours"). If not provided, no hint is shown. */
+    durationHint?: string;
 }
 
 export function CompactTimePicker({
@@ -26,6 +28,7 @@ export function CompactTimePicker({
     stepMinutes = 30,
     label,
     className,
+    durationHint,
 }: CompactTimePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -334,10 +337,12 @@ export function CompactTimePicker({
                         <ChevronDown className="h-5 w-5 text-text-muted group-hover:text-accent-blue transition-colors" />
                     </button>
 
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                        Sports: 75 min • Lab: 24 hours
-                    </div>
+                    {durationHint && (
+                        <div className="flex items-center gap-2 text-xs text-text-muted">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            {durationHint}
+                        </div>
+                    )}
                 </div>
             </div>
 

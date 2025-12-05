@@ -163,8 +163,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 5. **Check-in**: Show the QR code to the guard for check-in at the facility
 
 **Booking Limits**:
-- Maximum 2 bookings per day
-- Maximum 6 bookings per week
+- Up to 3 active bookings at once (2 facilities, 1 room, 5 equipment items)
+- No daily cap (currently disabled)
 - Book up to 7 days in advance
 - Facility slots: 60 minutes
 - Room slots: 120 minutes

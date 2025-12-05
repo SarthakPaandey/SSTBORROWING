@@ -132,11 +132,6 @@ export default async function PenaltyGuidePage() {
       'Active borrowed items at once'
     ),
     buildBookingLimit(
-      'Weekly cap',
-      `${POLICIES.MAX_BOOKINGS_PER_WEEK}`,
-      'Total bookings allowed per week'
-    ),
-    buildBookingLimit(
       'Monthly facility hours',
       `${facilityHoursUsed.toFixed(1)}/${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hrs`,
       'Confirmed/Pending/Completed this month'
@@ -197,7 +192,7 @@ export default async function PenaltyGuidePage() {
   const faqItems = [
     {
       q: 'How many bookings can I hold at once?',
-      a: 'Up to 3 total active bookings across all types, with sub-limits of 2 facilities, 1 room, and 5 equipment items. Weekly cap: 6 bookings.',
+      a: 'Up to 3 total active bookings across all types, with sub-limits of 2 facilities, 1 room, and 5 equipment items.',
     },
     {
       q: 'When do penalties apply?',

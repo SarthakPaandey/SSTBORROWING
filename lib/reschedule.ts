@@ -280,24 +280,6 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         };
     }
 
-    // Weekly limit
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const weekBookingsCount = await Booking.countDocuments({
-        userId: user.id,
-        _id: { $ne: booking._id },
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-        start: { $gte: weekAgo },
-    }).session(session);
-
-    if (weekBookingsCount >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-        return {
-            allowed: false,
-            reason: `You can only make ${POLICIES.MAX_BOOKINGS_PER_WEEK} bookings per week`,
-        };
-    }
-
     // Monthly limits
     const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const monthEnd = new Date(monthStart);

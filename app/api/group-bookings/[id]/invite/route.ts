@@ -6,7 +6,7 @@ import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
-import { getNow, getTodayStart } from '@/lib/timezone';
+import { getTodayStart } from '@/lib/timezone';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -121,20 +121,6 @@ export async function POST(
     // Only check daily limit if it's enabled (value > 0)
     if (POLICIES.MAX_BOOKINGS_PER_DAY > 0 && todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
       throw new ConflictError(`${email} has reached their daily booking limit`);
-    }
-
-    // Check weekly limit (using IST timezone)
-    const weekAgo = getNow();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const weekBookings = await Booking.countDocuments({
-      userId: newMember.id,
-      status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED'] },
-      start: { $gte: weekAgo },
-    });
-
-    if (weekBookings >= POLICIES.MAX_BOOKINGS_PER_WEEK) {
-      throw new ConflictError(`${email} has reached their weekly booking limit`);
     }
 
     // Add new member to group

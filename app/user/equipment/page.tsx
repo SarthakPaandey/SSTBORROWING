@@ -491,15 +491,33 @@ export default function EquipmentPage() {
                     durationHint={(() => {
                       const [h, m] = startTime.split(':').map(Number);
                       const pickupMinutes = h * 60 + m;
-                      const closeMinutes = 20 * 60; // 8 PM = 20:00
-                      const availableMinutes = Math.max(0, closeMinutes - pickupMinutes);
-                      const displayMinutes = Math.min(availableMinutes, 75); // Cap at 75 min max
-                      if (displayMinutes >= 60) {
-                        const hrs = Math.floor(displayMinutes / 60);
-                        const mins = displayMinutes % 60;
-                        return `⏱️ Duration: ${hrs}h ${mins > 0 ? mins + 'm' : ''} (return by 8 PM)`;
-                      }
-                      return `⏱️ Duration: ${displayMinutes} min (return by 8 PM)`;
+                      const closeMinutes = 20 * 60; // 8 PM closing time
+                      const maxDuration = 75;
+                      const returnMinutes = Math.min(pickupMinutes + maxDuration, closeMinutes);
+                      const durationMinutes = Math.max(0, returnMinutes - pickupMinutes);
+
+                      const formatDuration = (mins: number) => {
+                        if (mins >= 60) {
+                          const hrs = Math.floor(mins / 60);
+                          const rem = mins % 60;
+                          return `${hrs}h${rem ? ` ${rem}m` : ''}`;
+                        }
+                        return `${mins} min`;
+                      };
+
+                      const formatTime = (totalMinutes: number) => {
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+                        const period = hours >= 12 ? 'PM' : 'AM';
+                        const displayHour = ((hours + 11) % 12) + 1;
+                        return `${displayHour}:${minutes.toString().padStart(2, '0')} ${period}`;
+                      };
+
+                      const hitsClosing = returnMinutes === closeMinutes;
+                      const durationText = formatDuration(durationMinutes);
+                      const returnText = `${formatTime(returnMinutes)}${hitsClosing ? ' (8 PM closing)' : ''}`;
+
+                      return `⏱️ Duration: ${durationText} • Return by ${returnText}`;
                     })()}
                   />
                 </div>

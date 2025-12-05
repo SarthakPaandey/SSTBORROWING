@@ -9,9 +9,8 @@ export const POLICIES = {
   MAX_SPORTS_EQUIPMENT_ITEMS_PER_BOOKING: 3,
   MAX_LAB_EQUIPMENT_ITEMS_PER_BOOKING: 1,
 
-  // Daily and weekly limits
+  // Daily limits
   MAX_BOOKINGS_PER_DAY: 0, // Disabled for now
-  MAX_BOOKINGS_PER_WEEK: 6,
   MAX_TOTAL_ACTIVE_BOOKINGS: 3, // Max 3 active bookings across all types
 
   // Monthly limits (hours)

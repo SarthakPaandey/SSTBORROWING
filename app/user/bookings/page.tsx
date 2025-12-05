@@ -571,14 +571,16 @@ export default function BookingsPage() {
               <DatePicker
                 value={rescheduleModal.selectedDate ? new Date(`${rescheduleModal.selectedDate}T00:00:00`) : getISTNow()}
                 onChange={(date) => {
-                  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                  setRescheduleModal({
-                    ...rescheduleModal,
-                    selectedDate: dateStr,
-                    selectedSlot: undefined, // Reset slot when date changes
-                    newStart: undefined,
-                    newEnd: undefined,
-                  });
+                  if (date instanceof Date) {
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    setRescheduleModal({
+                      ...rescheduleModal,
+                      selectedDate: dateStr,
+                      selectedSlot: undefined,
+                      newStart: undefined,
+                      newEnd: undefined,
+                    });
+                  }
                 }}
                 minDate={getISTNow()}
                 placeholder="Select a date"

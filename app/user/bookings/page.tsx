@@ -354,13 +354,34 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="animate-fade-in-down">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <span className="text-4xl animate-bounce-subtle">📋</span>
-          My Bookings
-        </h1>
-        <p className="text-text-muted mt-1">View and manage your reservations.</p>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-yellow-500/10 to-transparent p-6 border border-amber-500/20">
+        {/* Background decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        {/* Floating booking icons */}
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📋</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📅</div>
+        <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>✅</div>
+        
+        <div className="relative flex items-center gap-4">
+          <div className="relative">
+            {/* Animated glow ring */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-500 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">📋</span>
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-text-main">
+              My Bookings
+            </h1>
+            <p className="text-text-muted">
+              View and manage your reservations
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Stats */}

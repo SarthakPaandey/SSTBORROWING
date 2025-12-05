@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
-import { Search, BookOpen, Grid3X3, List, Sparkles } from 'lucide-react';
+import { Search, BookOpen, Grid3X3, List } from 'lucide-react';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -412,13 +412,16 @@ export default function LibraryPage() {
         
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30">
-              <BookOpen className="h-8 w-8 text-white" />
+            <div className="relative">
+              {/* Animated glow ring */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 blur-xl opacity-40 animate-pulse" />
+              <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+                <span className="text-4xl drop-shadow-lg">📚</span>
+              </div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-text-main flex items-center gap-2">
-                📚 Library
-                <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+              <h1 className="text-3xl font-bold text-text-main">
+                Library
               </h1>
               <p className="text-text-muted">
                 Borrow books for 14 days • {totalBooks} books in collection

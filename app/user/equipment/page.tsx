@@ -124,12 +124,20 @@ export default function EquipmentPage() {
     // Build time window for availability check
     const dateStr = formatISTDate(date);
     const start = new Date(`${dateStr}T${startTime}:00+05:30`);
-    const startHour = parseInt(startTime.split(':')[0]);
     const end = new Date(start);
 
-    // Calculate end time based on typical booking duration
-    // Use 75 minutes for general equipment (most are sports)
-    end.setMinutes(end.getMinutes() + 75);
+    // Dynamic duration: min(75 minutes, time until 8 PM closing)
+    const closingTime = new Date(start);
+    closingTime.setHours(20, 0, 0, 0); // 8:00 PM
+    
+    const maxEndWithDuration = new Date(start);
+    maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
+    
+    if (maxEndWithDuration <= closingTime) {
+      end.setMinutes(end.getMinutes() + 75);
+    } else {
+      end.setTime(closingTime.getTime());
+    }
 
     const startISO = start.toISOString();
     const endISO = end.toISOString();
@@ -207,33 +215,39 @@ export default function EquipmentPage() {
         return;
       }
 
-      // Calculate end time based on equipment type
-      const end = new Date(start);
-      if (isSports) {
-        end.setMinutes(end.getMinutes() + 75); // 75 minutes for sports equipment
-      } else if (isLab) {
-        end.setHours(end.getHours() + 24); // 24 hours for lab equipment
-      }
-
-      // Equipment pickup time must be between 8am and ensure end time is by 8pm
-      // For sports equipment (75 min), latest pickup is 18:45 to end by 20:00
-      // For lab equipment (24h), only start time matters (end is next day)
+      // Equipment pickup time must be between 8am and 8pm
       if (startHour < 8) {
         setError('Equipment pickup time must be after 8:00 AM');
         setLoading(false);
         return;
       }
 
-      // Check end time doesn't exceed working hours (20:00) for same-day returns
-      const endHour = end.getHours();
-      const endMinutes = end.getMinutes();
-      const isSameDayReturn = end.toDateString() === start.toDateString();
-      
-      if (isSameDayReturn && (endHour > 20 || (endHour === 20 && endMinutes > 0))) {
-        const latestPickup = isSports ? '6:45 PM' : '8:00 PM';
-        setError(`Equipment must be returned by 8:00 PM. Latest pickup time is ${latestPickup}.`);
-        setLoading(false);
-        return;
+      // Calculate end time based on equipment type
+      const end = new Date(start);
+      if (isSports) {
+        // Dynamic duration: min(75 minutes, time until 8 PM)
+        const closingTime = new Date(start);
+        closingTime.setHours(20, 0, 0, 0); // 8:00 PM
+        
+        const maxEndWithDuration = new Date(start);
+        maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
+        
+        // Use the earlier of: 75 min from pickup OR 8 PM closing
+        if (maxEndWithDuration <= closingTime) {
+          end.setMinutes(end.getMinutes() + 75);
+        } else {
+          end.setTime(closingTime.getTime());
+        }
+        
+        // Validate minimum 15 minutes session
+        const sessionMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+        if (sessionMinutes < 15) {
+          setError('Minimum borrowing time is 15 minutes. Please select an earlier pickup time.');
+          setLoading(false);
+          return;
+        }
+      } else if (isLab) {
+        end.setHours(end.getHours() + 24); // 24 hours for lab equipment
       }
 
       const res = await fetch('/api/bookings', {
@@ -300,8 +314,12 @@ export default function EquipmentPage() {
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🏏</div>
         
         <div className="relative flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-success to-emerald-500 shadow-lg shadow-success/30">
-            <Package className="h-8 w-8 text-white" />
+          <div className="relative">
+            {/* Animated glow ring */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-success to-emerald-500 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-success/20 to-emerald-500/10 border border-success/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">🎾</span>
+            </div>
           </div>
           <div>
             <h1 className="text-3xl font-bold text-text-main">
@@ -401,10 +419,22 @@ export default function EquipmentPage() {
                     value={startTime}
                     onChange={setStartTime}
                     minTime="08:00"
-                    maxTime="18:30"
-                    stepMinutes={30}
+                    maxTime="19:45"
+                    stepMinutes={15}
                     label="Pickup Time"
-                    durationHint="⏱️ Duration: 75 minutes (return by 8 PM)"
+                    durationHint={(() => {
+                      const [h, m] = startTime.split(':').map(Number);
+                      const pickupMinutes = h * 60 + m;
+                      const closeMinutes = 20 * 60; // 8 PM = 20:00
+                      const availableMinutes = Math.max(0, closeMinutes - pickupMinutes);
+                      const displayMinutes = Math.min(availableMinutes, 75); // Cap at 75 min max
+                      if (displayMinutes >= 60) {
+                        const hrs = Math.floor(displayMinutes / 60);
+                        const mins = displayMinutes % 60;
+                        return `⏱️ Duration: ${hrs}h ${mins > 0 ? mins + 'm' : ''} (return by 8 PM)`;
+                      }
+                      return `⏱️ Duration: ${displayMinutes} min (return by 8 PM)`;
+                    })()}
                   />
                 </div>
               </div>

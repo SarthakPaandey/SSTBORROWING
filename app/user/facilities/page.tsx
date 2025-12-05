@@ -48,13 +48,34 @@ export default async function FacilitiesPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="animate-fade-in-down">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-4xl animate-bounce-subtle">🏟️</span>
-          <h1 className="text-3xl font-bold">Book a Facility</h1>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-transparent p-6 border border-emerald-500/20">
+        {/* Background decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        {/* Floating facility icons */}
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">⚽</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🏀</div>
+        <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🏸</div>
+        
+        <div className="relative flex items-center gap-4">
+          <div className="relative">
+            {/* Animated glow ring */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/10 border border-emerald-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">🏟️</span>
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-text-main">
+              Book a Facility
+            </h1>
+            <p className="text-text-muted">
+              Select a sports facility to reserve your slot
+            </p>
+          </div>
         </div>
-        <p className="text-text-muted">Select a sports facility to reserve your slot ✨</p>
       </div>
 
       {/* Quick info */}

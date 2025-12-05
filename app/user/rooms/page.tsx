@@ -6,7 +6,7 @@ import { Resource } from '@/models/Resource';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
-import { MapPin, Users, Clock, DoorOpen, Sparkles, ArrowRight } from 'lucide-react';
+import { MapPin, Users, Clock, ArrowRight } from 'lucide-react';
 
 // Room type icons and colors
 const roomTypeConfig: Record<string, { emoji: string; gradient: string; accent: string }> = {
@@ -64,13 +64,16 @@ export default async function RoomsPage() {
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>📋</div>
         
         <div className="relative flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-accent-purple-1 to-pink-500 shadow-lg shadow-accent-purple-1/30">
-            <DoorOpen className="h-8 w-8 text-white" />
+          <div className="relative">
+            {/* Animated glow ring */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">🚪</span>
+            </div>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-text-main flex items-center gap-2">
-              🚪 Book a Room
-              <Sparkles className="h-5 w-5 text-accent-purple-1 animate-pulse" />
+            <h1 className="text-3xl font-bold text-text-main">
+              Book a Room
             </h1>
             <p className="text-text-muted">
               Select a meeting or study room • {rooms.length} room{rooms.length !== 1 ? 's' : ''} available

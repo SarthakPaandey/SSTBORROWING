@@ -181,13 +181,16 @@ export default function CalendarPage() {
         
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-accent-blue to-cyan-500 shadow-lg shadow-accent-blue/30">
-              <CalendarDays className="h-8 w-8 text-white" />
+            <div className="relative">
+              {/* Animated glow ring */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent-blue to-cyan-500 blur-xl opacity-40 animate-pulse" />
+              <div className="relative p-4 rounded-2xl bg-gradient-to-br from-accent-blue/20 to-cyan-500/10 border border-accent-blue/30 backdrop-blur-sm flex items-center justify-center animate-float">
+                <span className="text-4xl drop-shadow-lg">📅</span>
+              </div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-text-main flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-text-main">
                 Calendar View
-                <Sparkles className="h-5 w-5 text-accent-blue animate-pulse" />
               </h1>
               <p className="text-text-muted flex items-center gap-2">
                 {showAllBookings ? (

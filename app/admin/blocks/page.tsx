@@ -502,7 +502,7 @@ export default function BlocksPage() {
               </label>
               <DatePicker
                 value={startDate}
-                onChange={setStartDate}
+                onChange={(d) => { if (d instanceof Date) setStartDate(d); }}
                 minDate={getISTTodayStart()}
                 placeholder="Select start date"
               />
@@ -523,7 +523,7 @@ export default function BlocksPage() {
               </label>
               <DatePicker
                 value={endDate}
-                onChange={setEndDate}
+                onChange={(d) => { if (d instanceof Date) setEndDate(d); }}
                 minDate={startDate}
                 placeholder="Select end date"
               />

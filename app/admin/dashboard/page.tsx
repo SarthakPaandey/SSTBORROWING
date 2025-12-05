@@ -239,6 +239,7 @@ export default async function AdminDashboard() {
                   transition-all duration-300
                   hover:shadow-lg hover:translate-x-2
                   group
+                  animate-fade-in-up
                 `}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -280,7 +281,7 @@ export default async function AdminDashboard() {
             ].map((item, index) => (
               <div 
                 key={item.label}
-                className="flex items-center justify-between p-3 rounded-lg bg-success/5 border border-success/10 transition-all duration-300 hover:bg-success/10"
+                className="flex items-center justify-between p-3 rounded-lg bg-success/5 border border-success/10 transition-all duration-300 hover:bg-success/10 animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-3">

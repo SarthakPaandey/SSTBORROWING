@@ -177,7 +177,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
       <Link href="/user/rooms">
         <Button variant="ghost" size="sm" className="group hover:bg-accent-purple-1/10">
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          ← Back to Rooms
+          Back to Rooms
         </Button>
       </Link>
 

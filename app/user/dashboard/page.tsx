@@ -172,6 +172,7 @@ export default async function UserDashboard() {
                   hover:shadow-[0_0_30px_rgba(47,176,255,0.2)]
                   hover:-translate-y-2 hover:scale-[1.02]
                   group
+                  animate-fade-in-up
                 `}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -232,7 +233,7 @@ export default async function UserDashboard() {
               {enrichedBookings.map((booking: any, index: number) => (
                 <div
                   key={booking._id.toString()}
-                  className="flex items-center justify-between rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-4 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 hover:translate-x-1 group"
+                  className="flex items-center justify-between rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-4 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 hover:translate-x-1 group animate-fade-in-up"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-center gap-4">

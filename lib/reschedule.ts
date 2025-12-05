@@ -103,18 +103,18 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     // 4. Validate duration based on resource type
     const duration = (newEnd.getTime() - newStart.getTime()) / (1000 * 60); // minutes
 
-    if (booking.kind === 'FACILITY') {
-        if (duration !== POLICIES.FACILITY_SLOT_MINUTES) {
+    if (booking.kind === 'FACILITY' || booking.kind === 'ROOM') {
+        // Dynamic slot system: 15-120 minutes
+        if (duration < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
             return {
                 allowed: false,
-                reason: `Facility bookings must be exactly ${POLICIES.FACILITY_SLOT_MINUTES} minutes`,
+                reason: `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes`,
             };
         }
-    } else if (booking.kind === 'ROOM') {
-        if (duration !== POLICIES.ROOM_SLOT_MINUTES) {
+        if (duration > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
             return {
                 allowed: false,
-                reason: `Room bookings must be exactly ${POLICIES.ROOM_SLOT_MINUTES} minutes`,
+                reason: `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours)`,
             };
         }
     } else if (booking.kind === 'EQUIPMENT') {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Booking, IBooking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
@@ -60,13 +61,15 @@ export async function GET(req: NextRequest) {
       .sort({ start: -1 })
       .limit(100);
 
-    // Populate resource names
-    const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
+    // Populate resource names - filter out invalid ObjectIds to prevent CastError
+    const resourceIds = [...new Set(bookings.map(b => b.resourceId))]
+      .filter(id => mongoose.Types.ObjectId.isValid(id));
     const resources = await Resource.find({ _id: { $in: resourceIds } });
     const resourceMap = new Map(resources.map(r => [r.id, r]));
 
-    // Populate user details
-    const userIds = [...new Set(bookings.map(b => b.userId))];
+    // Populate user details - filter out invalid ObjectIds to prevent CastError
+    const userIds = [...new Set(bookings.map(b => b.userId))]
+      .filter(id => mongoose.Types.ObjectId.isValid(id));
     const users = await User.find({ _id: { $in: userIds } });
     const userMap = new Map(users.map(u => [u.id, u]));
 
@@ -178,11 +181,11 @@ async function postHandler(req: Request) {
         kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
       }
 
-      // Validate booking duration (only for FACILITY and ROOM)
+      // Validate booking duration based on booking type
       const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
 
       if (kind === 'FACILITY' || kind === 'ROOM') {
-        // Check minimum duration (15 minutes)
+        // Dynamic slot system: 15-120 minutes
         if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
           throw new ValidationError(
             `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
@@ -190,10 +193,30 @@ async function postHandler(req: Request) {
           );
         }
 
-        // Check maximum duration (2 hours per booking)
         if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
           throw new ValidationError(
             `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
+            `Current duration: ${Math.round(durationMinutes)} minutes.`
+          );
+        }
+      } else if (kind === 'EQUIPMENT') {
+        // Fixed durations: 75 min for sports, 1440 min (24h) for lab equipment
+        const isSportsEquipment = resource.type === 'SPORTS_EQUIPMENT';
+        const expectedDuration = isSportsEquipment
+          ? POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES
+          : POLICIES.LAB_EQUIPMENT_BORROW_MINUTES;
+
+        if (durationMinutes !== expectedDuration) {
+          throw new ValidationError(
+            `Equipment borrow duration must be exactly ${expectedDuration} minutes. ` +
+            `Current duration: ${Math.round(durationMinutes)} minutes.`
+          );
+        }
+      } else if (kind === 'LIBRARY') {
+        // Fixed duration: 14 days (20160 minutes)
+        if (durationMinutes !== POLICIES.LIBRARY_BOOK_BORROW_MINUTES) {
+          throw new ValidationError(
+            `Library book borrow duration must be exactly ${POLICIES.LIBRARY_BOOK_BORROW_MINUTES} minutes (14 days). ` +
             `Current duration: ${Math.round(durationMinutes)} minutes.`
           );
         }

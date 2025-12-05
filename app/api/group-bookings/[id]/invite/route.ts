@@ -118,7 +118,8 @@ export async function POST(
       start: { $gte: today, $lt: tomorrow },
     });
 
-    if (todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
+    // Only check daily limit if it's enabled (value > 0)
+    if (POLICIES.MAX_BOOKINGS_PER_DAY > 0 && todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
       throw new ConflictError(`${email} has reached their daily booking limit`);
     }
 

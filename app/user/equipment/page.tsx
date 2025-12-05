@@ -207,20 +207,33 @@ export default function EquipmentPage() {
         return;
       }
 
-      // Equipment pickup time must be between 8am and 8pm (aligned with backend)
-      // Hour 20 = 8:00 PM (should be allowed), Hour 21 = 9:00 PM (should be rejected)
-      if (startHour < 8 || startHour > 20) {
-        setError('Equipment pickup time must be between 8:00 AM and 8:00 PM');
-        setLoading(false);
-        return;
-      }
-
       // Calculate end time based on equipment type
       const end = new Date(start);
       if (isSports) {
         end.setMinutes(end.getMinutes() + 75); // 75 minutes for sports equipment
       } else if (isLab) {
         end.setHours(end.getHours() + 24); // 24 hours for lab equipment
+      }
+
+      // Equipment pickup time must be between 8am and ensure end time is by 8pm
+      // For sports equipment (75 min), latest pickup is 18:45 to end by 20:00
+      // For lab equipment (24h), only start time matters (end is next day)
+      if (startHour < 8) {
+        setError('Equipment pickup time must be after 8:00 AM');
+        setLoading(false);
+        return;
+      }
+
+      // Check end time doesn't exceed working hours (20:00) for same-day returns
+      const endHour = end.getHours();
+      const endMinutes = end.getMinutes();
+      const isSameDayReturn = end.toDateString() === start.toDateString();
+      
+      if (isSameDayReturn && (endHour > 20 || (endHour === 20 && endMinutes > 0))) {
+        const latestPickup = isSports ? '6:45 PM' : '8:00 PM';
+        setError(`Equipment must be returned by 8:00 PM. Latest pickup time is ${latestPickup}.`);
+        setLoading(false);
+        return;
       }
 
       const res = await fetch('/api/bookings', {
@@ -388,10 +401,10 @@ export default function EquipmentPage() {
                     value={startTime}
                     onChange={setStartTime}
                     minTime="08:00"
-                    maxTime="20:00"
+                    maxTime="18:30"
                     stepMinutes={30}
                     label="Pickup Time"
-                    durationHint="⏱️ Duration: 75 minutes"
+                    durationHint="⏱️ Duration: 75 minutes (return by 8 PM)"
                   />
                 </div>
               </div>
@@ -407,7 +420,7 @@ export default function EquipmentPage() {
                     return acc;
                   }, {});
 
-                  const categoryOrder = ['CRICKET', 'BADMINTON', 'TABLE_TENNIS', 'BASKETBALL', 'FOOTBALL', 'VOLLEYBALL', 'TENNIS', 'GENERAL'];
+                  const categoryOrder = ['CRICKET', 'BADMINTON', 'BASKETBALL', 'FOOTBALL', 'TABLE_TENNIS', 'VOLLEYBALL', 'TENNIS', 'GENERAL'];
 
                   return categoryOrder.map((category, catIndex) => {
                     const items = grouped[category];

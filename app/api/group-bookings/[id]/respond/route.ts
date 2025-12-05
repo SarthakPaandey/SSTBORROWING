@@ -148,17 +148,6 @@ export async function PATCH(
         groupBooking.status = 'CANCELLED';
         await groupBooking.save();
 
-        // Release equipment inventory reservation
-        if (booking.items && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')) {
-          const { EquipmentItem } = await import('@/models/EquipmentItem');
-          for (const item of booking.items) {
-            await EquipmentItem.findByIdAndUpdate(
-              item.itemId,
-              { $inc: { qtyReserved: -item.qty } }
-            );
-          }
-        }
-
         // Booking already fetched above
         booking.status = 'CANCELLED';
         await booking.save();

@@ -115,7 +115,12 @@ export function LoadingState({
               />
               <div className="absolute inset-6 rounded-full bg-gradient-to-br from-accent-blue/40 via-accent-purple-1/30 to-accent-cyan/30 blur-md animate-pulse" />
               <div className="absolute inset-[24px] rounded-full bg-bg-dark flex items-center justify-center">
-                <div className="text-3xl drop-shadow-[0_0_14px_rgba(13,140,232,0.6)]">🪐</div>
+                <div
+                  className="text-3xl drop-shadow-[0_0_14px_rgba(13,140,232,0.6)] animate-spin-slow"
+                  style={{ animationDuration: '18s' }}
+                >
+                  🪐
+                </div>
               </div>
             </div>
           ) : (

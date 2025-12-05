@@ -25,7 +25,8 @@ import { BookingQuery } from '@/types/api';
 import { BookingItem } from '@/types/booking';
 import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
-import { canBorrowSportCategory } from '@/lib/sportCategoryRules';
+import { canBorrowSportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
+import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFacilities } from '@/lib/sportEquipmentKits';
 
 export async function GET(req: NextRequest) {
   try {
@@ -133,7 +134,7 @@ async function postHandler(req: Request) {
       const startHour = startIST.getHours();
       const endHour = endIST.getHours();
       const endMinutes = endIST.getMinutes();
-      
+
       // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
       const WORKING_HOURS_START = 8;  // 8:00 AM
       const WORKING_HOURS_END = 20;   // 8:00 PM
@@ -394,6 +395,7 @@ async function postHandler(req: Request) {
 
       // Handle equipment and library bookings with atomic reservation
       let enrichedItems: BookingItem[] | undefined;
+      let facilityWarning: string | null = null;  // Declared at higher scope for return
       if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
         // FIX EC-19: Prevent duplicate items in booking
         // Check that all itemIds are unique
@@ -440,16 +442,74 @@ async function postHandler(req: Request) {
         // FIX: Check sport category exclusivity for SPORTS_EQUIPMENT
         // Users can only borrow from ONE sport at a time (e.g., Basketball OR Badminton, not both)
         // This only applies to SPORTS_EQUIPMENT, not LAB_EQUIPMENT
+        // FIX: Now checks for OVERLAPPING bookings only, not all active bookings
+        let sportCategory: SportCategory | null = null;
+
         if (resource.type === 'SPORTS_EQUIPMENT') {
           const itemIds = items.map(i => i.itemId.toString());
+
+          // Get sport categories for the items
+          const categories = await getItemsSportCategories(itemIds);
+          categories.delete(SPORT_CATEGORIES.GENERAL);
+          if (categories.size > 0) {
+            sportCategory = Array.from(categories)[0] as SportCategory;
+          }
+
           const sportCategoryCheck = await canBorrowSportCategory({
             userId: user.id,
             requestedItemIds: itemIds,
+            start: startDate,
+            end: endDate,
             session,
           });
 
           if (!sportCategoryCheck.allowed) {
             throw new ValidationError(sportCategoryCheck.reason || 'Sport category conflict');
+          }
+
+          // FIX: Validate sport kit quantities (e.g., Cricket: max 2 bats, 2 helmets, 1 ball)
+          if (sportCategory) {
+            // First, build enriched items to get names
+            const itemsWithNames: Array<{ itemId: string; name: string; qty: number; sportCategory?: SportCategory }> = [];
+            for (const item of items) {
+              const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+              if (currentItem) {
+                itemsWithNames.push({
+                  itemId: item.itemId,
+                  name: currentItem.name,
+                  qty: item.qty,
+                  sportCategory: currentItem.sportCategory as SportCategory,
+                });
+              }
+            }
+
+            const kitValidation = await validateSportKitQuantities(itemsWithNames, sportCategory);
+            if (!kitValidation.valid) {
+              throw new ValidationError(kitValidation.errors.join(' '));
+            }
+
+            // FIX: Check if user has a matching facility booking (soft warning)
+            const suggestedFacilities = getSuggestedFacilities(sportCategory);
+            if (suggestedFacilities.length > 0) {
+              // Check if user has a facility booking that matches
+              const matchingFacility = await Booking.findOne({
+                userId: user.id,
+                kind: 'FACILITY',
+                status: { $in: ['CONFIRMED', 'PENDING'] },
+                start: { $lt: endDate },
+                end: { $gt: startDate },
+              }).session(session).populate('resourceId');
+
+              const facilityName = (matchingFacility?.resourceId as any)?.name;
+              const hasFacilityMatch = suggestedFacilities.some(f =>
+                facilityName?.toLowerCase().includes(f.toLowerCase())
+              );
+
+              if (!hasFacilityMatch) {
+                // Add soft warning (but don't block)
+                facilityWarning = getFacilityWarningMessage(sportCategory);
+              }
+            }
           }
         }
 
@@ -492,7 +552,8 @@ async function postHandler(req: Request) {
         resource,
         user,
         startDate,
-        endDate
+        endDate,
+        facilityWarning,
       };
     }); // End of withTransaction - it will auto-commit
 
@@ -568,7 +629,16 @@ async function postHandler(req: Request) {
       }
     }
 
-    return NextResponse.json({ booking: transactionResult.booking }, { status: 201 });
+    // Include optional facility warning in response
+    const response: { booking: any; warning?: string } = {
+      booking: transactionResult.booking
+    };
+
+    if (transactionResult.facilityWarning) {
+      response.warning = transactionResult.facilityWarning;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }

@@ -2,54 +2,77 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getISTToday } from '@/lib/timezone-client';
 
 interface DatePickerProps {
-  value: Date;
-  onChange: (date: Date) => void;
+  value: Date | string;
+  onChange: (date: Date | string) => void;
   minDate?: Date | string;
+  maxDate?: Date | string;
   placeholder?: string;
   className?: string;
+  returnFormat?: 'date' | 'string'; // 'string' returns YYYY-MM-DD format
 }
 
 export function DatePicker({
   value,
   onChange,
   minDate,
+  maxDate,
   placeholder = 'Select date',
   className = '',
+  returnFormat = 'date',
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(value || new Date());
+
+  // Parse value to Date object
+  const valueAsDate = value instanceof Date ? value : (value ? new Date(value + 'T00:00:00') : null);
+
+  const [currentMonth, setCurrentMonth] = useState(valueAsDate || new Date());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Normalize minDate to start of day for accurate comparison
-  const normalizedMinDate = minDate ? new Date(minDate) : null;
+  // Parse minDate and maxDate
+  const normalizedMinDate = minDate ? (minDate instanceof Date ? new Date(minDate) : new Date(minDate + 'T00:00:00')) : null;
   if (normalizedMinDate) {
     normalizedMinDate.setHours(0, 0, 0, 0);
   }
 
-  // Close popover when clicking outside is handled by the backdrop in the Portal
-  // The previous useEffect for document.mousedown caused issues because the Portal content
-  // is not inside containerRef, so every click was considered "outside"
+  const normalizedMaxDate = maxDate ? (maxDate instanceof Date ? new Date(maxDate) : new Date(maxDate + 'T00:00:00')) : null;
+  if (normalizedMaxDate) {
+    normalizedMaxDate.setHours(23, 59, 59, 999);
+  }
 
-  const formatDate = (date: Date) => {
+  // Format date for display (DD/MM/YYYY)
+  const formatDateDisplay = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
 
+  // Format date as YYYY-MM-DD
+  const formatDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateClick = (date: Date) => {
-    onChange(date);
+    if (returnFormat === 'string') {
+      onChange(formatDateString(date));
+    } else {
+      onChange(date);
+    }
     setIsOpen(false);
   };
 
   // Calendar generation
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -59,12 +82,35 @@ export function DatePicker({
   const daysInMonth = lastDayOfMonth.getDate();
   const startingDayOfWeek = firstDayOfMonth.getDay();
 
-  const calendarDays = [];
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    calendarDays.push(null);
+  // Get days from previous month
+  const prevMonth = new Date(year, month, 0);
+  const daysInPrevMonth = prevMonth.getDate();
+
+  const calendarDays: Array<{ date: Date; isCurrentMonth: boolean }> = [];
+
+  // Previous month days
+  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+    calendarDays.push({
+      date: new Date(year, month - 1, daysInPrevMonth - i),
+      isCurrentMonth: false
+    });
   }
+
+  // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
-    calendarDays.push(new Date(year, month, day));
+    calendarDays.push({
+      date: new Date(year, month, day),
+      isCurrentMonth: true
+    });
+  }
+
+  // Next month days (fill remaining)
+  const remaining = 42 - calendarDays.length; // 6 rows × 7 days
+  for (let day = 1; day <= remaining; day++) {
+    calendarDays.push({
+      date: new Date(year, month + 1, day),
+      isCurrentMonth: false
+    });
   }
 
   const isToday = (date: Date) => {
@@ -77,17 +123,21 @@ export function DatePicker({
   };
 
   const isSelected = (date: Date) => {
-    if (!value) return false;
+    if (!valueAsDate) return false;
     return (
-      date.getDate() === value.getDate() &&
-      date.getMonth() === value.getMonth() &&
-      date.getFullYear() === value.getFullYear()
+      date.getDate() === valueAsDate.getDate() &&
+      date.getMonth() === valueAsDate.getMonth() &&
+      date.getFullYear() === valueAsDate.getFullYear()
     );
   };
 
   const isDisabled = (date: Date) => {
-    if (!normalizedMinDate) return false;
-    return date < normalizedMinDate;
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+
+    if (normalizedMinDate && normalizedDate < normalizedMinDate) return true;
+    if (normalizedMaxDate && normalizedDate > normalizedMaxDate) return true;
+    return false;
   };
 
   const goToPreviousMonth = () => {
@@ -104,56 +154,114 @@ export function DatePicker({
     setMounted(true);
   }, []);
 
+  // Get relative day label
+  const getRelativeLabel = () => {
+    if (!valueAsDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(valueAsDate);
+    selected.setHours(0, 0, 0, 0);
+
+    const diffTime = selected.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays > 1 && diffDays <= 7) return `In ${diffDays} days`;
+    return null;
+  };
+
+  const relativeLabel = getRelativeLabel();
+
   return (
-    <div ref={containerRef} className="relative cursor-pointer">
+    <div ref={containerRef} className={cn("relative", className)}>
+      {/* Modern Clickable Date Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-4 py-2.5 rounded-lg bg-bg-dark border border-card-border text-text-main focus:border-accent-blue focus:outline-none transition-colors flex items-center justify-between hover:border-accent-blue/50 cursor-pointer ${className}`}
+        className={cn(
+          "group relative w-full flex items-center gap-3 px-4 py-3 rounded-xl",
+          "bg-gradient-to-br from-violet-600/90 via-purple-600/90 to-violet-700/90",
+          "hover:from-violet-500/90 hover:via-purple-500/90 hover:to-violet-600/90",
+          "border border-violet-400/30 hover:border-violet-400/50",
+          "shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30",
+          "transition-all duration-300 cursor-pointer",
+          isOpen && "ring-2 ring-violet-400/50 ring-offset-2 ring-offset-transparent"
+        )}
         aria-label="Select date"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
-        <span className={value ? 'text-text-main' : 'text-text-muted'}>
-          {value ? formatDate(value) : placeholder}
-        </span>
-        <CalendarIcon className={`h-4 w-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        {/* Calendar Icon */}
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+          <CalendarDays className="h-5 w-5 text-white" />
+        </div>
+
+        {/* Date Display */}
+        <div className="flex-1 text-left">
+          <p className="text-[10px] text-violet-200/70 uppercase tracking-wider font-medium">
+            {relativeLabel || 'Selected Date'}
+          </p>
+          <p className="text-lg font-bold text-white">
+            {valueAsDate ? formatDateDisplay(valueAsDate) : placeholder}
+          </p>
+        </div>
+
+        {/* Arrow indicator */}
+        <div className={cn(
+          "w-6 h-6 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300",
+          isOpen && "rotate-180"
+        )}>
+          <ChevronLeft className="h-4 w-4 text-white/70 rotate-[-90deg]" />
+        </div>
       </button>
 
-
+      {/* Calendar Modal */}
       {isOpen && mounted && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center" onClick={() => setIsOpen(false)}>
+        <div
+          className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setIsOpen(false)}
+        >
           <div
-            className="w-[320px] p-4 bg-[#1a1d29] border-2 border-accent-blue/30 rounded-xl shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
+            className="w-full max-w-[340px] bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header with Close Button */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-card-border">
-              <h3 className="text-lg font-bold text-white">Select Date</h3>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors text-gray-400"
-                aria-label="Close calendar"
-              >
-                <X className="h-5 w-5" />
-              </button>
+            {/* Header */}
+            <div className="relative px-5 pt-5 pb-4 bg-gradient-to-r from-violet-600/20 via-purple-600/20 to-violet-600/20 border-b border-white/5">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.15),transparent_70%)]" />
+
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-violet-300/70 uppercase tracking-wider font-medium">Pick a date</p>
+                  <p className="text-lg font-bold text-white mt-0.5">
+                    {monthNames[month]} {year}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+                  aria-label="Close calendar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Month Navigation */}
-            <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   goToPreviousMonth();
                 }}
-                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors bg-bg-dark border border-card-border"
+                className="p-2 hover:bg-white/10 rounded-lg transition-all text-gray-400 hover:text-white active:scale-95"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-base font-bold text-white">
-                {monthNames[month]} {year}
+              <span className="text-sm font-semibold text-white">
+                {monthNamesShort[month]} {year}
               </span>
               <button
                 type="button"
@@ -161,53 +269,55 @@ export function DatePicker({
                   e.stopPropagation();
                   goToNextMonth();
                 }}
-                className="p-2 hover:bg-accent-blue/10 hover:text-accent-blue rounded-lg transition-colors bg-bg-dark border border-card-border"
+                className="p-2 hover:bg-white/10 rounded-lg transition-all text-gray-400 hover:text-white active:scale-95"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
 
             {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-0 px-3 py-2 bg-white/[0.02]">
               {daysOfWeek.map((day) => (
-                <div key={day} className="text-[11px] font-bold text-gray-400 text-center py-2">
+                <div key={day} className="text-[10px] font-bold text-gray-500 text-center py-1 uppercase">
                   {day}
                 </div>
               ))}
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2 mb-4">
-              {calendarDays.map((date, index) => {
-                if (!date) {
-                  return <div key={`empty-${index}`} className="aspect-square" />;
-                }
-
+            <div className="grid grid-cols-7 gap-1 p-3">
+              {calendarDays.map(({ date, isCurrentMonth }, index) => {
                 const disabled = isDisabled(date);
                 const selected = isSelected(date);
                 const today = isToday(date);
 
                 return (
                   <button
-                    key={date.toISOString()}
+                    key={`${date.toISOString()}-${index}`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!disabled) handleDateClick(date);
+                      if (!disabled && isCurrentMonth) handleDateClick(date);
                     }}
-                    disabled={disabled}
+                    disabled={disabled || !isCurrentMonth}
                     className={cn(
-                      'aspect-square rounded-lg text-sm font-semibold transition-all relative',
-                      'hover:bg-accent-blue/20 hover:text-white hover:scale-105',
-                      disabled && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-gray-600 hover:scale-100',
-                      selected && 'bg-accent-blue text-white shadow-lg shadow-accent-blue/30 scale-105',
-                      today && !selected && 'bg-[#252938] border-2 border-accent-blue text-accent-blue font-bold',
-                      !selected && !today && !disabled && 'text-gray-200 bg-[#252938]/50 hover:bg-[#252938]'
+                      'aspect-square rounded-lg text-sm font-medium transition-all duration-200 relative',
+                      // Base styles
+                      !isCurrentMonth && 'opacity-20 cursor-default',
+                      isCurrentMonth && !disabled && 'hover:bg-violet-500/20 hover:scale-105 active:scale-95',
+                      // Disabled
+                      disabled && isCurrentMonth && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:scale-100',
+                      // Selected
+                      selected && 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/40 scale-105 font-bold',
+                      // Today (not selected)
+                      today && !selected && isCurrentMonth && 'bg-white/10 text-violet-400 font-bold ring-2 ring-violet-500/50',
+                      // Normal day
+                      !selected && !today && isCurrentMonth && !disabled && 'text-gray-300 hover:text-white'
                     )}
                   >
                     {date.getDate()}
-                    {today && !selected && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent-blue rounded-full" />
+                    {today && !selected && isCurrentMonth && (
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-violet-400 rounded-full" />
                     )}
                   </button>
                 );
@@ -215,22 +325,23 @@ export function DatePicker({
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-card-border">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5 bg-white/[0.02]">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   const todayStr = getISTToday();
-                  handleDateClick(new Date(todayStr));
+                  handleDateClick(new Date(todayStr + 'T00:00:00'));
                 }}
-                className="text-sm font-medium text-accent-blue hover:text-accent-blue/80 transition-colors px-3 py-1.5 hover:bg-accent-blue/10 rounded-md"
+                className="flex items-center gap-2 text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors px-3 py-2 hover:bg-violet-500/10 rounded-lg"
               >
+                <CalendarIcon className="w-4 h-4" />
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-sm font-medium text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-white/5 rounded-md"
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors px-4 py-2 hover:bg-white/5 rounded-lg"
               >
                 Cancel
               </button>

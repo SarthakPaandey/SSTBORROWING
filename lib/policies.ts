@@ -92,8 +92,8 @@ export const POLICIES = {
 
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
-  GROUP_BOOKING_INVITATION_EXPIRY_HOURS: 0.5, // Friends must confirm within 30 minutes
-  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 0.5, // Group must be finalized at least 30 minutes before booking start
+  GROUP_BOOKING_MIN_REPLY_TIME_HOURS: 0.25, // Minimum 15 minutes for friends to see and respond to invitation
+  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 0.25, // Group must be finalized at least 15 minutes before booking start
   GROUP_BOOKING_TEAM_SPORTS: ['Main Turf', 'Basketball Court', 'Volleyball Court'], // Sports that require groups
 } as const;
 
@@ -272,59 +272,54 @@ export function hasConsecutiveBookings(
 
 /**
  * Calculate dynamic expiration time for group bookings
- * Expiration is the earlier of:
- * 1. Creation time + invitation window (2 hours)
- * 2. Booking start time - cutoff period (1 hour before start)
+ * 
+ * NEW LOGIC: Invitations remain valid until the "Point of No Return" (cutoff).
+ * The cutoff is 15 minutes before the booking starts.
  * 
  * This ensures:
- * - Bookings far in future: Get full 2 hours to confirm
- * - Bookings starting soon: Must be finalized before start time
+ * - Future bookings: Friends have plenty of time to respond (days if needed)
+ * - Urgent bookings: Team is confirmed at least 15 mins before the game
  */
 export function calculateGroupBookingExpiration(
   bookingStart: Date,
-  createdAt: Date = getNow()
+  _createdAt: Date = getNow() // No longer used, kept for backward compatibility
 ): Date {
   const startDate = new Date(bookingStart);
-  const createdDate = new Date(createdAt);
-  // Use IST timezone for accurate expiration calculation
-  const now = getNow();
 
-  // Calculate expiration based on invitation window (from creation)
-  const invitationWindowEnd = new Date(
-    createdDate.getTime() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000
-  );
-
-  // Calculate expiration based on cutoff before booking start
-  const cutoffBeforeStart = new Date(
+  // Expiration is simply: booking start time - cutoff period (15 minutes)
+  const expiresAt = new Date(
     startDate.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000
   );
 
-  // Return the earlier of the two
-  return new Date(Math.min(invitationWindowEnd.getTime(), cutoffBeforeStart.getTime()));
+  return expiresAt;
 }
 
 /**
  * Check if a group booking can be created for the given start time
- * Requires at least (cutoff + invitation window) time before booking start
+ * 
+ * NEW LOGIC: Requires at least (cutoff + minimum reply time) before start.
+ * With 15m cutoff + 15m reply time = 30 minutes minimum notice.
+ * 
+ * This allows more spontaneous bookings while ensuring friends have time to respond.
  */
 export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; reason?: string } {
-  // FIX: Convert to IST timezone for proper comparison
+  // Convert to IST timezone for proper comparison
   const startDate = toIST(new Date(bookingStart));
-  // Use IST timezone for accurate time-until-start calculation
   const now = getNow();
 
-  // Minimum time required = cutoff + invitation window
+  // Minimum time required = cutoff (15m) + minimum reply time (15m) = 30 minutes
   const minRequiredHours =
     POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS +
-    POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS;
+    POLICIES.GROUP_BOOKING_MIN_REPLY_TIME_HOURS;
 
   const minRequiredMs = minRequiredHours * 60 * 60 * 1000;
+  const minRequiredMinutes = Math.round(minRequiredHours * 60);
   const timeUntilStart = startDate.getTime() - now.getTime();
 
   if (timeUntilStart < minRequiredMs) {
     return {
       allowed: false,
-      reason: `Group bookings must be created at least ${minRequiredHours} hours before the booking start time (${POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS}h cutoff + ${POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS}h invitation window)`,
+      reason: `Group bookings must be created at least ${minRequiredMinutes} minutes before the start time to allow friends time to respond.`,
     };
   }
 

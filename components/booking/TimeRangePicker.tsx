@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { POLICIES } from '@/lib/policies';
-import { Clock, AlertCircle, CheckCircle2, GripVertical } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Zap, Clock, Sparkles } from 'lucide-react';
 
 interface BusySlot {
     start: string; // HH:MM format
@@ -18,6 +18,37 @@ interface TimeRangePickerProps {
     isGroupBooking?: boolean;
 }
 
+// Duration options in minutes
+const DURATION_OPTIONS = [
+    { label: '15 min', value: 15, icon: '⚡' },
+    { label: '30 min', value: 30, icon: '🕐' },
+    { label: '45 min', value: 45, icon: '🕑' },
+    { label: '1 hour', value: 60, icon: '⏰' },
+    { label: '1.5 hours', value: 90, icon: '🕒' },
+    { label: '2 hours', value: 120, icon: '🕓' },
+];
+
+// Get current IST time in minutes since midnight
+function getISTCurrentTimeMinutes(): number {
+    const now = new Date();
+    const istString = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    const istDate = new Date(istString);
+    return istDate.getHours() * 60 + istDate.getMinutes();
+}
+
+// Get today's date in IST as YYYY-MM-DD
+function getISTTodayString(): string {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    };
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    return formatter.format(now);
+}
+
 export default function TimeRangePicker({
     date,
     busySlots,
@@ -25,21 +56,52 @@ export default function TimeRangePicker({
     onSelect,
     isGroupBooking = false,
 }: TimeRangePickerProps) {
-    const [selectedStart, setSelectedStart] = useState<number | null>(null);
-    const [selectedEnd, setSelectedEnd] = useState<number | null>(null);
-    const [isDragging, setIsDragging] = useState<'start' | 'end' | 'move' | null>(null);
-    const [dragStartX, setDragStartX] = useState<number>(0);
-    const [initialRange, setInitialRange] = useState<{ start: number; end: number } | null>(null);
-    const [hoverMinutes, setHoverMinutes] = useState<number | null>(null);
-    const [hoverHandle, setHoverHandle] = useState<'start' | 'end' | null>(null);
-    const [isCurrentSelectionValid, setIsCurrentSelectionValid] = useState<boolean>(true);
-    const timelineRef = useRef<HTMLDivElement>(null);
+    const [selectedStartTime, setSelectedStartTime] = useState<number | null>(null);
+    const [selectedDuration, setSelectedDuration] = useState<number>(30);
+    const [showStartDropdown, setShowStartDropdown] = useState(false);
+    const [showDurationDropdown, setShowDurationDropdown] = useState(false);
+    const [noSlotsAvailable, setNoSlotsAvailable] = useState<boolean>(false);
+
+    // Reset selection when date changes
+    useEffect(() => {
+        setSelectedStartTime(null);
+        setNoSlotsAvailable(false);
+    }, [date]);
+
+    const startDropdownRef = useRef<HTMLDivElement>(null);
+    const durationDropdownRef = useRef<HTMLDivElement>(null);
     const onSelectRef = useRef(onSelect);
 
     // Keep onSelectRef up to date
     useEffect(() => {
         onSelectRef.current = onSelect;
     }, [onSelect]);
+
+    // State for current time that updates periodically
+    const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number>(getISTCurrentTimeMinutes);
+
+    // Update current time every 30 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTimeMinutes(getISTCurrentTimeMinutes());
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (startDropdownRef.current && !startDropdownRef.current.contains(event.target as Node)) {
+                setShowStartDropdown(false);
+            }
+            if (durationDropdownRef.current && !durationDropdownRef.current.contains(event.target as Node)) {
+                setShowDurationDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Convert HH:MM to minutes since midnight
     const parseTime = (timeStr: string): number => {
@@ -67,467 +129,200 @@ export default function TimeRangePicker({
     const workEnd = parseTime(workingHours.end);
     const totalMinutes = workEnd - workStart;
 
-    // Get current time in minutes for "now" line
-    const now = new Date();
-    // Get current IST time
-    const istOffset = 5.5 * 60; // IST is UTC+5:30
-    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const currentMinutes = (utcMinutes + istOffset) % (24 * 60);
+    // Check if date is today in IST - using the same function as the page
+    const isToday = useMemo(() => {
+        const todayIST = getISTTodayString();
+        return date === todayIST;
+    }, [date]);
 
-    // Check if date is today in IST
-    const todayIST = new Date(now.getTime() + (istOffset - now.getTimezoneOffset()) * 60000)
-        .toISOString().split('T')[0];
-    const isToday = date === todayIST;
-
-    // Calculate the earliest bookable time
-    const getEarliestBookableTime = (): number => {
+    // Calculate the earliest bookable time - returns workEnd + 1 if past working hours
+    const earliestBookableTime = useMemo(() => {
         if (!isToday) return workStart;
 
         // Add grace period for network latency (2 minutes)
         const gracePeriod = 2;
-        const earliestTime = Math.ceil((currentMinutes + gracePeriod) / 5) * 5; // Round up to nearest 5 minutes
+        const earliestTime = Math.ceil((currentTimeMinutes + gracePeriod) / 15) * 15;
+
+        // If current time is past working hours, return a value > workEnd to indicate no slots
+        if (earliestTime >= workEnd) {
+            return workEnd + 1; // No slots available
+        }
 
         return Math.max(earliestTime, workStart);
-    };
+    }, [isToday, currentTimeMinutes, workStart, workEnd]);
 
-    // Calculate position percentage
+    // Calculate position percentage for timeline
     const getPosition = (minutes: number): number => {
         return ((minutes - workStart) / totalMinutes) * 100;
     };
 
-    // Get minutes from position
-    const getMinutesFromPosition = (percent: number): number => {
-        return workStart + (percent / 100) * totalMinutes;
-    };
-
-    // Check if a specific minute is in a busy slot
-    const isInBusySlot = (minute: number): boolean => {
-        for (const slot of busySlots) {
-            const slotStart = parseTime(slot.start);
-            const slotEnd = parseTime(slot.end);
-            if (minute >= slotStart && minute < slotEnd) {
-                return true;
-            }
-        }
-        return false;
-    };
-
     // Check if a range overlaps with busy slots or past time
-    const isRangeValid = useCallback((start: number, end: number): boolean => {
-        // Check within working hours
-        if (start < workStart || end > workEnd) {
-            return false;
-        }
+    const isRangeValid = (start: number, end: number): boolean => {
+        if (start < workStart || end > workEnd) return false;
+        if (end - start < POLICIES.MIN_BOOKING_DURATION_MINUTES) return false;
+        if (end - start > POLICIES.MAX_BOOKING_DURATION_MINUTES) return false;
 
-        // Check minimum duration
-        if (end - start < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
-            return false;
-        }
+        // If earliest bookable time is past working hours, no slots are valid
+        if (earliestBookableTime > workEnd) return false;
+        if (start < earliestBookableTime) return false;
 
-        // Check maximum duration
-        if (end - start > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
-            return false;
-        }
-
-        // Check if in past
-        const earliestTime = getEarliestBookableTime();
-        if (start < earliestTime) {
-            return false;
-        }
-
-        // Check overlap with busy slots
         for (const slot of busySlots) {
             const slotStart = parseTime(slot.start);
             const slotEnd = parseTime(slot.end);
-
-            if (start < slotEnd && end > slotStart) {
-                return false; // Overlap detected
-            }
+            if (start < slotEnd && end > slotStart) return false;
         }
 
         return true;
-    }, [busySlots, isToday, currentMinutes, workStart, workEnd]);
-
-    // Adjust range to nearest valid configuration
-    const adjustToValidRange = (
-        start: number,
-        end: number,
-        dragType: 'start' | 'end' | 'move' | null
-    ): { start: number; end: number } | null => {
-        // Priority 1: If valid as-is, return immediately
-        if (isRangeValid(start, end)) {
-            return { start, end };
-        }
-
-        const minDuration = POLICIES.MIN_BOOKING_DURATION_MINUTES;
-        const maxDuration = POLICIES.MAX_BOOKING_DURATION_MINUTES;
-        const currentDuration = end - start;
-
-        // Priority 2: Based on drag type, preserve the user's intent
-        if (dragType === 'end') {
-            // User was adjusting end handle - keep start COMPLETELY FIXED, find nearest valid end
-            // Search in expanding circles from the dragged position
-            for (let offset = 0; offset <= 120; offset += 5) {
-                // Try moving end down (shrinking)
-                const newEnd1 = end - offset;
-                if (newEnd1 - start >= minDuration && newEnd1 - start <= maxDuration) {
-                    if (isRangeValid(start, newEnd1)) {
-                        return { start, end: newEnd1 };
-                    }
-                }
-
-                // Try moving end up (growing)  
-                if (offset > 0) {
-                    const newEnd2 = end + offset;
-                    if (newEnd2 - start >= minDuration && newEnd2 - start <= maxDuration) {
-                        if (isRangeValid(start, newEnd2)) {
-                            return { start, end: newEnd2 };
-                        }
-                    }
-                }
-            }
-        } else if (dragType === 'start') {
-            // User was adjusting start handle - keep end COMPLETELY FIXED, find nearest valid start
-            // Search in expanding circles from the dragged position
-            for (let offset = 0; offset <= 120; offset += 5) {
-                // Try moving start up (shrinking)
-                const newStart1 = start + offset;
-                if (end - newStart1 >= minDuration && end - newStart1 <= maxDuration) {
-                    if (isRangeValid(newStart1, end)) {
-                        return { start: newStart1, end };
-                    }
-                }
-
-                // Try moving start down (growing)
-                if (offset > 0) {
-                    const newStart2 = start - offset;
-                    if (end - newStart2 >= minDuration && end - newStart2 <= maxDuration) {
-                        if (isRangeValid(newStart2, end)) {
-                            return { start: newStart2, end };
-                        }
-                    }
-                }
-            }
-        } else if (dragType === 'move') {
-            // User was moving the entire selection - try to keep duration COMPLETELY FIXED first
-            // Search in expanding circles from the dragged position
-            for (let offset = 0; offset <= 120; offset += 5) {
-                // Try shifting right
-                if (offset === 0) {
-                    if (isRangeValid(start, end)) {
-                        return { start, end };
-                    }
-                } else {
-                    const newStart1 = start + offset;
-                    const newEnd1 = end + offset;
-                    if (isRangeValid(newStart1, newEnd1)) {
-                        return { start: newStart1, end: newEnd1 };
-                    }
-
-                    // Try shifting left
-                    const newStart2 = start - offset;
-                    const newEnd2 = end - offset;
-                    if (isRangeValid(newStart2, newEnd2)) {
-                        return { start: newStart2, end: newEnd2 };
-                    }
-                }
-            }
-
-            // If can't shift with same duration, try small duration adjustments while shifting
-            for (let durationAdjust = 5; durationAdjust <= 30; durationAdjust += 5) {
-                // Try slightly smaller duration
-                const shorterDuration = currentDuration - durationAdjust;
-                if (shorterDuration >= minDuration) {
-                    for (let offset = 0; offset <= 60; offset += 5) {
-                        if (offset === 0) {
-                            if (isRangeValid(start, start + shorterDuration)) {
-                                return { start, end: start + shorterDuration };
-                            }
-                        } else {
-                            if (isRangeValid(start + offset, start + offset + shorterDuration)) {
-                                return { start: start + offset, end: start + offset + shorterDuration };
-                            }
-                            if (isRangeValid(start - offset, start - offset + shorterDuration)) {
-                                return { start: start - offset, end: start - offset + shorterDuration };
-                            }
-                        }
-                    }
-                }
-
-                // Try slightly larger duration
-                const longerDuration = currentDuration + durationAdjust;
-                if (longerDuration <= maxDuration) {
-                    for (let offset = 0; offset <= 60; offset += 5) {
-                        if (offset === 0) {
-                            if (isRangeValid(start, start + longerDuration)) {
-                                return { start, end: start + longerDuration };
-                            }
-                        } else {
-                            if (isRangeValid(start + offset, start + offset + longerDuration)) {
-                                return { start: start + offset, end: start + offset + longerDuration };
-                            }
-                            if (isRangeValid(start - offset, start - offset + longerDuration)) {
-                                return { start: start - offset, end: start - offset + longerDuration };
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Priority 3: Last resort - search for ANY valid slot near the current position
-        // Try to maintain SOME aspect of the user's selection
-        // Start with current duration and search outward
-        for (let durationChange = 0; durationChange <= Math.max(Math.abs(currentDuration - minDuration), Math.abs(maxDuration - currentDuration)); durationChange += 5) {
-            // Try current duration ± change
-            const durations = durationChange === 0 ? [currentDuration] : [currentDuration - durationChange, currentDuration + durationChange];
-
-            for (const testDuration of durations) {
-                if (testDuration < minDuration || testDuration > maxDuration) continue;
-
-                // Try different start positions around the original start
-                for (let startOffset = 0; startOffset <= 120; startOffset += 5) {
-                    const testStarts = startOffset === 0 ? [start] : [start + startOffset, start - startOffset];
-
-                    for (const testStart of testStarts) {
-                        const testEnd = testStart + testDuration;
-                        if (isRangeValid(testStart, testEnd)) {
-                            return { start: testStart, end: testEnd };
-                        }
-                    }
-                }
-            }
-        }
-
-        return null; // Revert to initialRange
     };
 
-    // Find the next available slot starting from a given minute
-    const findNextAvailableSlot = (fromMinute: number): { start: number; end: number } | null => {
-        const earliestTime = getEarliestBookableTime();
-        let searchStart = Math.max(fromMinute, earliestTime);
+    // Generate available start times (15-minute increments)
+    const availableStartTimes = useMemo(() => {
+        const times: number[] = [];
 
-        // Round up to nearest 5 minutes
-        searchStart = Math.ceil(searchStart / 5) * 5;
-
-        // Try to find a 30-minute slot
-        while (searchStart + 30 <= workEnd) {
-            if (isRangeValid(searchStart, searchStart + 30)) {
-                return { start: searchStart, end: searchStart + 30 };
-            }
-            searchStart += 5;
+        // If no slots available (past working hours), return empty
+        if (earliestBookableTime > workEnd) {
+            return times;
         }
 
-        // If no 30-min slot, try minimum duration
-        searchStart = Math.max(fromMinute, earliestTime);
-        searchStart = Math.ceil(searchStart / 5) * 5;
+        for (let t = earliestBookableTime; t <= workEnd - POLICIES.MIN_BOOKING_DURATION_MINUTES; t += 15) {
+            // Check if at least minimum duration is available from this start time
+            let isValid = true;
+            const end = t + POLICIES.MIN_BOOKING_DURATION_MINUTES;
 
-        while (searchStart + POLICIES.MIN_BOOKING_DURATION_MINUTES <= workEnd) {
-            if (isRangeValid(searchStart, searchStart + POLICIES.MIN_BOOKING_DURATION_MINUTES)) {
-                return { start: searchStart, end: searchStart + POLICIES.MIN_BOOKING_DURATION_MINUTES };
-            }
-            searchStart += 5;
-        }
-
-        return null;
-    };
-
-    // Auto-select first available slot on mount
-    useEffect(() => {
-        if (selectedStart === null && selectedEnd === null) {
-            const slot = findNextAvailableSlot(workStart);
-            if (slot) {
-                setSelectedStart(slot.start);
-                setSelectedEnd(slot.end);
-                setIsCurrentSelectionValid(true);
-            }
-        }
-    }, [date, busySlots]);
-
-    // Handle timeline click to set initial selection
-    const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!timelineRef.current || isDragging) return;
-
-        const rect = timelineRef.current.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickPercent = (clickX / rect.width) * 100;
-        const clickMinutes = getMinutesFromPosition(clickPercent);
-
-        // Round to nearest 5 minutes
-        const roundedMinutes = Math.round(clickMinutes / 5) * 5;
-
-        // Set initial selection (30 minutes by default, or max available)
-        let proposedEnd = Math.min(roundedMinutes + 30, workEnd);
-
-        // Check if selection is valid, if not try to find valid end
-        if (!isRangeValid(roundedMinutes, proposedEnd)) {
-            // Try to find a valid range starting from clicked position
-            for (let duration = 30; duration >= POLICIES.MIN_BOOKING_DURATION_MINUTES; duration -= 5) {
-                proposedEnd = roundedMinutes + duration;
-                if (isRangeValid(roundedMinutes, proposedEnd)) {
+            // Check against busy slots
+            for (const slot of busySlots) {
+                const slotStart = parseTime(slot.start);
+                const slotEnd = parseTime(slot.end);
+                if (t < slotEnd && end > slotStart) {
+                    isValid = false;
                     break;
                 }
             }
+
+            if (isValid) {
+                times.push(t);
+            }
         }
 
-        if (isRangeValid(roundedMinutes, proposedEnd)) {
-            setSelectedStart(roundedMinutes);
-            setSelectedEnd(proposedEnd);
-            setIsCurrentSelectionValid(true);
+        return times;
+    }, [date, busySlots, earliestBookableTime, workEnd]);
+
+    // Get available durations for the selected start time
+    const availableDurations = useMemo(() => {
+        if (selectedStartTime === null) return DURATION_OPTIONS;
+
+        return DURATION_OPTIONS.filter(option => {
+            const end = selectedStartTime + option.value;
+            return end <= workEnd && isRangeValid(selectedStartTime, end);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStartTime, busySlots, workEnd, earliestBookableTime]);
+
+    // Generate quick slots (pre-computed available time ranges)
+    const quickSlots = useMemo(() => {
+        const slots: Array<{ start: number; end: number }> = [];
+
+        // If no slots available, return empty
+        if (earliestBookableTime > workEnd) {
+            return slots;
         }
-    };
 
-    // Handle mouse move for hover effect
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!timelineRef.current) return;
+        // Find gaps between busy slots
+        const sortedBusy = [...busySlots]
+            .map(s => ({ start: parseTime(s.start), end: parseTime(s.end) }))
+            .sort((a, b) => a.start - b.start);
 
-        const rect = timelineRef.current.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mousePercent = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
-        const mouseMinutes = Math.round(getMinutesFromPosition(mousePercent) / 5) * 5;
+        let searchStart = earliestBookableTime;
 
-        setHoverMinutes(mouseMinutes);
-    };
+        // Add the end of working hours as a virtual busy slot
+        const busyWithEnd = [...sortedBusy, { start: workEnd, end: workEnd }];
 
-    const handleMouseLeave = () => {
-        setHoverMinutes(null);
-    };
+        for (const busy of busyWithEnd) {
+            // Found a gap
+            if (searchStart < busy.start) {
+                // Try to fit slots in this gap
+                let slotStart = searchStart;
+                while (slotStart + 30 <= busy.start && slots.length < 6) {
+                    // Default to 30-minute slots, but adjust if less time available
+                    let slotDuration = 30;
+                    if (slotStart + 60 <= busy.start) {
+                        slotDuration = 60; // Prefer 1-hour slots if space allows
+                    }
 
-    // Handle drag start
-    const handleMouseDown = (handle: 'start' | 'end' | 'move') => (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setIsDragging(handle);
-        setDragStartX(e.clientX);
-        if (selectedStart !== null && selectedEnd !== null) {
-            setInitialRange({ start: selectedStart, end: selectedEnd });
+                    // Direct validation
+                    const end = slotStart + slotDuration;
+                    if (end <= workEnd && end - slotStart >= POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+                        let isValid = true;
+                        for (const s of busySlots) {
+                            const sStart = parseTime(s.start);
+                            const sEnd = parseTime(s.end);
+                            if (slotStart < sEnd && end > sStart) {
+                                isValid = false;
+                                break;
+                            }
+                        }
+                        if (isValid) {
+                            slots.push({ start: slotStart, end });
+                        }
+                    }
+                    slotStart += slotDuration;
+                }
+            }
+            searchStart = Math.max(searchStart, busy.end);
         }
-    };
 
-    // Handle touch start
-    const handleTouchStart = (handle: 'start' | 'end' | 'move') => (e: React.TouchEvent) => {
-        e.stopPropagation();
-        setIsDragging(handle);
-        setDragStartX(e.touches[0].clientX);
-        if (selectedStart !== null && selectedEnd !== null) {
-            setInitialRange({ start: selectedStart, end: selectedEnd });
-        }
-    };
+        return slots.slice(0, 6); // Max 6 quick slots
+    }, [date, busySlots, earliestBookableTime, workEnd]);
 
-    // Handle dragging - FIXED: Allow temporary invalid states
+    // Auto-select first available slot on mount
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!isDragging || !timelineRef.current) return;
+        if (availableStartTimes.length > 0 && selectedStartTime === null) {
+            const firstStart = availableStartTimes[0];
+            setSelectedStartTime(firstStart);
 
-            const rect = timelineRef.current.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mousePercent = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
-            const mouseMinutes = Math.round(getMinutesFromPosition(mousePercent) / 5) * 5;
-
-            if (isDragging === 'start' && selectedEnd !== null) {
-                const newStart = Math.max(workStart, Math.min(mouseMinutes, selectedEnd - POLICIES.MIN_BOOKING_DURATION_MINUTES));
-                setSelectedStart(newStart);
-                setIsCurrentSelectionValid(isRangeValid(newStart, selectedEnd));
-            } else if (isDragging === 'end' && selectedStart !== null) {
-                const newEnd = Math.min(workEnd, Math.max(mouseMinutes, selectedStart + POLICIES.MIN_BOOKING_DURATION_MINUTES));
-                setSelectedEnd(newEnd);
-                setIsCurrentSelectionValid(isRangeValid(selectedStart, newEnd));
-            } else if (isDragging === 'move' && initialRange) {
-                const deltaX = e.clientX - dragStartX;
-                const deltaPercent = (deltaX / rect.width) * 100;
-                const deltaMinutes = Math.round((deltaPercent / 100) * totalMinutes / 5) * 5;
-
-                const newStart = initialRange.start + deltaMinutes;
-                const newEnd = initialRange.end + deltaMinutes;
-
-                // Allow movement even if temporarily invalid
-                if (newStart >= workStart && newEnd <= workEnd) {
-                    setSelectedStart(newStart);
-                    setSelectedEnd(newEnd);
-                    setIsCurrentSelectionValid(isRangeValid(newStart, newEnd));
-                }
+            // Find best duration for this start time
+            const validDurations = DURATION_OPTIONS.filter(d => isRangeValid(firstStart, firstStart + d.value));
+            if (validDurations.length > 0) {
+                // Prefer 30 min or closest available
+                const preferred = validDurations.find(d => d.value === 30) || validDurations[0];
+                setSelectedDuration(preferred.value);
             }
-        };
-
-        const handleTouchMove = (e: TouchEvent) => {
-            if (!isDragging || !timelineRef.current) return;
-
-            const rect = timelineRef.current.getBoundingClientRect();
-            const touchX = e.touches[0].clientX - rect.left;
-            const touchPercent = Math.max(0, Math.min(100, (touchX / rect.width) * 100));
-            const touchMinutes = Math.round(getMinutesFromPosition(touchPercent) / 5) * 5;
-
-            if (isDragging === 'start' && selectedEnd !== null) {
-                const newStart = Math.max(workStart, Math.min(touchMinutes, selectedEnd - POLICIES.MIN_BOOKING_DURATION_MINUTES));
-                setSelectedStart(newStart);
-                setIsCurrentSelectionValid(isRangeValid(newStart, selectedEnd));
-            } else if (isDragging === 'end' && selectedStart !== null) {
-                const newEnd = Math.min(workEnd, Math.max(touchMinutes, selectedStart + POLICIES.MIN_BOOKING_DURATION_MINUTES));
-                setSelectedEnd(newEnd);
-                setIsCurrentSelectionValid(isRangeValid(selectedStart, newEnd));
-            } else if (isDragging === 'move' && initialRange) {
-                const deltaX = e.touches[0].clientX - dragStartX;
-                const deltaPercent = (deltaX / rect.width) * 100;
-                const deltaMinutes = Math.round((deltaPercent / 100) * totalMinutes / 5) * 5;
-
-                const newStart = initialRange.start + deltaMinutes;
-                const newEnd = initialRange.end + deltaMinutes;
-
-                if (newStart >= workStart && newEnd <= workEnd) {
-                    setSelectedStart(newStart);
-                    setSelectedEnd(newEnd);
-                    setIsCurrentSelectionValid(isRangeValid(newStart, newEnd));
-                }
-            }
-        };
-
-        const handleMouseUp = () => {
-            // Store drag type before clearing it
-            const dragType = isDragging;
-
-            // FIXED: Snap to valid range on release if invalid
-            if (selectedStart !== null && selectedEnd !== null && !isCurrentSelectionValid) {
-                const adjusted = adjustToValidRange(selectedStart, selectedEnd, dragType);
-                if (adjusted) {
-                    setSelectedStart(adjusted.start);
-                    setSelectedEnd(adjusted.end);
-                    setIsCurrentSelectionValid(true);
-                } else if (initialRange) {
-                    // Revert to previous valid state
-                    setSelectedStart(initialRange.start);
-                    setSelectedEnd(initialRange.end);
-                    setIsCurrentSelectionValid(true);
-                }
-            }
-            setIsDragging(null);
-            setInitialRange(null);
-        };
-
-        if (isDragging) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            window.addEventListener('touchmove', handleTouchMove);
-            window.addEventListener('touchend', handleMouseUp);
+            setNoSlotsAvailable(false);
+        } else if (availableStartTimes.length === 0) {
+            setNoSlotsAvailable(true);
+            setSelectedStartTime(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availableStartTimes]);
 
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleMouseUp);
-        };
-    }, [isDragging, selectedStart, selectedEnd, workStart, workEnd, totalMinutes, isRangeValid, dragStartX, initialRange, isCurrentSelectionValid]);
-
-    // Notify parent when selection changes (only if valid)
+    // When duration changes, validate and adjust if needed
     useEffect(() => {
-        if (selectedStart !== null && selectedEnd !== null && isCurrentSelectionValid) {
-            const startDate = new Date(`${date}T${formatTimeHHMM(selectedStart)}:00+05:30`);
-            const endDate = new Date(`${date}T${formatTimeHHMM(selectedEnd)}:00+05:30`);
+        if (selectedStartTime !== null) {
+            if (!isRangeValid(selectedStartTime, selectedStartTime + selectedDuration)) {
+                // Find first valid duration
+                const validDuration = availableDurations[0];
+                if (validDuration) {
+                    setSelectedDuration(validDuration.value);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStartTime, selectedDuration, availableDurations]);
+
+    // Notify parent when selection changes
+    useEffect(() => {
+        if (selectedStartTime !== null && isRangeValid(selectedStartTime, selectedStartTime + selectedDuration)) {
+            const startDate = new Date(`${date}T${formatTimeHHMM(selectedStartTime)}:00+05:30`);
+            const endDate = new Date(`${date}T${formatTimeHHMM(selectedStartTime + selectedDuration)}:00+05:30`);
             onSelectRef.current(startDate, endDate);
         }
-    }, [selectedStart, selectedEnd, date, isCurrentSelectionValid]);
+    }, [selectedStartTime, selectedDuration, date]);
 
-    const selectedDuration = selectedStart !== null && selectedEnd !== null ? selectedEnd - selectedStart : 0;
+    // Select a quick slot
+    const handleQuickSlotSelect = (start: number, end: number) => {
+        setSelectedStartTime(start);
+        setSelectedDuration(end - start);
+    };
 
     // Generate hour markers
     const hourMarkers = [];
@@ -542,357 +337,391 @@ export default function TimeRangePicker({
         }
     }
 
-    // Generate 30-minute markers
-    const halfHourMarkers = [];
-    for (let hour = Math.ceil(workStart / 60); hour <= Math.floor(workEnd / 60); hour++) {
-        const minutes = hour * 60 + 30;
-        if (minutes >= workStart && minutes <= workEnd) {
-            halfHourMarkers.push({
-                minutes,
-                position: getPosition(minutes),
-            });
-        }
-    }
+    const selectedEnd = selectedStartTime !== null ? selectedStartTime + selectedDuration : null;
+    const isCurrentSelectionValid = selectedStartTime !== null && selectedEnd !== null && isRangeValid(selectedStartTime, selectedEnd);
 
-    const earliestBookable = getEarliestBookableTime();
+    // For timeline display, cap at workEnd
+    const timelineEarliestBookable = Math.min(earliestBookableTime, workEnd);
 
     return (
-        <div className="space-y-6">
-            <style jsx>{`
-                @keyframes shimmer {
-                    0% { background-position: -200% center; }
-                    100% { background-position: 200% center; }
-                }
-                @keyframes pulse-glow {
-                    0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
-                    50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.8); }
-                }
-                @keyframes ripple {
-                    0% { transform: scale(1); opacity: 1; }
-                    100% { transform: scale(1.5); opacity: 0; }
-                }
-                .shimmer-effect {
-                    background: linear-gradient(
-                        90deg,
-                        rgba(59, 130, 246, 0.8) 0%,
-                        rgba(96, 165, 250, 1) 50%,
-                        rgba(59, 130, 246, 0.8) 100%
-                    );
-                    background-size: 200% 100%;
-                    animation: shimmer 2s linear infinite;
-                }
-                .pulse-glow {
-                    animation: pulse-glow 2s ease-in-out infinite;
-                }
-            `}</style>
-
-            {/* Header with legend */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-accent-blue" />
-                    <span className="font-semibold text-text-main">Select Your Time</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-gradient-to-r from-emerald-500 to-emerald-400"></div>
-                        <span className="text-text-muted">Available</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-gradient-to-r from-red-500 to-rose-400"></div>
-                        <span className="text-text-muted">Booked</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-gray-600"></div>
-                        <span className="text-text-muted">Past</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Timeline Container */}
+        <div className="space-y-5">
+            {/* Modern Timeline */}
             <div className="relative">
-                {/* Hour markers above timeline */}
-                <div className="relative h-6 mb-2">
-                    {hourMarkers.map((marker, i) => (
-                        <div
-                            key={i}
-                            className="absolute transform -translate-x-1/2 text-xs text-text-muted font-medium"
-                            style={{ left: `${marker.position}%` }}
-                        >
-                            {marker.label}
-                        </div>
-                    ))}
-                </div>
-
-                {/* Main Timeline */}
-                <div
-                    ref={timelineRef}
-                    className={`relative h-24 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300
-                        ${isDragging ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-bg-dark scale-[1.01]' : ''}
-                        bg-gradient-to-b from-gray-800/50 to-gray-900/50 border border-white/5
-                        hover:border-white/10`}
-                    style={{
-                        backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255,255,255,0.02) 49px, rgba(255,255,255,0.02) 50px)',
-                    }}
-                    onClick={handleTimelineClick}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseLeave}
-                >
-                    {/* Available time background (green gradient) */}
-                    <div
-                        className="absolute inset-0 bg-gradient-to-r from-emerald-600/30 via-emerald-500/20 to-emerald-600/30"
-                        style={{
-                            left: isToday ? `${getPosition(earliestBookable)}%` : '0%',
-                        }}
-                    />
-
-                    {/* Past time overlay (dark with stripes) */}
-                    {isToday && earliestBookable > workStart && (
-                        <div
-                            className="absolute top-0 bottom-0 left-0 bg-gray-800/90"
-                            style={{
-                                width: `${getPosition(earliestBookable)}%`,
-                                backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px)'
-                            }}
-                        >
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                {getPosition(earliestBookable) > 15 && (
-                                    <span className="text-xs text-gray-500 font-medium">Past</span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Busy slots */}
-                    {busySlots.map((slot, index) => {
-                        const slotStart = parseTime(slot.start);
-                        const slotEnd = parseTime(slot.end);
-                        const left = getPosition(slotStart);
-                        const width = getPosition(slotEnd) - left;
-
-                        return (
-                            <div
-                                key={index}
-                                className="absolute top-0 bottom-0 bg-gradient-to-b from-red-500/80 to-rose-600/80 border-x border-red-400/30"
-                                style={{ left: `${left}%`, width: `${width}%` }}
-                            >
-                                <div
-                                    className="absolute inset-0"
-                                    style={{
-                                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 6px)'
-                                    }}
-                                />
-                                {width > 8 && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-[10px] text-white/90 font-medium px-1 truncate">Booked</span>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {/* Hour grid lines */}
-                    {hourMarkers.map((marker, i) => (
-                        <div
-                            key={i}
-                            className="absolute top-0 bottom-0 w-px bg-white/10"
-                            style={{ left: `${marker.position}%` }}
-                        />
-                    ))}
-
-                    {/* 30-minute markers */}
-                    {halfHourMarkers.map((marker, i) => (
-                        <div
-                            key={i}
-                            className="absolute top-0 bottom-0 w-px bg-white/5"
-                            style={{ left: `${marker.position}%` }}
-                        />
-                    ))}
-
-                    {/* Hover indicator */}
-                    {hoverMinutes !== null && !isDragging && (
-                        <div
-                            className="absolute top-0 bottom-0 w-0.5 bg-accent-blue/50 pointer-events-none transition-all duration-75"
-                            style={{ left: `${getPosition(hoverMinutes)}%` }}
-                        />
-                    )}
-
-                    {/* Current time indicator */}
-                    {isToday && currentMinutes >= workStart && currentMinutes <= workEnd && (
-                        <div
-                            className="absolute top-0 bottom-0 w-0.5 bg-yellow-400 z-20"
-                            style={{ left: `${getPosition(currentMinutes)}%` }}
-                        >
-                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-yellow-400">
-                                <div className="absolute inset-0 rounded-full bg-yellow-400 animate-ping opacity-75" style={{ animation: 'ripple 2s infinite' }}></div>
-                            </div>
-                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-yellow-400 font-bold whitespace-nowrap bg-gray-900/80 px-1.5 py-0.5 rounded">
-                                Now
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Selection */}
-                    {selectedStart !== null && selectedEnd !== null && (
-                        <div
-                            className={`absolute top-1 bottom-1 cursor-move z-10 transition-all duration-150 rounded-xl
-                                ${isCurrentSelectionValid
-                                    ? 'bg-gradient-to-r from-accent-blue/40 via-accent-blue/30 to-accent-blue/40 border-2 border-accent-blue shadow-lg shadow-accent-blue/20'
-                                    : 'bg-gradient-to-r from-amber-500/40 via-amber-400/30 to-amber-500/40 border-2 border-amber-500 shadow-lg shadow-amber-500/20'
-                                }
-                                ${isDragging ? 'pulse-glow' : ''}`}
-                            style={{
-                                left: `${getPosition(selectedStart)}%`,
-                                width: `${getPosition(selectedEnd) - getPosition(selectedStart)}%`,
-                                backdropFilter: 'blur(4px)',
-                            }}
-                            onMouseDown={handleMouseDown('move')}
-                            onTouchStart={handleTouchStart('move')}
-                        >
-                            {/* Glassmorphism overlay */}
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-
-                            {/* Time display inside selection */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <span className={`text-xs font-bold drop-shadow-lg ${isCurrentSelectionValid ? 'text-white' : 'text-amber-100'}`}>
-                                    {formatTime12(selectedStart)} - {formatTime12(selectedEnd)}
-                                </span>
-                            </div>
-
-                            {/* Start handle */}
-                            <div
-                                className={`absolute top-1/2 -translate-y-1/2 -left-4 w-8 h-16 rounded-lg cursor-ew-resize 
-                                    transition-all duration-200 flex items-center justify-center border border-white/20
-                                    ${hoverHandle === 'start' ? 'scale-110' : 'scale-100'}
-                                    ${isDragging === 'start' ? 'shimmer-effect scale-110' : isCurrentSelectionValid
-                                        ? 'bg-gradient-to-b from-accent-blue to-blue-600 hover:from-blue-400 hover:to-accent-blue shadow-lg shadow-accent-blue/40'
-                                        : 'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/40'
-                                    }`}
-                                onMouseDown={handleMouseDown('start')}
-                                onTouchStart={handleTouchStart('start')}
-                                onMouseEnter={() => setHoverHandle('start')}
-                                onMouseLeave={() => setHoverHandle(null)}
-                            >
-                                <GripVertical className="w-4 h-4 text-white/90" />
-                            </div>
-
-                            {/* End handle */}
-                            <div
-                                className={`absolute top-1/2 -translate-y-1/2 -right-4 w-8 h-16 rounded-lg cursor-ew-resize 
-                                    transition-all duration-200 flex items-center justify-center border border-white/20
-                                    ${hoverHandle === 'end' ? 'scale-110' : 'scale-100'}
-                                    ${isDragging === 'end' ? 'shimmer-effect scale-110' : isCurrentSelectionValid
-                                        ? 'bg-gradient-to-b from-accent-blue to-blue-600 hover:from-blue-400 hover:to-accent-blue shadow-lg shadow-accent-blue/40'
-                                        : 'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/40'
-                                    }`}
-                                onMouseDown={handleMouseDown('end')}
-                                onTouchStart={handleTouchStart('end')}
-                                onMouseEnter={() => setHoverHandle('end')}
-                                onMouseLeave={() => setHoverHandle(null)}
-                            >
-                                <GripVertical className="w-4 h-4 text-white/90" />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Tick marks below timeline */}
-                <div className="relative h-2 mt-1">
-                    {hourMarkers.map((marker, i) => (
-                        <div
-                            key={i}
-                            className="absolute top-0 w-px h-2 bg-white/20"
-                            style={{ left: `${marker.position}%` }}
-                        />
-                    ))}
-                    {halfHourMarkers.map((marker, i) => (
-                        <div
-                            key={`half-${i}`}
-                            className="absolute top-0 w-px h-1 bg-white/10"
-                            style={{ left: `${marker.position}%` }}
-                        />
-                    ))}
-                </div>
-            </div>
-
-            {/* Selection info card */}
-            {selectedStart !== null && selectedEnd !== null ? (
-                <div className={`rounded-2xl p-5 backdrop-blur-sm border transition-all duration-300
-                    ${isCurrentSelectionValid
-                        ? 'bg-gradient-to-r from-accent-blue/10 via-accent-blue/5 to-transparent border-accent-blue/30'
-                        : 'bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-amber-500/30'
-                    }`}>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Timeline Container with glass effect */}
+                <div className="relative bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-950/90 rounded-2xl p-5 border border-white/[0.08] backdrop-blur-xl shadow-xl">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCurrentSelectionValid ? 'bg-accent-blue/20' : 'bg-amber-500/20'}`}>
-                                {isCurrentSelectionValid ? (
-                                    <CheckCircle2 className="w-6 h-6 text-accent-blue" />
-                                ) : (
-                                    <AlertCircle className="w-6 h-6 text-amber-500" />
-                                )}
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+                                <Clock className="w-5 h-5 text-cyan-400" />
                             </div>
                             <div>
-                                <p className="text-sm text-text-muted">{isCurrentSelectionValid ? 'Selected Time' : 'Adjusting Selection...'}</p>
-                                <p className="text-xl font-bold text-text-main">
-                                    {formatTime12(selectedStart)} – {formatTime12(selectedEnd)}
-                                </p>
+                                <h3 className="text-base font-semibold text-white">Availability</h3>
+                                <p className="text-xs text-slate-400">{formatTime12(workStart)} – {formatTime12(workEnd)}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <div className="text-center">
-                                <p className="text-xs text-text-muted uppercase tracking-wider">Duration</p>
-                                <p className={`text-2xl font-bold ${isCurrentSelectionValid ? 'text-accent-blue' : 'text-amber-500'}`}>
-                                    {selectedDuration >= 60
-                                        ? `${Math.floor(selectedDuration / 60)}h ${selectedDuration % 60 > 0 ? `${selectedDuration % 60}m` : ''}`
-                                        : `${selectedDuration}m`
-                                    }
-                                </p>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-green-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"></div>
+                                <span className="text-xs text-slate-400">Available</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-rose-400 to-red-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]"></div>
+                                <span className="text-xs text-slate-400">Booked</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                                <span className="text-xs text-slate-400">Past</span>
                             </div>
                         </div>
                     </div>
-                    {!isCurrentSelectionValid && (
-                        <div className="mt-3 pt-3 border-t border-amber-500/20">
-                            <p className="text-xs text-amber-400">⚠️ Release to snap to nearest valid time slot</p>
+
+                    {/* Hour labels */}
+                    <div className="relative h-6 mb-2 mx-1">
+                        {hourMarkers.filter((_, i) => i % 2 === 0 || hourMarkers.length <= 7).map((marker, i) => (
+                            <div
+                                key={i}
+                                className="absolute transform -translate-x-1/2"
+                                style={{ left: `${marker.position}%` }}
+                            >
+                                <span className="text-xs font-medium text-slate-500">{marker.label}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Main Timeline - Rectangular Bar */}
+                    <div className="relative h-12 rounded-sm bg-slate-800/50 border border-slate-700/50 overflow-hidden">
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-800/80 via-transparent to-slate-800/80 pointer-events-none z-10" />
+
+                        {/* Available zone - Prominent green */}
+                        {earliestBookableTime <= workEnd && (
+                            <div
+                                className="absolute inset-y-0 transition-all duration-500"
+                                style={{
+                                    left: isToday ? `${getPosition(timelineEarliestBookable)}%` : '0%',
+                                    right: '0%',
+                                    background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(16, 185, 129, 0.4) 50%, rgba(34, 197, 94, 0.45) 100%)',
+                                    borderLeft: isToday ? '3px solid rgb(34, 197, 94)' : 'none',
+                                    boxShadow: isToday ? 'inset 4px 0 12px rgba(34, 197, 94, 0.3)' : 'none',
+                                }}
+                            >
+                                {/* Subtle animated pattern */}
+                                <div
+                                    className="absolute inset-0 opacity-30"
+                                    style={{
+                                        backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.05) 40px, rgba(255,255,255,0.05) 80px)',
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Past time zone */}
+                        {isToday && (
+                            <div
+                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/60"
+                                style={{ width: earliestBookableTime > workEnd ? '100%' : `${getPosition(timelineEarliestBookable)}%` }}
+                            >
+                                <div className="absolute inset-0" style={{
+                                    backgroundImage: 'repeating-linear-gradient(60deg, transparent, transparent 4px, rgba(100,116,139,0.1) 4px, rgba(100,116,139,0.1) 8px)'
+                                }} />
+                            </div>
+                        )}
+
+                        {/* Busy slots */}
+                        {busySlots.map((slot, index) => {
+                            const slotStart = parseTime(slot.start);
+                            const slotEnd = parseTime(slot.end);
+                            const left = getPosition(slotStart);
+                            const width = getPosition(slotEnd) - left;
+                            return (
+                                <div
+                                    key={index}
+                                    className="absolute inset-y-1 rounded-sm bg-gradient-to-b from-rose-500/40 via-rose-600/30 to-rose-700/25 border border-rose-500/30"
+                                    style={{ left: `${left}%`, width: `${width}%` }}
+                                >
+                                    <div className="absolute inset-0 rounded-sm" style={{
+                                        backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(244,63,94,0.1) 3px, rgba(244,63,94,0.1) 6px)'
+                                    }} />
+                                </div>
+                            );
+                        })}
+
+                        {/* Hour grid lines */}
+                        {hourMarkers.map((marker, i) => (
+                            <div key={i} className="absolute inset-y-0" style={{ left: `${marker.position}%` }}>
+                                <div className="w-px h-full bg-slate-700/50" />
+                            </div>
+                        ))}
+
+                        {/* Current time indicator */}
+                        {isToday && currentTimeMinutes >= workStart && currentTimeMinutes <= workEnd && (
+                            <div className="absolute inset-y-0 z-20" style={{ left: `${getPosition(currentTimeMinutes)}%` }}>
+                                <div className="absolute inset-y-0 w-0.5 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.7)]" />
+                                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2">
+                                    <span className="text-[9px] font-bold text-amber-400 bg-slate-900/90 px-1.5 py-0.5 rounded-sm">NOW</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Selected Range */}
+                        {selectedStartTime !== null && selectedEnd !== null && (
+                            <div
+                                className={`absolute inset-y-1 rounded-sm transition-all duration-300 z-10 ${isCurrentSelectionValid
+                                    ? 'bg-gradient-to-r from-blue-500/40 via-cyan-400/30 to-blue-500/40 border-2 border-cyan-400/60 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                                    : 'bg-gradient-to-r from-amber-500/40 via-orange-400/30 to-amber-500/40 border-2 border-amber-400/60'
+                                    }`}
+                                style={{
+                                    left: `${getPosition(selectedStartTime)}%`,
+                                    width: `${getPosition(selectedEnd) - getPosition(selectedStartTime)}%`,
+                                }}
+                            >
+                                {isCurrentSelectionValid && (
+                                    <div className="absolute inset-0 rounded-sm overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                                    </div>
+                                )}
+                                {/* Time labels on selection */}
+                                <div className="absolute inset-x-0 -bottom-5 flex justify-between px-0.5">
+                                    <span className="text-[8px] font-bold text-cyan-400 bg-slate-900/90 px-1 rounded-sm">{formatTime12(selectedStartTime).replace(' ', '')}</span>
+                                    <span className="text-[8px] font-bold text-cyan-400 bg-slate-900/90 px-1 rounded-sm">{formatTime12(selectedEnd).replace(' ', '')}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Timeline ticks */}
+                    <div className="relative h-2 mt-1 mx-1">
+                        {hourMarkers.map((marker, i) => (
+                            <div key={i} className="absolute top-0 w-px h-1.5 bg-slate-700" style={{ left: `${marker.position}%` }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Time Selection Controls - Grid */}
+            <div className="grid grid-cols-2 gap-3">
+                {/* Start Time Dropdown */}
+                <div className="relative" ref={startDropdownRef}>
+                    <label className="block text-xs font-semibold text-text-muted/80 mb-2 uppercase tracking-wide">
+                        Start Time
+                    </label>
+                    <button
+                        onClick={() => setShowStartDropdown(!showStartDropdown)}
+                        disabled={noSlotsAvailable}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border backdrop-blur-sm transition-all duration-300 group ${showStartDropdown
+                            ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.2)]'
+                            : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20'
+                            } ${noSlotsAvailable ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <Clock className={`w-4 h-4 ${selectedStartTime !== null ? 'text-blue-400' : 'text-text-muted/50'}`} />
+                            <span className={`font-semibold ${selectedStartTime !== null ? 'text-text-main' : 'text-text-muted/60'}`}>
+                                {selectedStartTime !== null ? formatTime12(selectedStartTime) : 'Select...'}
+                            </span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-text-muted/50 transition-transform duration-300 ${showStartDropdown ? 'rotate-180 text-blue-400' : 'group-hover:text-text-muted'}`} />
+                    </button>
+
+                    {showStartDropdown && availableStartTimes.length > 0 && (
+                        <div className="absolute z-50 w-full mt-2 py-1 bg-gray-900/95 border border-white/10 rounded-xl shadow-2xl max-h-52 overflow-y-auto backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                            {availableStartTimes.map((time, i) => (
+                                <button
+                                    key={time}
+                                    onClick={() => {
+                                        setSelectedStartTime(time);
+                                        setShowStartDropdown(false);
+                                    }}
+                                    className={`w-full px-4 py-2 text-left transition-all duration-150 flex items-center justify-between ${selectedStartTime === time
+                                        ? 'bg-blue-500/20 text-blue-400'
+                                        : 'text-text-main hover:bg-white/5'
+                                        } ${i === 0 ? 'rounded-t-lg' : ''} ${i === availableStartTimes.length - 1 ? 'rounded-b-lg' : ''}`}
+                                >
+                                    <span className="font-medium">{formatTime12(time)}</span>
+                                    {selectedStartTime === time && (
+                                        <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                                    )}
+                                </button>
+                            ))}
                         </div>
                     )}
                 </div>
-            ) : (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5">
-                    <div className="flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                        <p className="text-sm text-amber-200">
-                            Click on the timeline to select a time slot, or there may be no available slots for this date.
-                        </p>
+
+                {/* Duration Dropdown */}
+                <div className="relative" ref={durationDropdownRef}>
+                    <label className="block text-xs font-semibold text-text-muted/80 mb-2 uppercase tracking-wide">
+                        Duration
+                    </label>
+                    <button
+                        onClick={() => setShowDurationDropdown(!showDurationDropdown)}
+                        disabled={noSlotsAvailable || selectedStartTime === null}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border backdrop-blur-sm transition-all duration-300 group ${showDurationDropdown
+                            ? 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+                            : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20'
+                            } ${(noSlotsAvailable || selectedStartTime === null) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-base">{DURATION_OPTIONS.find(d => d.value === selectedDuration)?.icon || '🕐'}</span>
+                            <span className="font-semibold text-text-main">
+                                {DURATION_OPTIONS.find(d => d.value === selectedDuration)?.label || `${selectedDuration} min`}
+                            </span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-text-muted/50 transition-transform duration-300 ${showDurationDropdown ? 'rotate-180 text-purple-400' : 'group-hover:text-text-muted'}`} />
+                    </button>
+
+                    {showDurationDropdown && (
+                        <div className="absolute z-50 w-full mt-2 py-1 bg-gray-900/95 border border-white/10 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                            {availableDurations.length > 0 ? availableDurations.map((option, i) => (
+                                <button
+                                    key={option.value}
+                                    onClick={() => {
+                                        setSelectedDuration(option.value);
+                                        setShowDurationDropdown(false);
+                                    }}
+                                    className={`w-full px-4 py-2 text-left transition-all duration-150 flex items-center justify-between ${selectedDuration === option.value
+                                        ? 'bg-purple-500/20 text-purple-400'
+                                        : 'text-text-main hover:bg-white/5'
+                                        } ${i === 0 ? 'rounded-t-lg' : ''} ${i === availableDurations.length - 1 ? 'rounded-b-lg' : ''}`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span>{option.icon}</span>
+                                        <span className="font-medium">{option.label}</span>
+                                    </div>
+                                    {selectedDuration === option.value && (
+                                        <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                                    )}
+                                </button>
+                            )) : (
+                                <div className="px-4 py-3 text-text-muted/60 text-sm text-center">
+                                    No durations available
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Quick Slots - Horizontal scroll with pills */}
+            {quickSlots.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-400" />
+                        <span className="text-sm font-semibold text-text-muted/80 uppercase tracking-wide">Quick Pick</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {quickSlots.map((slot, i) => {
+                            const isSelected = selectedStartTime === slot.start && selectedDuration === (slot.end - slot.start);
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => handleQuickSlotSelect(slot.start, slot.end)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isSelected
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 scale-105'
+                                        : 'bg-white/[0.03] text-text-main border border-white/10 hover:bg-white/[0.08] hover:border-amber-500/30 hover:text-amber-400'
+                                        }`}
+                                >
+                                    {formatTime12(slot.start)} – {formatTime12(slot.end)}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
-            {/* Booking rules */}
-            <div className="bg-white/5 rounded-xl p-4 space-y-2 backdrop-blur-sm">
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Booking Rules</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-text-muted">
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-blue"></div>
-                        <span>Min duration: <span className="text-text-main font-medium">{POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes</span></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-blue"></div>
-                        <span>Max duration: <span className="text-text-main font-medium">{POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours</span></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-blue"></div>
-                        <span>Available: <span className="text-text-main font-medium">{formatTime12(workStart)} – {formatTime12(workEnd)}</span></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-blue"></div>
-                        <span>Drag handles to adjust time</span>
+            {/* Selection Summary Card */}
+            {selectedStartTime !== null && selectedEnd !== null ? (
+                <div className={`relative overflow-hidden rounded-2xl p-4 transition-all duration-500 ${isCurrentSelectionValid
+                    ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20'
+                    : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20'
+                    }`}>
+                    {/* Subtle glow effect */}
+                    <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl ${isCurrentSelectionValid ? 'bg-emerald-500/20' : 'bg-amber-500/20'
+                        }`} />
+
+                    <div className="relative flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCurrentSelectionValid
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                {isCurrentSelectionValid ? (
+                                    <Sparkles className="w-6 h-6" />
+                                ) : (
+                                    <AlertCircle className="w-6 h-6" />
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-xs text-text-muted/70 uppercase tracking-wide font-semibold">
+                                    {isCurrentSelectionValid ? 'Your Booking' : 'Invalid Time'}
+                                </p>
+                                <p className="text-xl font-bold text-text-main">
+                                    {formatTime12(selectedStartTime)} – {formatTime12(selectedEnd)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-text-muted/70 uppercase tracking-wide font-semibold">Duration</p>
+                            <p className={`text-3xl font-black ${isCurrentSelectionValid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                {selectedDuration >= 60
+                                    ? `${Math.floor(selectedDuration / 60)}h${selectedDuration % 60 > 0 ? ` ${selectedDuration % 60}m` : ''}`
+                                    : `${selectedDuration}m`
+                                }
+                            </p>
+                        </div>
                     </div>
                 </div>
-                {isGroupBooking && (
-                    <div className="mt-3 pt-3 border-t border-white/10">
-                        <div className="flex items-center gap-2 text-amber-400">
-                            <AlertCircle className="w-4 h-4" />
-                            <span className="text-sm">Group bookings require 1 hour advance notice</span>
+            ) : noSlotsAvailable ? (
+                <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-500/20">
+                    <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl bg-red-500/10" />
+                    <div className="relative flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-500/20 text-red-400">
+                            <AlertCircle className="w-5 h-5" />
                         </div>
+                        <div>
+                            <p className="text-sm text-red-300 font-semibold">No available slots</p>
+                            <p className="text-xs text-red-400/60 mt-0.5">
+                                {isToday
+                                    ? 'Working hours have ended. Try a different date.'
+                                    : 'All slots are booked. Try another date.'
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="rounded-2xl p-4 bg-gradient-to-br from-gray-500/10 to-transparent border border-white/5 text-center">
+                    <p className="text-sm text-text-muted/60">
+                        Select a start time and duration above
+                    </p>
+                </div>
+            )}
+
+            {/* Booking Rules - Modern Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-slate-800/80 to-slate-900/80 border border-slate-700/50 backdrop-blur-sm">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6l4 2" /></svg>
+                    </div>
+                    <span className="text-xs font-medium text-slate-300">Min <span className="text-emerald-400 font-semibold">{POLICIES.MIN_BOOKING_DURATION_MINUTES}m</span></span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-slate-800/80 to-slate-900/80 border border-slate-700/50 backdrop-blur-sm">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <span className="text-xs font-medium text-slate-300">Max <span className="text-blue-400 font-semibold">{POLICIES.MAX_BOOKING_DURATION_MINUTES / 60}h</span></span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-slate-800/80 to-slate-900/80 border border-slate-700/50 backdrop-blur-sm">
+                    <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                    <span className="text-xs font-medium text-slate-300">Hours <span className="text-violet-400 font-semibold">{formatTime12(workStart).replace(':00 ', '')} – {formatTime12(workEnd).replace(':00 ', '')}</span></span>
+                </div>
+                {isGroupBooking && (
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 backdrop-blur-sm">
+                        <div className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <svg className="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        </div>
+                        <span className="text-xs font-medium text-amber-300">30m advance notice</span>
                     </div>
                 )}
             </div>

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { ArrowLeft, MapPin, Users, Clock, Calendar, AlertTriangle } from 'lucide-react';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { ArrowLeft, MapPin, Users, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
@@ -180,22 +180,16 @@ export default function RoomBookingPage({ params }: { params: Params }) {
         </div>
 
         <CardContent className="p-6 space-y-6">
-          {/* Date Selection */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-text-main">
-              <Calendar className="h-4 w-4 text-purple-400" />
-              Select Date
-            </label>
-            <div className="relative">
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={getISTToday()}
-                max={maxDateStr}
-                className="w-full sm:w-auto"
-              />
-            </div>
+          {/* Date Selection - Using Custom DatePicker */}
+          <div className="space-y-2">
+            <DatePicker
+              value={date}
+              onChange={(newDate) => setDate(typeof newDate === 'string' ? newDate : newDate.toISOString().split('T')[0])}
+              minDate={getISTToday()}
+              maxDate={maxDateStr}
+              returnFormat="string"
+              placeholder="Pick a date"
+            />
             <p className="text-xs text-text-muted">
               You can book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance
             </p>
@@ -207,7 +201,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
               <Clock className="h-4 w-4 text-purple-400" />
               Select Time
             </label>
-            
+
             {date === getISTToday() && (
               <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                 <AlertTriangle className="h-4 w-4 flex-shrink-0" />

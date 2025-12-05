@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   POLICIES,
   calculateGroupBookingExpiration,
@@ -6,103 +6,74 @@ import {
   isGroupBookingExpired,
 } from '@/lib/policies';
 
-describe('Group Booking Expiration', () => {
+describe('Group Booking Expiration (Dynamic Logic)', () => {
   describe('calculateGroupBookingExpiration', () => {
-    it('should expire in 2 hours for booking far in future', () => {
+    it('should always expire at (start - 15 minutes cutoff)', () => {
       const now = new Date();
       const bookingStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
       const expiresAt = calculateGroupBookingExpiration(bookingStart, now);
 
-      // Should expire in 2 hours (invitation window)
-      const expectedExpiry = new Date(now.getTime() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000);
+      // NEW LOGIC: Expiry is always (start - 15m cutoff)
+      const expectedExpiry = new Date(
+        bookingStart.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000
+      );
       const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
       expect(diff).toBeLessThan(1000); // Within 1 second
     });
 
-    it('should expire before start time for booking starting soon', () => {
-      const now = new Date();
-      const bookingStart = new Date(now.getTime() + 50 * 60 * 1000); // 50 minutes from now
-
-      const expiresAt = calculateGroupBookingExpiration(bookingStart, now);
-
-      // Should expire 30 mins before start (cutoff)
-      // Invitation window ends at +30 mins
-      // Cutoff is at +20 mins (50 - 30)
-      // So it should use cutoff
-      const expectedExpiry = new Date(bookingStart.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000);
-      const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
-      expect(diff).toBeLessThan(1000);
-    });
-
-    it('should use invitation window when booking is 3+ hours away', () => {
+    it('should give future bookings plenty of time to confirm', () => {
       const now = new Date();
       const bookingStart = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from now
 
       const expiresAt = calculateGroupBookingExpiration(bookingStart, now);
 
-      // Should expire in 2 hours (invitation window is shorter than cutoff)
-      const expectedExpiry = new Date(now.getTime() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000);
-      const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
-      expect(diff).toBeLessThan(1000);
+      // For a booking 3 hours away, expiry should be at 3h - 15m = 2h45m from now
+      expect(expiresAt.getTime()).toBeGreaterThan(now.getTime());
+      expect(expiresAt.getTime()).toBeLessThan(bookingStart.getTime());
     });
 
-    it('should use cutoff when booking is less than 3 hours away', () => {
+    it('should set expiry 15 mins before start for urgent bookings', () => {
       const now = new Date();
-      const bookingStart = new Date(now.getTime() + 50 * 60 * 1000); // 50 minutes from now
+      const bookingStart = new Date(now.getTime() + 45 * 60 * 1000); // 45 minutes from now
 
       const expiresAt = calculateGroupBookingExpiration(bookingStart, now);
 
-      // Should expire 30 mins before start (cutoff)
-      // Invitation window ends at +30 mins
-      // Cutoff is at +20 mins (50 - 30)
-      // So it should use cutoff
-      const expectedExpiry = new Date(bookingStart.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000);
-      const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
-      expect(diff).toBeLessThan(1000);
-    });
-
-    it('should handle edge case at exactly 3 hours', () => {
-      const now = new Date();
-      const bookingStart = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Exactly 3 hours
-
-      const expiresAt = calculateGroupBookingExpiration(bookingStart, now);
-
-      // At 3 hours: invitation window (2h) expires at same time as cutoff (start - 1h = now + 2h)
-      // Should use invitation window
-      const expectedExpiry = new Date(now.getTime() + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS * 60 * 60 * 1000);
+      // Expiry should be at 45m - 15m = 30m from now
+      const expectedExpiry = new Date(
+        bookingStart.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000
+      );
       const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
       expect(diff).toBeLessThan(1000);
     });
   });
 
   describe('canCreateGroupBooking', () => {
-    it('should allow booking with enough time', () => {
+    it('should allow booking with 30+ minutes notice', () => {
       const now = new Date();
-      const bookingStart = new Date(now.getTime() + 4 * 60 * 60 * 1000); // 4 hours from now
+      const bookingStart = new Date(now.getTime() + 45 * 60 * 1000); // 45 minutes from now
 
       const result = canCreateGroupBooking(bookingStart);
       expect(result.allowed).toBe(true);
     });
 
-    it('should reject booking too close to start', () => {
+    it('should allow booking with exactly 30 minutes notice', () => {
       const now = new Date();
-      const minRequiredHours = POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS;
-      const bookingStart = new Date(now.getTime() + (minRequiredHours - 0.5) * 60 * 60 * 1000); // Just under minimum
+      const minRequiredHours =
+        POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + POLICIES.GROUP_BOOKING_MIN_REPLY_TIME_HOURS;
+      const bookingStart = new Date(now.getTime() + minRequiredHours * 60 * 60 * 1000); // Exactly 30 mins
+
+      const result = canCreateGroupBooking(bookingStart);
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should reject booking with less than 30 minutes notice', () => {
+      const now = new Date();
+      const bookingStart = new Date(now.getTime() + 20 * 60 * 1000); // Only 20 minutes
 
       const result = canCreateGroupBooking(bookingStart);
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain('at least');
-    });
-
-    it('should reject booking at exactly minimum time', () => {
-      const now = new Date();
-      const minRequiredHours = POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS + POLICIES.GROUP_BOOKING_INVITATION_EXPIRY_HOURS;
-      const bookingStart = new Date(now.getTime() + minRequiredHours * 60 * 60 * 1000); // Exactly minimum
-
-      // Should allow (>= minimum)
-      const result = canCreateGroupBooking(bookingStart);
-      expect(result.allowed).toBe(true);
+      expect(result.reason).toContain('30 minutes');
     });
 
     it('should reject past bookings', () => {
@@ -111,6 +82,14 @@ describe('Group Booking Expiration', () => {
 
       const result = canCreateGroupBooking(bookingStart);
       expect(result.allowed).toBe(false);
+    });
+
+    it('should allow booking far in future', () => {
+      const now = new Date();
+      const bookingStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      const result = canCreateGroupBooking(bookingStart);
+      expect(result.allowed).toBe(true);
     });
   });
 
@@ -148,4 +127,3 @@ describe('Group Booking Expiration', () => {
     });
   });
 });
-

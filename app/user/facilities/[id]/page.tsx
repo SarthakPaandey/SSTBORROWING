@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { ArrowLeft, Users, X, Calendar, MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
@@ -265,30 +266,24 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                     Group Booking Required (Minimum 6 people)
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
-                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 1 hour in advance. 
-                    Friends have 30 minutes to confirm. All members share penalties for no-shows.
+                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 30 minutes in advance.
+                    Friends can confirm until 15 minutes before start. All members share penalties for no-shows.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Date Selection */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-text-main">
-              <Calendar className="h-4 w-4 text-accent-blue" />
-              Select Date
-            </label>
-            <div className="relative">
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={getISTToday()}
-                max={maxDateStr}
-                className="w-full sm:w-auto"
-              />
-            </div>
+          {/* Date Selection - Using Custom DatePicker */}
+          <div className="space-y-2">
+            <DatePicker
+              value={date}
+              onChange={(newDate) => setDate(typeof newDate === 'string' ? newDate : newDate.toISOString().split('T')[0])}
+              minDate={getISTToday()}
+              maxDate={maxDateStr}
+              returnFormat="string"
+              placeholder="Pick a date"
+            />
             <p className="text-xs text-text-muted">
               You can book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance
             </p>
@@ -300,13 +295,13 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
               <Clock className="h-4 w-4 text-accent-blue" />
               Select Time
             </label>
-            
+
             {date === getISTToday() && (
               <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                 <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                 <span>
                   Only remaining time slots for today are shown
-                  {isTeamSport && ' (Group bookings require 1 hour advance notice)'}
+                  {isTeamSport && ' (Group bookings require 30 min advance notice)'}
                 </span>
               </div>
             )}
@@ -342,7 +337,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                 <Users className="h-4 w-4 text-accent-blue" />
                 Friend Emails (minimum 5, you&apos;ll be the 6th)
               </label>
-              
+
               <div className="space-y-2">
                 {memberEmails.map((email, index) => {
                   // Only show this field if:

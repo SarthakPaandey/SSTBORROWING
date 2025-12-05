@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { TimePicker } from '@/components/ui/TimePicker';
+import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 
@@ -284,7 +284,7 @@ export default function EquipmentPage() {
                   minDate={getISTNow()}
                   placeholder="Select a date"
                 />
-                <TimePicker
+                <CompactTimePicker
                   date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                   value={startTime}
                   onChange={setStartTime}
@@ -292,52 +292,112 @@ export default function EquipmentPage() {
                   maxTime="20:00"
                   stepMinutes={30}
                   label="Pickup Time"
-                  helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />
               </div>
 
-              <div className="space-y-2">
-                {sportsItems.map((item) => (
-                  <div
-                    key={item._id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{item.name}</p>
-                        {item.availableNow === 0 && (
-                          <Badge variant="destructive">Out of Stock</Badge>
-                        )}
+              {/* Sport Category Groups */}
+              <div className="space-y-4">
+                {(() => {
+                  // Group items by sport category
+                  const sportIcons: Record<string, string> = {
+                    CRICKET: '🏏',
+                    BADMINTON: '🏸',
+                    TABLE_TENNIS: '🏓',
+                    BASKETBALL: '🏀',
+                    FOOTBALL: '⚽',
+                    GENERAL: '🎯',
+                  };
+
+                  const sportNames: Record<string, string> = {
+                    CRICKET: 'Cricket',
+                    BADMINTON: 'Badminton',
+                    TABLE_TENNIS: 'Table Tennis',
+                    BASKETBALL: 'Basketball',
+                    FOOTBALL: 'Football',
+                    GENERAL: 'General',
+                  };
+
+                  const sportColors: Record<string, string> = {
+                    CRICKET: 'from-green-500/10 to-green-600/5 border-green-500/20',
+                    BADMINTON: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
+                    TABLE_TENNIS: 'from-orange-500/10 to-orange-600/5 border-orange-500/20',
+                    BASKETBALL: 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
+                    FOOTBALL: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
+                    GENERAL: 'from-gray-500/10 to-gray-600/5 border-gray-500/20',
+                  };
+
+                  // Group items
+                  const grouped = sportsItems.reduce((acc: Record<string, any[]>, item) => {
+                    const category = item.sportCategory || 'GENERAL';
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(item);
+                    return acc;
+                  }, {});
+
+                  const categoryOrder = ['CRICKET', 'BADMINTON', 'TABLE_TENNIS', 'BASKETBALL', 'FOOTBALL', 'GENERAL'];
+
+                  return categoryOrder.map((category) => {
+                    const items = grouped[category];
+                    if (!items || items.length === 0) return null;
+
+                    return (
+                      <div
+                        key={category}
+                        className={`rounded-xl border bg-gradient-to-br ${sportColors[category]} p-4 space-y-3`}
+                      >
+                        {/* Category Header */}
+                        <div className="flex items-center gap-2 pb-2 border-b border-border-subtle/50">
+                          <span className="text-2xl">{sportIcons[category]}</span>
+                          <h3 className="font-semibold text-text-main">{sportNames[category]}</h3>
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {items.length} {items.length === 1 ? 'item' : 'items'}
+                          </Badge>
+                        </div>
+
+                        {/* Items */}
+                        <div className="space-y-2">
+                          {items.map((item: any) => (
+                            <div
+                              key={item._id}
+                              className="flex items-center justify-between bg-surface-card/50 rounded-lg p-3 hover:bg-surface-card transition-colors"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-text-main truncate">{item.name}</p>
+                                  {item.availableNow === 0 && (
+                                    <Badge variant="destructive" className="text-xs">Out</Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-text-muted">
+                                  {item.availableNow}/{item.qtyTotal} available
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
+                                  disabled={(selectedItems[item._id] || 0) === 0}
+                                  className="w-8 h-8 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-center hover:bg-surface-card disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-lg font-medium"
+                                >
+                                  −
+                                </button>
+                                <span className="w-8 text-center font-semibold text-text-main">
+                                  {selectedItems[item._id] || 0}
+                                </span>
+                                <button
+                                  onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
+                                  disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
+                                  className="w-8 h-8 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center hover:bg-accent-blue/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-lg font-medium text-accent-blue"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600">
-                        Available: {item.availableNow}/{item.qtyTotal}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
-                        }
-                        disabled={(selectedItems[item._id] || 0) === 0}
-                      >
-                        -
-                      </Button>
-                      <span className="w-8 text-center">{selectedItems[item._id] || 0}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
-                        }
-                        disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
-                      >
-                        +
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  });
+                })()}
               </div>
 
               {error && (
@@ -383,7 +443,7 @@ export default function EquipmentPage() {
                   minDate={getISTNow()}
                   placeholder="Select a date"
                 />
-                <TimePicker
+                <CompactTimePicker
                   date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                   value={startTime}
                   onChange={setStartTime}
@@ -391,7 +451,6 @@ export default function EquipmentPage() {
                   maxTime="20:00"
                   stepMinutes={30}
                   label="Pickup Time"
-                  helperText="Pickup times are from 9:00 AM to 8:00 PM. If no times shown for today, select a future date."
                 />
               </div>
 

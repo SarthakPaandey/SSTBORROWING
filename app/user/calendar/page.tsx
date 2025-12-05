@@ -47,8 +47,12 @@ export default function CalendarPage() {
       end.setDate(end.getDate() + 7);
 
       const meParam = showAllBookings ? '' : '&me=true';
-      const res = await fetch(`/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}${meParam}`);
+      const url = `/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}${meParam}`;
+      console.log('[Calendar] Fetching bookings:', { showAllBookings, url });
+
+      const res = await fetch(url);
       const data = await res.json();
+      console.log('[Calendar] Received bookings:', data.bookings?.length || 0);
       setBookings(data.bookings || []);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);

@@ -40,13 +40,16 @@ export async function getItemsSportCategories(
  * based on their active bookings.
  * 
  * Rules:
- * - Users can only borrow from ONE sport category at a time
+ * - Users can only borrow from ONE sport category at a time (for OVERLAPPING time periods)
  * - GENERAL category items can be borrowed with any sport
  * - Multiple items from the SAME sport are allowed
+ * - Different sports at DIFFERENT times are allowed (no overlap)
  */
 export async function canBorrowSportCategory(options: {
     userId: string;
     requestedItemIds: string[];
+    start: Date;  // Start time of the new booking
+    end: Date;    // End time of the new booking
     session?: mongoose.ClientSession;
 }): Promise<{
     allowed: boolean;
@@ -54,7 +57,7 @@ export async function canBorrowSportCategory(options: {
     conflictingSport?: string;
     activeBookingIds?: string[];
 }> {
-    const { userId, requestedItemIds, session } = options;
+    const { userId, requestedItemIds, start, end, session } = options;
 
     // Get sport categories for the requested items
     const requestedCategories = await getItemsSportCategories(requestedItemIds);
@@ -79,19 +82,23 @@ export async function canBorrowSportCategory(options: {
     // Get the single sport category being requested
     const [requestedSport] = Array.from(requestedCategories);
 
-    // Find active equipment bookings for this user
+    // Find OVERLAPPING equipment bookings for this user
+    // A booking overlaps if: existingStart < newEnd AND existingEnd > newStart
     const query = {
         userId,
         kind: 'EQUIPMENT',
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] as IBooking['status'][] },
+        // Time overlap check
+        start: { $lt: end },
+        end: { $gt: start },
     };
 
-    const activeBookings = session
+    const overlappingBookings = session
         ? await Booking.find(query).session(session)
         : await Booking.find(query);
 
-    // Check each active booking for conflicting sport categories
-    for (const booking of activeBookings) {
+    // Check each overlapping booking for conflicting sport categories
+    for (const booking of overlappingBookings) {
         if (!booking.items || booking.items.length === 0) continue;
 
         // Extract item IDs from booking
@@ -107,7 +114,7 @@ export async function canBorrowSportCategory(options: {
                 // Found a conflict!
                 return {
                     allowed: false,
-                    reason: `You have an active ${bookingSport} equipment booking. Please return it or cancel the booking before borrowing ${requestedSport} equipment.`,
+                    reason: `You have an overlapping ${bookingSport} equipment booking during this time. You can only borrow from one sport at a time. Please choose a different time or cancel the existing booking.`,
                     conflictingSport: bookingSport,
                     activeBookingIds: [(booking as any)._id.toString()],
                 };

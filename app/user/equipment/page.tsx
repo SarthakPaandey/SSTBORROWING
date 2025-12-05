@@ -387,7 +387,7 @@ export default function EquipmentPage() {
                     date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                     value={startTime}
                     onChange={setStartTime}
-                    minTime="09:00"
+                    minTime="08:00"
                     maxTime="20:00"
                     stepMinutes={30}
                     label="Pickup Time"
@@ -612,7 +612,7 @@ export default function EquipmentPage() {
                     date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
                     value={startTime}
                     onChange={setStartTime}
-                    minTime="09:00"
+                    minTime="08:00"
                     maxTime="20:00"
                     stepMinutes={30}
                     label="Pickup Time"

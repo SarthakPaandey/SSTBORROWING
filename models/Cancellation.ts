@@ -19,8 +19,6 @@ const CancellationSchema = new Schema<ICancellation>(
     resourceId: { type: String, required: true },
     resourceName: { type: String, required: true },
     bookingStart: { type: Date, required: true },
-    // FIX Issue #10: Remove default Date.now to ensure timezone-aware timestamp
-    // The cancel route explicitly sets this using getNow() from timezone utility
     cancelledAt: { type: Date, required: true },
     wasLate: { type: Boolean, default: false },
     penaltyApplied: { type: Number, default: 0 },

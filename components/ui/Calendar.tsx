@@ -45,7 +45,6 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
   const monthEmojis = ['❄️', '💝', '🌸', '🌷', '🌺', '☀️', '🌴', '🌻', '🍂', '🎃', '🍁', '🎄'];
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dayEmojis = ['🌞', '🌙', '🔥', '💧', '⚡', '💚', '⭐'];
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -176,16 +175,13 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
         isAnimating && animationDirection === 'left' && 'animate-fade-in-left',
         isAnimating && animationDirection === 'right' && 'animate-fade-in-right'
       )}>
-        {/* Day Headers with emojis */}
+        {/* Day Headers */}
         <div className="grid grid-cols-7 bg-gradient-to-r from-bg-dark via-bg-dark to-bg-dark/80">
-          {daysOfWeek.map((day, index) => (
+          {daysOfWeek.map((day) => (
             <div
               key={day}
-              className="p-3 text-center group cursor-default"
+              className="p-4 text-center"
             >
-              <span className="text-lg opacity-50 group-hover:opacity-100 transition-opacity hidden sm:block">
-                {dayEmojis[index]}
-              </span>
               <span className="text-sm font-semibold text-text-muted uppercase tracking-wider">
                 {day}
               </span>

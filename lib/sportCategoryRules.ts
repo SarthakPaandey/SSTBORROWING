@@ -9,7 +9,9 @@ export const SPORT_CATEGORIES = {
     CRICKET: 'CRICKET',
     FOOTBALL: 'FOOTBALL',
     TABLE_TENNIS: 'TABLE_TENNIS',
-    GENERAL: 'GENERAL', // Can be borrowed with any sport
+    VOLLEYBALL: 'VOLLEYBALL',
+    TENNIS: 'TENNIS',
+    GENERAL: 'GENERAL',
 } as const;
 
 export type SportCategory = typeof SPORT_CATEGORIES[keyof typeof SPORT_CATEGORIES];
@@ -136,6 +138,8 @@ export function getSportCategoryDisplayName(category: SportCategory): string {
         CRICKET: 'Cricket',
         FOOTBALL: 'Football',
         TABLE_TENNIS: 'Table Tennis',
+        VOLLEYBALL: 'Volleyball',
+        TENNIS: 'Tennis',
         GENERAL: 'General',
     };
 

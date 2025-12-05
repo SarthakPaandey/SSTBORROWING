@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { requireAuth } from '@/lib/auth/guards';
-import { handleApiError, NotFoundError } from '@/lib/errors';
+import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 import { getAvailableQuantity } from '@/lib/inventory';
 import { getNow } from '@/lib/timezone';
 
@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest) {
     const { name, qtyTotal, qtyAvailable, safety, restricted } = body;
 
     if (!itemId) {
-      throw new NotFoundError('Item ID is required');
+      throw new ValidationError('Item ID is required');
     }
 
     const item = await EquipmentItem.findById(itemId);

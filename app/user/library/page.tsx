@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
+import { Search, BookOpen, Grid3X3, List, Sparkles } from 'lucide-react';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -22,8 +23,11 @@ export default function LibraryPage() {
   const [date, setDate] = useState(getISTToday());
   const [startTime, setStartTime] = useState('09:00');
   const [loading, setLoading] = useState(false);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   useEffect(() => {
     fetchResources();
@@ -62,6 +66,7 @@ export default function LibraryPage() {
   }, [date]);
 
   const fetchResources = async () => {
+    setResourcesLoading(true);
     try {
       const res = await fetch('/api/resources?type=LIBRARY');
       const data = await res.json();
@@ -84,6 +89,8 @@ export default function LibraryPage() {
       }
     } catch (err) {
       console.error('Failed to fetch library resources:', err);
+    } finally {
+      setResourcesLoading(false);
     }
   };
 
@@ -115,9 +122,9 @@ export default function LibraryPage() {
         return;
       }
 
-      // Book borrowing only allowed between 9am and 8pm
-      if (startHour < 9 || startHour >= 20) {
-        setError('Book borrowing is only available between 9:00 AM and 8:00 PM');
+      // Book borrowing only allowed between 8am and 8pm
+      if (startHour < 8 || startHour >= 20) {
+        setError('Book borrowing is only available between 8:00 AM and 8:00 PM');
         setLoading(false);
         return;
       }
@@ -160,6 +167,13 @@ export default function LibraryPage() {
     };
 
     const config = categoryConfig[category];
+    
+    // Filter books based on search query
+    const filteredBooks = books.filter(book => 
+      book.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const availableCount = filteredBooks.filter(b => b.qtyAvailable > 0).length;
 
     return (
       <div className="space-y-4">
@@ -180,11 +194,38 @@ export default function LibraryPage() {
             date={date}
             value={startTime}
             onChange={setStartTime}
-            minTime="09:00"
+            minTime="08:00"
             maxTime="20:00"
             stepMinutes={30}
             label="Pickup Time"
           />
+        </div>
+
+        {/* Search and View Toggle */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+            <Input
+              placeholder="Search books..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-bg-dark rounded-lg border border-card-border">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Book Selection */}
@@ -192,51 +233,116 @@ export default function LibraryPage() {
           <div className="flex items-center gap-2 pb-2 border-b border-border-subtle/50">
             <span className="text-2xl">{config.icon}</span>
             <h3 className="font-semibold text-text-main">Select a Book</h3>
-            <Badge variant="secondary" className="ml-auto text-xs">
-              {books.length} {books.length === 1 ? 'book' : 'books'}
-            </Badge>
+            <div className="ml-auto flex items-center gap-2">
+              <Badge variant="success" className="text-xs">
+                {availableCount} available
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}
+              </Badge>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            {books.map((book) => (
-              <div
-                key={book._id}
-                className={`flex items-center gap-3 bg-surface-card/50 rounded-lg p-3 cursor-pointer transition-all duration-200 ${selectedBook === book._id
-                  ? 'ring-2 ring-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/10'
-                  : 'hover:bg-surface-card border border-transparent hover:border-border-subtle'
-                  }`}
-                onClick={() => handleBookSelect(book._id)}
-              >
-                {/* Book Icon */}
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${selectedBook === book._id ? 'bg-accent-blue/20' : 'bg-surface-elevated'
-                  }`}>
-                  📕
-                </div>
-
-                {/* Book Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-text-main truncate">{book.name}</p>
-                  <p className="text-xs text-text-muted">
-                    {book.qtyAvailable}/{book.qtyTotal} available
-                  </p>
-                </div>
-
-                {/* Selection Indicator */}
-                <div className="flex items-center gap-2">
-                  {book.qtyAvailable > 0 ? (
-                    <Badge variant="success" className="text-xs">Available</Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-xs">Out</Badge>
-                  )}
+          {filteredBooks.length === 0 ? (
+            <div className="text-center py-8">
+              <span className="text-4xl mb-2 block">📚</span>
+              <p className="text-text-muted">
+                {searchQuery ? `No books found matching "${searchQuery}"` : 'No books available in this category'}
+              </p>
+              {searchQuery && (
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setSearchQuery('')}>
+                  Clear search
+                </Button>
+              )}
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredBooks.map((book, index) => (
+                <div
+                  key={book._id}
+                  className={`relative p-3 rounded-xl cursor-pointer transition-all duration-200 animate-fade-in-up ${selectedBook === book._id
+                    ? 'ring-2 ring-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/10'
+                    : 'bg-card/50 hover:bg-card border border-transparent hover:border-card-border hover:-translate-y-1'
+                    } ${book.qtyAvailable === 0 ? 'opacity-50' : ''}`}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  onClick={() => book.qtyAvailable > 0 && handleBookSelect(book._id)}
+                >
+                  {/* Selection check */}
                   {selectedBook === book._id && (
-                    <div className="w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
                       <span className="text-white text-xs">✓</span>
                     </div>
                   )}
+                  
+                  {/* Book cover placeholder */}
+                  <div className="w-full aspect-[3/4] rounded-lg bg-gradient-to-br from-bg-dark to-bg-very-dark flex items-center justify-center mb-2">
+                    <BookOpen className="h-8 w-8 text-text-muted/50" />
+                  </div>
+                  
+                  <p className="font-medium text-text-main text-sm truncate">{book.name}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-text-muted">{book.qtyAvailable}/{book.qtyTotal}</span>
+                    {book.qtyAvailable === 0 && (
+                      <Badge variant="destructive" className="text-[10px] px-1.5">Out</Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+              {filteredBooks.map((book, index) => (
+                <div
+                  key={book._id}
+                  className={`flex items-center gap-3 bg-card/50 rounded-lg p-3 cursor-pointer transition-all duration-200 animate-fade-in-up ${selectedBook === book._id
+                    ? 'ring-2 ring-accent-blue bg-accent-blue/10 shadow-lg shadow-accent-blue/10'
+                    : 'hover:bg-card border border-transparent hover:border-card-border'
+                    } ${book.qtyAvailable === 0 ? 'opacity-50' : ''}`}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  onClick={() => book.qtyAvailable > 0 && handleBookSelect(book._id)}
+                >
+                  {/* Book Icon */}
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedBook === book._id ? 'bg-accent-blue/20' : 'bg-bg-dark'
+                    }`}>
+                    <BookOpen className="h-5 w-5 text-text-muted" />
+                  </div>
+
+                  {/* Book Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-text-main truncate">{book.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex-1 max-w-[100px] h-1.5 bg-bg-dark rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            book.qtyAvailable === 0 ? 'bg-destructive' :
+                            book.qtyAvailable < book.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
+                          }`}
+                          style={{ width: `${(book.qtyAvailable / book.qtyTotal) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-text-muted">
+                        {book.qtyAvailable}/{book.qtyTotal}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Selection Indicator */}
+                  <div className="flex items-center gap-2">
+                    {book.qtyAvailable > 0 ? (
+                      <Badge variant="success" className="text-xs">Available</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="text-xs">Out</Badge>
+                    )}
+                    {selectedBook === book._id && (
+                      <div className="w-5 h-5 rounded-full bg-accent-blue flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -287,86 +393,154 @@ export default function LibraryPage() {
     );
   };
 
+  // Total counts
+  const totalBooks = fictionBooks.length + nonFictionBooks.length + textbooks.length;
+  const totalAvailable = [...fictionBooks, ...nonFictionBooks, ...textbooks].filter(b => b.qtyAvailable > 0).length;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-accent-blue">Library</h1>
-        <p className="text-text-muted">Borrow books for 14 days</p>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent p-6 border border-amber-500/20">
+        {/* Background decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        {/* Floating book icons */}
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📚</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📖</div>
+        <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>📘</div>
+        
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30">
+              <BookOpen className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-text-main flex items-center gap-2">
+                📚 Library
+                <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+              </h1>
+              <p className="text-text-muted">
+                Borrow books for 14 days • {totalBooks} books in collection
+              </p>
+            </div>
+          </div>
+          
+          {/* Quick Stats */}
+          <div className="flex items-center gap-3">
+            <div className="px-3 py-2 rounded-xl bg-success/10 border border-success/20">
+              <p className="text-xs text-text-muted">Available</p>
+              <p className="text-lg font-bold text-success">{totalAvailable}</p>
+            </div>
+            <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <p className="text-xs text-text-muted">Categories</p>
+              <p className="text-lg font-bold text-amber-500">3</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="fiction">
-        <TabsList className="mb-6">
-          <TabsTrigger value="fiction">📚 Fiction</TabsTrigger>
-          <TabsTrigger value="non-fiction">📖 Non-Fiction</TabsTrigger>
-          <TabsTrigger value="textbooks">📘 Textbooks</TabsTrigger>
-        </TabsList>
+      {resourcesLoading ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="h-12 bg-card rounded-xl w-full max-w-sm" />
+          <div className="h-64 bg-card rounded-xl" />
+        </div>
+      ) : (
+        <Tabs defaultValue="fiction" className="animate-fade-in">
+          <TabsList className="mb-6">
+            <TabsTrigger value="fiction" icon={<span className="text-base">📚</span>}>
+              Fiction ({fictionBooks.length})
+            </TabsTrigger>
+            <TabsTrigger value="non-fiction" icon={<span className="text-base">📖</span>}>
+              Non-Fiction ({nonFictionBooks.length})
+            </TabsTrigger>
+            <TabsTrigger value="textbooks" icon={<span className="text-base">📘</span>}>
+              Textbooks ({textbooks.length})
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="fiction">
-          <Card>
-            <CardHeader>
-              <CardTitle>Fiction Books</CardTitle>
-              <CardDescription>
-                Classic and contemporary fiction titles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {libraryResources.find(r => r.name === 'Fiction Library') ? (
-                renderBookList(
-                  fictionBooks,
-                  libraryResources.find(r => r.name === 'Fiction Library')._id,
-                  'fiction'
-                )
-              ) : (
-                <p className="text-text-muted">Loading...</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="fiction" className="animate-fade-in-up">
+            <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📚 Fiction Books
+                </CardTitle>
+                <CardDescription>
+                  Classic and contemporary fiction titles
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {libraryResources.find(r => r.name === 'Fiction Library') ? (
+                  renderBookList(
+                    fictionBooks,
+                    libraryResources.find(r => r.name === 'Fiction Library')._id,
+                    'fiction'
+                  )
+                ) : (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-2 block">📚</span>
+                    <p className="text-text-muted">Fiction library not configured</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="non-fiction">
-          <Card>
-            <CardHeader>
-              <CardTitle>Non-Fiction Books</CardTitle>
-              <CardDescription>
-                Self-help, business, and educational books
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {libraryResources.find(r => r.name === 'Non-Fiction Library') ? (
-                renderBookList(
-                  nonFictionBooks,
-                  libraryResources.find(r => r.name === 'Non-Fiction Library')._id,
-                  'non-fiction'
-                )
-              ) : (
-                <p className="text-text-muted">Loading...</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="non-fiction" className="animate-fade-in-up">
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📖 Non-Fiction Books
+                </CardTitle>
+                <CardDescription>
+                  Self-help, business, and educational books
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {libraryResources.find(r => r.name === 'Non-Fiction Library') ? (
+                  renderBookList(
+                    nonFictionBooks,
+                    libraryResources.find(r => r.name === 'Non-Fiction Library')._id,
+                    'non-fiction'
+                  )
+                ) : (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-2 block">📖</span>
+                    <p className="text-text-muted">Non-fiction library not configured</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="textbooks">
-          <Card>
-            <CardHeader>
-              <CardTitle>Textbooks</CardTitle>
-              <CardDescription>
-                Computer Science and Programming textbooks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {libraryResources.find(r => r.name === 'Textbooks Library') ? (
-                renderBookList(
-                  textbooks,
-                  libraryResources.find(r => r.name === 'Textbooks Library')._id,
-                  'textbooks'
-                )
-              ) : (
-                <p className="text-text-muted">Loading...</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="textbooks" className="animate-fade-in-up">
+            <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📘 Textbooks
+                </CardTitle>
+                <CardDescription>
+                  Computer Science and Programming textbooks
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {libraryResources.find(r => r.name === 'Textbooks Library') ? (
+                  renderBookList(
+                    textbooks,
+                    libraryResources.find(r => r.name === 'Textbooks Library')._id,
+                    'textbooks'
+                  )
+                ) : (
+                  <div className="text-center py-8">
+                    <span className="text-4xl mb-2 block">📘</span>
+                    <p className="text-text-muted">Textbooks library not configured</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

@@ -41,10 +41,21 @@ export const SPORT_EQUIPMENT_KITS: Record<SportCategory, Record<string, number>>
 
     // Football: One ball per game
     FOOTBALL: {
-        'Football': 1,           // One ball per game
+        'Football': 1,
     },
 
-    // General: No specific limits (flexible items)
+    // Volleyball: One ball per game
+    VOLLEYBALL: {
+        'Volleyball': 1,
+    },
+
+    // Tennis: Rackets and balls
+    TENNIS: {
+        'Tennis Racket': 4,
+        'Tennis Balls': 2,
+    },
+
+    // General: No specific limits
     GENERAL: {},
 };
 
@@ -126,10 +137,12 @@ export async function validateSportKitQuantities(
 export const SPORT_FACILITY_MAPPING: Record<SportCategory, string[]> = {
     TABLE_TENNIS: ['Table Tennis 1', 'Table Tennis 2'],
     BASKETBALL: ['Basketball Court'],
-    BADMINTON: [], // No indoor facility - outdoor courts assumed
+    BADMINTON: [],
     FOOTBALL: ['Main Turf'],
     CRICKET: ['Main Turf'],
-    GENERAL: [], // No specific facility required
+    VOLLEYBALL: ['Volleyball Court'],
+    TENNIS: [],
+    GENERAL: [],
 };
 
 /**

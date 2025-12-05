@@ -28,9 +28,7 @@ export const POLICIES = {
   MAX_BOOKING_DURATION_MINUTES: 120, // Maximum 2 hours per booking
 
   // Cancellation limits
-  MAX_CANCELLATIONS_PER_WEEK: 2, // NOTE: No longer enforced - kept for reference only
-  PENALTY_LATE_CANCELLATION: 0.5, // Half point if cancelled <2 hours before start
-  LATE_CANCELLATION_HOURS: 2, // Considered "late" if within 2 hours of start
+  LATE_CANCELLATION_HOURS: 2,
 
   // Advance booking window
   ADVANCE_BOOKING_DAYS: 7,
@@ -62,8 +60,7 @@ export const POLICIES = {
   PENALTY_LATE_RETURN: 4,      // 1 point
   PENALTY_DAMAGE: 8,           // 2 points
   PENALTY_CANCELLATION: 1,     // 0.25 points
-  PENALTY_LATE_CANCELLATION_POINTS: 2, // 0.5 points (not used, kept for reference)
-  PENALTY_BOOK_LATE_RETURN: 8, // 2 points (+ payment required)
+  PENALTY_BOOK_LATE_RETURN: 8, // 2 points
   PENALTY_BOOK_NO_PICKUP: 2,   // 0.5 points
 
   // Escalating penalty system (Three-Strike System)
@@ -76,8 +73,7 @@ export const POLICIES = {
   SUSPENSION_DURATION_LEVEL_0: 7,  // 7 days for first suspension
   SUSPENSION_DURATION_LEVEL_1: 10, // 10 days for second suspension
 
-  // Legacy constant (kept for backward compatibility)
-  PENALTY_THRESHOLD_FOR_SUSPENSION: 20, // 5 points (5 x 4)
+  PENALTY_THRESHOLD_FOR_SUSPENSION: 20,
   SUSPENSION_DAYS: 7,
 
   // Special rules

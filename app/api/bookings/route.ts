@@ -11,8 +11,6 @@ import {
   POLICIES,
   canUserBook,
   isWithinAdvanceWindow,
-  calculateTotalHours,
-  hasMinimumGap,
   hasConsecutiveBookings,
 } from '@/lib/policies';
 import { sendEmail, generateApprovalEmailHTML } from '@/lib/email';
@@ -148,25 +146,6 @@ async function postHandler(req: Request) {
         throw new ValidationError(`Bookings cannot end after ${WORKING_HOURS_END % 12 || 12}:00 PM`);
       }
 
-      // Validate booking duration for FACILITY and ROOM bookings (dynamic slot system)
-      const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
-
-      // Check minimum duration (15 minutes)
-      if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
-        throw new ValidationError(
-          `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
-          `Current duration: ${Math.round(durationMinutes)} minutes.`
-        );
-      }
-
-      // Check maximum duration (2 hours per booking)
-      if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
-        throw new ValidationError(
-          `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
-          `Current duration: ${Math.round(durationMinutes)} minutes.`
-        );
-      }
-
       // Get user with penalty info
       // FIX: userId from session is the ObjectId, not email
       const user = await User.findById(userId).session(session);
@@ -197,6 +176,27 @@ async function postHandler(req: Request) {
         kind = 'EQUIPMENT';
       } else {
         kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
+      }
+
+      // Validate booking duration (only for FACILITY and ROOM)
+      const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+
+      if (kind === 'FACILITY' || kind === 'ROOM') {
+        // Check minimum duration (15 minutes)
+        if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+          throw new ValidationError(
+            `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
+            `Current duration: ${Math.round(durationMinutes)} minutes.`
+          );
+        }
+
+        // Check maximum duration (2 hours per booking)
+        if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
+          throw new ValidationError(
+            `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
+            `Current duration: ${Math.round(durationMinutes)} minutes.`
+          );
+        }
       }
 
       // Check students-only restriction
@@ -268,11 +268,6 @@ async function postHandler(req: Request) {
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: new Date() },
       }).session(session);
-
-      // Gap check removed to allow back-to-back bookings
-      // if (!hasMinimumGap(upcomingBookings, startDate, endDate)) {
-      //   throw new ValidationError(`You must have at least ${POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES} minutes gap between bookings.`);
-      // }
 
       // Check consecutive bookings for same resource
       const sameResourceBookings = upcomingBookings.filter(

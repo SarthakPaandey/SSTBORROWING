@@ -34,7 +34,7 @@ const QRTokenSchema = new Schema<IQRToken>(
   }
 );
 
-QRTokenSchema.index({ token: 1 });
+// Note: token index is already created by unique: true
 QRTokenSchema.index({ bookingId: 1 });
 QRTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 86400 }); // Clean up after 24h
 

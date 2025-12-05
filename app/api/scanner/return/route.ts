@@ -11,11 +11,14 @@ import mongoose from 'mongoose';
 import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
-  const session = await mongoose.startSession();
+  let session: mongoose.ClientSession | null = null;
 
   try {
-    const guard = await requireAuth(['GUARD', 'ADMIN']);
+    // Must connect to DB before starting a session
     await connectDB();
+    session = await mongoose.startSession();
+
+    const guard = await requireAuth(['GUARD', 'ADMIN']);
 
     const { bookingId, items, condition } = await req.json();
 
@@ -133,13 +136,15 @@ export async function POST(req: NextRequest) {
         : 'Equipment returned successfully',
     });
   } catch (error) {
-    if (session.inTransaction()) {
+    if (session?.inTransaction()) {
       await session.abortTransaction();
     }
     console.error('Return error:', error);
     return handleApiError(error);
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 }
 

@@ -12,11 +12,14 @@ import mongoose from 'mongoose';
 import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
-  const session = await mongoose.startSession();
+  let session: mongoose.ClientSession | null = null;
 
   try {
+    // Must connect to DB before starting a session
+    await connectDB();
+    session = await mongoose.startSession();
+
     await requireAuth(['GUARD', 'ADMIN']);
-    const conn = await connectDB();
 
     const { token } = await req.json();
 
@@ -164,13 +167,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     // Abort transaction on error
-    if (session.inTransaction()) {
+    if (session?.inTransaction()) {
       await session.abortTransaction();
     }
     console.error('QR validation error:', error);
     return handleApiError(error);
   } finally {
-    // End session
-    session.endSession();
+    // End session if it was created
+    if (session) {
+      session.endSession();
+    }
   }
 }

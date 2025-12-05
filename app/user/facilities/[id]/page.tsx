@@ -324,7 +324,6 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                     end: end.toISOString(),
                   });
                 }}
-                resourceId={params.id}
                 isGroupBooking={isTeamSport || false}
               />
             )}

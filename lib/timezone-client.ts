@@ -71,3 +71,19 @@ export function formatISTTime(date: Date): string {
 export function getISTCurrentTime(): string {
     return formatISTTime(getISTNow());
 }
+
+/**
+ * Format a Date object to IST date string (YYYY-MM-DD)
+ * This is useful for converting any Date to IST date format
+ */
+export function formatISTDate(date: Date): string {
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    };
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    return formatter.format(date);
+}
+

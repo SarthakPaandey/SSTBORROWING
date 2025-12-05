@@ -227,7 +227,6 @@ export default function RoomBookingPage({ params }: { params: Params }) {
                     end: end.toISOString(),
                   });
                 }}
-                resourceId={params.id}
               />
             )}
           </div>

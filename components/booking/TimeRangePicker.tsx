@@ -14,7 +14,6 @@ interface TimeRangePickerProps {
     busySlots: BusySlot[];
     workingHours: { start: string; end: string }; // HH:MM format
     onSelect: (start: Date, end: Date) => void;
-    resourceId: string;
     isGroupBooking?: boolean;
 }
 

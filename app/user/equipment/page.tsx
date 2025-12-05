@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { getISTToday, getISTNow } from '@/lib/timezone-client';
+import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
 
 export default function EquipmentPage() {
   const router = useRouter();
@@ -21,7 +21,6 @@ export default function EquipmentPage() {
   // FIX: Use IST timezone for accurate date display
   const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -34,12 +33,6 @@ export default function EquipmentPage() {
   useEffect(() => {
     // FIX: Use IST timezone for accurate today check
     const today = getISTToday();
-    const formatISTDate = (d: Date): string => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
     const dateStr = formatISTDate(date);
     if (dateStr === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
@@ -75,7 +68,7 @@ export default function EquipmentPage() {
       fetchItems();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, startTime, endTime]);
+  }, [date, startTime]);
 
   const fetchResources = async () => {
     const sportsRes = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
@@ -94,12 +87,6 @@ export default function EquipmentPage() {
 
   const fetchItems = async (sportsRes = sportsResources, labRes = labResources) => {
     // Build time window for availability check
-    const formatISTDate = (d: Date): string => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
     const dateStr = formatISTDate(date);
     const start = new Date(`${dateStr}T${startTime}:00+05:30`);
     const startHour = parseInt(startTime.split(':')[0]);
@@ -172,12 +159,6 @@ export default function EquipmentPage() {
     try {
       // FIX: Create date in IST timezone by specifying +05:30 offset
       // This ensures the backend receives the correct IST time regardless of browser timezone
-      const formatISTDate = (d: Date): string => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
       const dateStr = formatISTDate(date);
       const start = new Date(`${dateStr}T${startTime}:00+05:30`);
       const startHour = parseInt(startTime.split(':')[0]);

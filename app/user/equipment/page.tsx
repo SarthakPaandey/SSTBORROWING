@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -64,6 +64,18 @@ export default function EquipmentPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const fetchRequestId = useRef(0);
+  const equipmentThought = useMemo(() => {
+    const quotes = [
+      { text: 'The harder you work, the luckier you get.', author: 'Gary Player' },
+      { text: 'It always seems impossible until it’s done.', author: 'Nelson Mandela' },
+      { text: 'Practice beats talent when talent doesn’t practice.', author: 'Unknown' },
+      { text: 'Somewhere, something incredible is waiting to be known.', author: 'Carl Sagan' },
+      { text: 'Imagination is more important than knowledge.', author: 'Albert Einstein' },
+      { text: 'Champions keep playing until they get it right.', author: 'Billie Jean King' },
+      { text: 'In science, we don’t make predictions, we try to explain.', author: 'Steven Weinberg' },
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  }, []);
 
   useEffect(() => {
     fetchResources();
@@ -331,6 +343,8 @@ export default function EquipmentPage() {
       <LoadingState
         title="Loading equipment"
         subtitle="Fetching available sports and lab inventory..."
+        thought={equipmentThought.text}
+        thoughtAuthor={equipmentThought.author}
         variant="galaxy"
       />
     );

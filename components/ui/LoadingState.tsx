@@ -8,6 +8,8 @@ type LoadingStateProps = {
   compact?: boolean;
   className?: string;
   variant?: 'default' | 'galaxy';
+  thought?: string;
+  thoughtAuthor?: string;
 };
 
 export function LoadingState({
@@ -16,6 +18,8 @@ export function LoadingState({
   compact = false,
   className = '',
   variant = 'default',
+  thought,
+  thoughtAuthor,
 }: LoadingStateProps) {
   const stars = [
     { top: '10%', left: '20%', size: 2, delay: '0s' },
@@ -146,6 +150,15 @@ export function LoadingState({
             </p>
           )}
         </div>
+
+        {thought && (
+          <div className="mt-2 max-w-[420px] text-center">
+            <p className="text-sm text-text-main/90 italic leading-relaxed">“{thought}”</p>
+            {thoughtAuthor && (
+              <p className="text-xs text-text-muted mt-1">— {thoughtAuthor}</p>
+            )}
+          </div>
+        )}
 
         <p className="text-xs text-text-muted/70">Hang tight — this usually takes just a moment.</p>
       </div>

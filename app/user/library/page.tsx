@@ -29,6 +29,16 @@ export default function LibraryPage() {
   const [success, setSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const bookThought = useMemo(() => {
+    const quotes = [
+      { text: 'A room without books is like a body without a soul.', author: 'Cicero' },
+      { text: 'So many books, so little time.', author: 'Frank Zappa' },
+      { text: 'Books are a uniquely portable magic.', author: 'Stephen King' },
+      { text: 'A reader lives a thousand lives before he dies.', author: 'George R. R. Martin' },
+      { text: 'Reading is essential for those who seek to rise above the ordinary.', author: 'Jim Rohn' },
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  }, []);
 
   useEffect(() => {
     fetchResources();
@@ -448,6 +458,8 @@ export default function LibraryPage() {
         <LoadingState
           title="Loading library collection"
           subtitle="Fetching categories and available books..."
+          thought={bookThought.text}
+          thoughtAuthor={bookThought.author}
           variant="galaxy"
         />
       ) : (

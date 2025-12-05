@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Users, Clock, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Clock, MapPin, CheckCircle, XCircle, Calendar, Sparkles, AlertTriangle } from 'lucide-react';
 import { GroupInvitation } from '@/types/booking';
 
 interface InvitationsResponse {
@@ -51,7 +51,6 @@ export default function GroupInvitationsPage() {
         throw new Error(data.error || 'Failed to respond');
       }
 
-      // Refresh invitations
       await fetchInvitations();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -62,6 +61,7 @@ export default function GroupInvitationsPage() {
 
   const formatDate = (date: string | Date) => {
     return new Date(date).toLocaleString('en-US', {
+      weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -74,165 +74,273 @@ export default function GroupInvitationsPage() {
     const expiry = new Date(expiresAt).getTime();
     const diff = expiry - now;
 
-    if (diff <= 0) return 'Expired';
+    if (diff <= 0) return { text: 'Expired', urgent: true };
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
     if (hours > 0) {
-      return `${hours}h ${minutes}m remaining`;
+      return { text: `${hours}h ${minutes}m left`, urgent: hours < 2 };
     }
-    return `${minutes}m remaining`;
+    return { text: `${minutes}m left`, urgent: true };
   };
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-accent-blue">Group Invitations</h1>
-        <div className="h-96 animate-pulse rounded-lg bg-card"></div>
+        <div className="flex items-center gap-3">
+          <span className="text-4xl">👥</span>
+          <h1 className="text-3xl font-bold">Group Invitations</h1>
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-48 skeleton rounded-xl" style={{ animationDelay: `${i * 0.1}s` }} />
+          ))}
+        </div>
       </div>
     );
   }
 
+  const totalPending = invitations.pending.length;
+  const totalConfirmed = invitations.confirmed.length;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-accent-blue">Group Invitations</h1>
-        <p className="text-text-muted">Pending and confirmed group bookings</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="animate-fade-in-down">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-4xl animate-bounce-subtle">👥</span>
+          <h1 className="text-3xl font-bold">Group Invitations</h1>
+        </div>
+        <p className="text-text-muted">Manage your group booking invitations ✨</p>
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 gap-4 animate-fade-in-up">
+        <div className={`p-4 rounded-xl border ${totalPending > 0 ? 'bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20' : 'bg-bg-dark/50 border-card-border'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${totalPending > 0 ? 'bg-warning/20' : 'bg-text-muted/10'}`}>
+              <span className="text-2xl">{totalPending > 0 ? '📨' : '📭'}</span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-main">{totalPending}</p>
+              <p className="text-sm text-text-muted">Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-success/20">
+              <span className="text-2xl">✅</span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-main">{totalConfirmed}</p>
+              <p className="text-sm text-text-muted">Confirmed</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-xl bg-danger/10 border border-danger/30 p-4 text-sm text-danger flex items-center gap-2 animate-shake">
+          <AlertTriangle className="h-5 w-5" />
           {error}
         </div>
       )}
 
       {/* Pending Invitations */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Pending Invitations</h2>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <span className="text-2xl">📨</span>
+          Pending Invitations
+          {totalPending > 0 && (
+            <Badge variant="warning" pulse>{totalPending}</Badge>
+          )}
+        </h2>
 
         {invitations.pending.length === 0 ? (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-text-muted">No pending invitations</p>
+          <Card className="animate-fade-in-up">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <span className="text-5xl block mb-4">📭</span>
+                <p className="text-text-muted">No pending invitations</p>
+                <p className="text-sm text-text-muted/70 mt-1">You&apos;re all caught up!</p>
+              </div>
             </CardContent>
           </Card>
         ) : (
-          invitations.pending.map((inv) => (
-            <Card key={inv._id} className="border-blue-200">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{inv.resourceName}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 mt-1">
-                      <MapPin className="h-4 w-4" />
-                      {inv.location}
-                    </CardDescription>
+          invitations.pending.map((inv, index) => {
+            const timeInfo = getTimeRemaining(inv.expiresAt);
+            
+            return (
+              <Card 
+                key={inv._id} 
+                className={`
+                  border-warning/30 bg-gradient-to-r from-warning/5 to-transparent
+                  animate-fade-in-left
+                  ${timeInfo.urgent ? 'animate-pulse' : ''}
+                `}
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-warning/20">
+                        <span className="text-2xl">🎉</span>
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{inv.resourceName}</CardTitle>
+                        <CardDescription className="flex items-center gap-1.5 mt-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {inv.location}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant={timeInfo.urgent ? 'destructive' : 'warning'} 
+                      pulse={timeInfo.urgent}
+                      icon="⏰"
+                    >
+                      {timeInfo.text}
+                    </Badge>
                   </div>
-                  <Badge variant="warning">
-                    <Clock className="mr-1 h-3 w-3" />
-                    {getTimeRemaining(inv.expiresAt)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-text-muted">Organizer:</span>
-                    <p className="font-medium">{inv.organizerEmail}</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Info grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-bg-dark/50">
+                      <p className="text-xs text-text-muted mb-1">👤 Organizer</p>
+                      <p className="font-medium text-sm truncate">{inv.organizerEmail}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-bg-dark/50">
+                      <p className="text-xs text-text-muted mb-1">📅 Date & Time</p>
+                      <p className="font-medium text-sm">{formatDate(inv.start)}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-bg-dark/50">
+                      <p className="text-xs text-text-muted mb-1">✅ Status</p>
+                      <p className="font-medium text-sm">
+                        <span className="text-success">{inv.confirmedCount}</span>
+                        <span className="text-text-muted">/{inv.requiredMinimum} confirmed</span>
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-bg-dark/50">
+                      <p className="text-xs text-text-muted mb-1">👥 Total</p>
+                      <p className="font-medium text-sm flex items-center gap-1">
+                        <Users className="h-4 w-4 text-accent-blue" />
+                        {inv.totalMembers} people
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-text-muted">Date & Time:</span>
-                    <p className="font-medium">{formatDate(inv.start)}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Status:</span>
-                    <p className="font-medium">
-                      {inv.confirmedCount}/{inv.requiredMinimum} confirmed
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Total Members:</span>
-                    <p className="font-medium flex items-center">
-                      <Users className="mr-1 h-4 w-4" />
-                      {inv.totalMembers} people
-                    </p>
-                  </div>
-                </div>
 
-                <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-                  <p className="font-semibold mb-1">Important:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>All confirmed members share penalty points for no-shows</li>
-                    <li>Booking confirmed when {inv.requiredMinimum}+ members accept</li>
-                    <li>Only organizer can generate QR code</li>
-                  </ul>
-                </div>
+                  {/* Info box */}
+                  <div className="rounded-xl bg-accent-blue/5 border border-accent-blue/20 p-4">
+                    <p className="font-semibold text-accent-blue text-sm mb-2 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Important Info
+                    </p>
+                    <ul className="text-xs text-text-muted space-y-1.5">
+                      <li className="flex items-start gap-2">
+                        <span className="text-warning">⚠️</span>
+                        All confirmed members share penalty points for no-shows
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-success">✅</span>
+                        Booking confirmed when {inv.requiredMinimum}+ members accept
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-accent-blue">📱</span>
+                        Only organizer can generate QR code
+                      </li>
+                    </ul>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleRespond(inv.groupBookingId, 'ACCEPT')}
-                    disabled={responding === inv.groupBookingId}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    {responding === inv.groupBookingId ? 'Accepting...' : 'Accept'}
-                  </Button>
-                  <Button
-                    onClick={() => handleRespond(inv.groupBookingId, 'REJECT')}
-                    disabled={responding === inv.groupBookingId}
-                    variant="destructive"
-                    className="flex-1"
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    {responding === inv.groupBookingId ? 'Rejecting...' : 'Reject'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  {/* Action buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => handleRespond(inv.groupBookingId, 'ACCEPT')}
+                      disabled={responding === inv.groupBookingId}
+                      loading={responding === inv.groupBookingId}
+                      variant="success"
+                      className="flex-1"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Accept
+                    </Button>
+                    <Button
+                      onClick={() => handleRespond(inv.groupBookingId, 'REJECT')}
+                      disabled={responding === inv.groupBookingId}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Decline
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
       {/* Confirmed Group Bookings */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Confirmed Group Bookings</h2>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <span className="text-2xl">✅</span>
+          Confirmed Group Bookings
+          {totalConfirmed > 0 && (
+            <Badge variant="success">{totalConfirmed}</Badge>
+          )}
+        </h2>
 
         {invitations.confirmed.length === 0 ? (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-text-muted">No confirmed group bookings</p>
+          <Card className="animate-fade-in-up">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <span className="text-5xl block mb-4">🎯</span>
+                <p className="text-text-muted">No confirmed group bookings</p>
+                <p className="text-sm text-text-muted/70 mt-1">Accept invitations to see them here</p>
+              </div>
             </CardContent>
           </Card>
         ) : (
-          invitations.confirmed.map((inv) => (
-            <Card key={inv._id} className="border-green-200">
+          invitations.confirmed.map((inv, index) => (
+            <Card 
+              key={inv._id} 
+              className="border-success/30 bg-gradient-to-r from-success/5 to-transparent animate-fade-in-left"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{inv.resourceName}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 mt-1">
-                      <MapPin className="h-4 w-4" />
-                      {inv.location}
-                    </CardDescription>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-success/20">
+                      <span className="text-2xl">🎊</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{inv.resourceName}</CardTitle>
+                      <CardDescription className="flex items-center gap-1.5 mt-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {inv.location}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <Badge variant="success">Confirmed</Badge>
+                  <Badge variant="success" icon="✅">Confirmed</Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-text-muted">Organizer:</span>
-                    <p className="font-medium">{inv.organizerEmail}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-lg bg-bg-dark/50">
+                    <p className="text-xs text-text-muted mb-1">👤 Organizer</p>
+                    <p className="font-medium text-sm truncate">{inv.organizerEmail}</p>
                   </div>
-                  <div>
-                    <span className="text-text-muted">Date & Time:</span>
-                    <p className="font-medium">{formatDate(inv.start)}</p>
+                  <div className="p-3 rounded-lg bg-bg-dark/50">
+                    <p className="text-xs text-text-muted mb-1">📅 Date & Time</p>
+                    <p className="font-medium text-sm">{formatDate(inv.start)}</p>
                   </div>
-                  <div>
-                    <span className="text-text-muted">Members:</span>
-                    <p className="font-medium flex items-center">
-                      <Users className="mr-1 h-4 w-4" />
+                  <div className="p-3 rounded-lg bg-bg-dark/50">
+                    <p className="text-xs text-text-muted mb-1">👥 Members</p>
+                    <p className="font-medium text-sm flex items-center gap-1">
+                      <Users className="h-4 w-4 text-success" />
                       {inv.confirmedCount} confirmed
                     </p>
                   </div>

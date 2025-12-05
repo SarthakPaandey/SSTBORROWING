@@ -9,9 +9,26 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
-import { CalendarDays, Clock, MapPin, Package, Filter, Users, User } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, Package, Filter, Users, User, Sparkles, TrendingUp, CheckCircle2, Timer, BarChart3 } from 'lucide-react';
 
 import { EnrichedBooking } from '@/types/booking';
+
+// Status configuration with emojis
+const statusConfig = {
+  CONFIRMED: { emoji: '✅', label: 'Confirmed', color: 'success' as const },
+  PENDING: { emoji: '⏳', label: 'Pending Approval', color: 'warning' as const },
+  CHECKED_IN: { emoji: '🔑', label: 'Checked In', color: 'default' as const },
+  COMPLETED: { emoji: '🏁', label: 'Completed', color: 'default' as const },
+  CANCELLED: { emoji: '❌', label: 'Cancelled', color: 'destructive' as const },
+  NO_SHOW: { emoji: '👻', label: 'No Show', color: 'destructive' as const },
+};
+
+const kindConfig = {
+  FACILITY: { emoji: '🏟️', icon: MapPin, label: 'Facility' },
+  ROOM: { emoji: '🚪', icon: CalendarDays, label: 'Room' },
+  EQUIPMENT: { emoji: '🎾', icon: Package, label: 'Equipment' },
+  LIBRARY: { emoji: '📚', icon: Package, label: 'Library' },
+};
 
 export default function CalendarPage() {
   const { data: session } = useSession();
@@ -128,162 +145,199 @@ export default function CalendarPage() {
     : [];
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-        return <Badge variant="success">Confirmed</Badge>;
-      case 'PENDING':
-        return <Badge variant="warning">Pending Approval</Badge>;
-      case 'CHECKED_IN':
-        return <Badge variant="default">Checked In</Badge>;
-      case 'COMPLETED':
-        return <Badge variant="default">Completed</Badge>;
-      case 'CANCELLED':
-        return <Badge variant="destructive">Cancelled</Badge>;
-      case 'NO_SHOW':
-        return <Badge variant="destructive">No Show</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
+    const config = statusConfig[status as keyof typeof statusConfig];
+    if (!config) return <Badge>{status}</Badge>;
+    return (
+      <Badge variant={config.color} className="gap-1">
+        <span>{config.emoji}</span>
+        <span>{config.label}</span>
+      </Badge>
+    );
   };
 
   const getKindIcon = (kind: string) => {
-    switch (kind) {
-      case 'FACILITY':
-        return <MapPin className="h-5 w-5" />;
-      case 'ROOM':
-        return <CalendarDays className="h-5 w-5" />;
-      case 'EQUIPMENT':
-        return <Package className="h-5 w-5" />;
-      default:
-        return null;
-    }
+    const config = kindConfig[kind as keyof typeof kindConfig];
+    if (!config) return null;
+    const Icon = config.icon;
+    return <Icon className="h-5 w-5" />;
+  };
+
+  const getKindEmoji = (kind: string) => {
+    return kindConfig[kind as keyof typeof kindConfig]?.emoji || '📌';
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-accent-blue">Calendar View</h1>
-          <p className="text-text-muted">
-            {showAllBookings ? 'View all bookings' : 'View your bookings'}
-          </p>
-        </div>
-
-        {/* Toggle and Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Show All Toggle */}
-          <Button
-            variant={showAllBookings ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowAllBookings(!showAllBookings)}
-            className="flex items-center gap-2"
-          >
-            {showAllBookings ? (
-              <>
-                <Users className="h-4 w-4" />
-                All Bookings
-              </>
-            ) : (
-              <>
-                <User className="h-4 w-4" />
-                My Bookings
-              </>
-            )}
-          </Button>
-
-          {/* Show Cancelled Toggle */}
-          <Button
-            variant={showCancelled ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setShowCancelled(!showCancelled)}
-            className="flex items-center gap-2"
-            title="Show/Hide Cancelled Bookings"
-          >
-            {showCancelled ? 'Hide Cancelled' : 'Show Cancelled'}
-          </Button>
-
-          <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
-            <Filter className="h-4 w-4 text-text-muted ml-2" />
-            <select
-              className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-            >
-              <option value="ALL">All Types</option>
-              <option value="FACILITY">Facilities</option>
-              <option value="ROOM">Rooms</option>
-              <option value="EQUIPMENT">Equipment</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2 bg-card border border-card-border rounded-lg p-1">
-            <select
-              className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="ALL">All Status</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="PENDING">Pending</option>
-              <option value="ACTIVE">Active (Checked In)</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-blue/20 via-accent-purple-1/10 to-transparent p-6 border border-accent-blue/20">
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-purple-1/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-accent-blue to-cyan-500 shadow-lg shadow-accent-blue/30">
+              <CalendarDays className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-text-main flex items-center gap-2">
+                📅 Calendar View
+                <Sparkles className="h-5 w-5 text-accent-blue animate-pulse" />
+              </h1>
+              <p className="text-text-muted flex items-center gap-2">
+                {showAllBookings ? (
+                  <>
+                    <Users className="h-4 w-4" />
+                    Viewing all bookings
+                  </>
+                ) : (
+                  <>
+                    <User className="h-4 w-4" />
+                    Viewing your bookings
+                  </>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-xl border border-card-border animate-fade-in-up">
+        <span className="text-sm font-medium text-text-muted flex items-center gap-2">
+          <Filter className="h-4 w-4" />
+          Filters:
+        </span>
+        
+        {/* Show All Toggle */}
+        <Button
+          variant={showAllBookings ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setShowAllBookings(!showAllBookings)}
+          className="flex items-center gap-2 transition-all hover:scale-105"
+        >
+          {showAllBookings ? (
+            <>
+              <Users className="h-4 w-4" />
+              👥 All Bookings
+            </>
+          ) : (
+            <>
+              <User className="h-4 w-4" />
+              👤 My Bookings
+            </>
+          )}
+        </Button>
+
+        {/* Show Cancelled Toggle */}
+        <Button
+          variant={showCancelled ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowCancelled(!showCancelled)}
+          className="flex items-center gap-2 transition-all hover:scale-105"
+          title="Show/Hide Cancelled Bookings"
+        >
+          {showCancelled ? '🙈 Hide Cancelled' : '👀 Show Cancelled'}
+        </Button>
+
+        <div className="flex items-center gap-2 bg-bg-dark border border-card-border rounded-lg p-1.5 hover:border-accent-blue/30 transition-colors">
+          <span className="text-lg ml-1">🏷️</span>
+          <select
+            className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer pr-2"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="ALL">All Types</option>
+            <option value="FACILITY">🏟️ Facilities</option>
+            <option value="ROOM">🚪 Rooms</option>
+            <option value="EQUIPMENT">🎾 Equipment</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 bg-bg-dark border border-card-border rounded-lg p-1.5 hover:border-accent-blue/30 transition-colors">
+          <span className="text-lg ml-1">📊</span>
+          <select
+            className="bg-transparent text-sm text-text-main border-none focus:ring-0 cursor-pointer pr-2"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All Status</option>
+            <option value="CONFIRMED">✅ Confirmed</option>
+            <option value="PENDING">⏳ Pending</option>
+            <option value="ACTIVE">🔑 Active</option>
+            <option value="COMPLETED">🏁 Completed</option>
+            <option value="CANCELLED">❌ Cancelled</option>
+          </select>
+        </div>
+      </div>
+
       {loading ? (
-        <div className="space-y-6">
-          <div className="h-12 w-64 animate-pulse rounded bg-card"></div>
-          <div className="h-[600px] animate-pulse rounded-lg bg-card"></div>
+        <div className="space-y-6 animate-pulse">
+          <div className="h-16 w-full rounded-xl bg-gradient-to-r from-card via-bg-dark to-card" />
+          <div className="h-[600px] rounded-2xl bg-card border border-card-border overflow-hidden">
+            <div className="h-12 bg-bg-dark" />
+            <div className="grid grid-cols-7 gap-px p-4">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-lg bg-bg-dark/50" style={{ animationDelay: `${i * 20}ms` }} />
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
-        <Calendar
-          events={calendarEvents}
-          onDateClick={handleDateClick}
-          onEventClick={handleEventClick}
-          onMonthChange={handleMonthChange}
-          selectedDate={selectedDate}
-          viewDate={currentMonth} // Pass controlled date
-        />
+        <div className="animate-fade-in">
+          <Calendar
+            events={calendarEvents}
+            onDateClick={handleDateClick}
+            onEventClick={handleEventClick}
+            onMonthChange={handleMonthChange}
+            selectedDate={selectedDate}
+            viewDate={currentMonth}
+          />
+        </div>
       )}
 
-      {/* Event Details Modal */}
+      {/* Event Details Modal - Enhanced */}
       <Modal
         isOpen={eventModal}
         onClose={() => {
           setEventModal(false);
           setSelectedEvent(null);
         }}
-        title={selectedEvent && isMyBooking(selectedEvent) ? "My Booking Details" : "Booking Details"}
+        title={selectedEvent && isMyBooking(selectedEvent) ? "📋 My Booking Details" : "📋 Booking Details"}
         size="md"
       >
         {selectedEvent && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in-up">
             {/* Privacy Notice for Other Users' Bookings */}
             {!isMyBooking(selectedEvent) && (
-              <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3 flex items-start gap-2">
-                <Users className="h-4 w-4 text-accent-blue mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-text-main">
-                  This booking belongs to another user. Personal details are hidden for privacy.
-                </p>
+              <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+                <span className="text-2xl">🔒</span>
+                <div>
+                  <p className="font-medium text-text-main">Privacy Protected</p>
+                  <p className="text-sm text-text-muted">
+                    This booking belongs to another user. Personal details are hidden.
+                  </p>
+                </div>
               </div>
             )}
-            <div className="flex items-start gap-3">
-              <div className="icon-circle w-12 h-12">
-                {getKindIcon(selectedEvent.kind)}
+            
+            {/* Resource Header */}
+            <div className="flex items-start gap-4 p-4 bg-gradient-to-br from-bg-dark to-transparent rounded-xl border border-card-border">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-purple-1/20 border border-accent-blue/20">
+                <span className="text-3xl">{getKindEmoji(selectedEvent.kind)}</span>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-text-main">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-text-main truncate">
                   {selectedEvent.resourceName}
                 </h3>
                 {isMyBooking(selectedEvent) ? (
-                  <p className="text-sm text-text-muted">
+                  <p className="text-sm text-text-muted flex items-center gap-1">
+                    <span>🆔</span>
                     Booking ID: {String(selectedEvent._id).slice(-8)}
                   </p>
                 ) : (
-                  <p className="text-sm text-text-muted">
+                  <p className="text-sm text-text-muted flex items-center gap-1">
+                    <span>👤</span>
                     Booked by another user
                   </p>
                 )}
@@ -291,101 +345,141 @@ export default function CalendarPage() {
               {getStatusBadge(selectedEvent.status)}
             </div>
 
-            <div className="bg-bg-dark rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-accent-blue" />
-                <div>
-                  <p className="text-sm text-text-muted">
-                    {selectedEvent.kind === 'EQUIPMENT' ? 'Pickup' : 'Start'}
+            {/* Time Details */}
+            <div className="bg-bg-dark rounded-xl p-4 space-y-4 border border-card-border/50">
+              <div className="flex items-center gap-4 group">
+                <div className="p-2 rounded-lg bg-success/10 text-success group-hover:scale-110 transition-transform">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-text-muted uppercase tracking-wider">
+                    {selectedEvent.kind === 'EQUIPMENT' ? '📦 Pickup Time' : '▶️ Start Time'}
                   </p>
-                  <p className="text-text-main font-medium">
+                  <p className="text-text-main font-semibold">
                     {formatDateTime(selectedEvent.start)}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-accent-blue" />
-                <div>
-                  <p className="text-sm text-text-muted">
-                    {selectedEvent.kind === 'EQUIPMENT' ? 'Return by' : 'End'}
+              <div className="h-px bg-gradient-to-r from-transparent via-card-border to-transparent" />
+
+              <div className="flex items-center gap-4 group">
+                <div className="p-2 rounded-lg bg-warning/10 text-warning group-hover:scale-110 transition-transform">
+                  <Timer className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-text-muted uppercase tracking-wider">
+                    {selectedEvent.kind === 'EQUIPMENT' ? '🔄 Return By' : '⏹️ End Time'}
                   </p>
-                  <p className="text-text-main font-medium">
+                  <p className="text-text-main font-semibold">
                     {formatDateTime(selectedEvent.end)}
                   </p>
                 </div>
               </div>
 
               {selectedEvent.kind === 'EQUIPMENT' && selectedEvent.items && isMyBooking(selectedEvent) && (
-                <div>
-                  <p className="text-sm text-text-muted mb-2">Items:</p>
-                  <div className="space-y-1">
-                    {selectedEvent.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between text-sm bg-bg-very-dark rounded px-3 py-2"
-                      >
-                        <span className="text-text-main font-medium">{item.name}</span>
-                        <span className="text-text-muted">×{item.qty}</span>
-                      </div>
-                    ))}
+                <>
+                  <div className="h-px bg-gradient-to-r from-transparent via-card-border to-transparent" />
+                  <div>
+                    <p className="text-xs text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <span>🎒</span> Items Borrowed
+                    </p>
+                    <div className="space-y-2">
+                      {selectedEvent.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between text-sm bg-bg-very-dark rounded-lg px-4 py-3 hover:bg-bg-very-dark/80 transition-colors"
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                        >
+                          <span className="text-text-main font-medium flex items-center gap-2">
+                            <span>🏷️</span>
+                            {item.name}
+                          </span>
+                          <Badge variant="secondary" className="font-mono">×{item.qty}</Badge>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
-              {/* Hide items for non-owned bookings */}
               {selectedEvent.kind === 'EQUIPMENT' && !isMyBooking(selectedEvent) && (
-                <div className="bg-bg-dark rounded px-3 py-2">
-                  <p className="text-sm text-text-muted">Equipment borrowed (details hidden)</p>
+                <div className="bg-bg-very-dark/50 rounded-lg px-4 py-3 border border-dashed border-card-border">
+                  <p className="text-sm text-text-muted flex items-center gap-2">
+                    <span>🔐</span>
+                    Equipment details hidden for privacy
+                  </p>
                 </div>
               )}
             </div>
 
+            {/* Status-specific info cards */}
             {selectedEvent.status === 'CONFIRMED' && selectedEvent.kind === 'EQUIPMENT' && isMyBooking(selectedEvent) && (
-              <div className="bg-accent-blue/10 border border-accent-blue/30 rounded-lg p-3">
-                <p className="text-sm text-text-main">
-                  <span className="font-medium">Next step:</span> Generate QR code from &quot;My Bookings&quot; to pick up equipment
-                </p>
+              <div className="bg-gradient-to-r from-accent-blue/10 to-cyan-500/10 border border-accent-blue/30 rounded-xl p-4 animate-pulse-subtle">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">📱</span>
+                  <div>
+                    <p className="font-medium text-text-main">Next Step</p>
+                    <p className="text-sm text-text-muted">
+                      Generate QR code from &quot;My Bookings&quot; to pick up equipment
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {selectedEvent.status === 'PENDING' && isMyBooking(selectedEvent) && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                <p className="text-sm text-text-main">
-                  <span className="font-medium">Awaiting approval</span> from lab admin
-                </p>
+              <div className="bg-gradient-to-r from-warning/10 to-amber-500/10 border border-warning/30 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl animate-bounce-subtle">⏳</span>
+                  <div>
+                    <p className="font-medium text-text-main">Awaiting Approval</p>
+                    <p className="text-sm text-text-muted">
+                      Your request is being reviewed by the lab admin
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full group"
               onClick={() => {
                 setEventModal(false);
                 setSelectedEvent(null);
               }}
             >
-              Close
+              <span className="group-hover:hidden">Close</span>
+              <span className="hidden group-hover:inline">👋 Close</span>
             </Button>
           </div>
         )}
       </Modal>
 
-      {/* Day View Modal - Shows all events for selected date */}
+      {/* Day View Modal - Enhanced */}
       <Modal
         isOpen={dayViewModal}
         onClose={() => {
           setDayViewModal(false);
           setSelectedDate(undefined);
         }}
-        title={selectedDate ? `Events on ${selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}` : 'Events'}
+        title={selectedDate ? `📆 ${selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}` : '📆 Events'}
         size="lg"
       >
         {selectedDateEvents.length === 0 ? (
-          <p className="text-center text-text-muted py-8">No events on this date</p>
+          <div className="text-center py-12 animate-fade-in">
+            <span className="text-6xl mb-4 block">📭</span>
+            <p className="text-text-muted text-lg">No events on this date</p>
+            <p className="text-sm text-text-muted mt-2">This day is free for new bookings!</p>
+          </div>
         ) : (
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {selectedDateEvents.map((booking) => (
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            <p className="text-sm text-text-muted mb-4 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? 's' : ''} scheduled
+            </p>
+            {selectedDateEvents.map((booking, index) => (
               <div
                 key={String(booking._id)}
                 onClick={() => {
@@ -393,25 +487,49 @@ export default function CalendarPage() {
                   setDayViewModal(false);
                   setEventModal(true);
                 }}
-                className="flex items-start justify-between p-4 rounded-lg border border-card-border bg-card hover:bg-accent-blue/5 cursor-pointer transition-colors"
+                className="flex items-start gap-4 p-4 rounded-xl border border-card-border bg-card hover:bg-accent-blue/5 hover:border-accent-blue/30 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 group animate-fade-in-up"
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-text-main">{booking.resourceName}</p>
+                {/* Type indicator */}
+                <div className="p-2 rounded-lg bg-bg-dark group-hover:scale-110 transition-transform">
+                  <span className="text-2xl">{getKindEmoji(booking.kind)}</span>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-text-main truncate">{booking.resourceName}</p>
                     {getStatusBadge(booking.status)}
                   </div>
-                  <p className="text-sm text-text-muted mt-1">
-                    {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}
-                    {formatDateTime(booking.start)}
-                  </p>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}
+                      {formatDateTime(booking.start)}
+                    </span>
+                  </div>
                   {booking.kind === 'EQUIPMENT' && (
-                    <p className="text-sm text-text-muted">
+                    <p className="text-sm text-text-muted mt-1 flex items-center gap-1">
+                      <Timer className="h-3 w-3" />
                       Return by: {formatDateTime(booking.end)}
                     </p>
                   )}
                   {!isMyBooking(booking) && (
-                    <p className="text-xs text-text-muted mt-1">Booked by another user</p>
+                    <p className="text-xs text-accent-blue/70 mt-2 flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      Booked by another user
+                    </p>
                   )}
+                  {isMyBooking(booking) && (
+                    <p className="text-xs text-success mt-2 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Your booking
+                    </p>
+                  )}
+                </div>
+                
+                {/* Arrow indicator */}
+                <div className="text-text-muted group-hover:text-accent-blue group-hover:translate-x-1 transition-all">
+                  →
                 </div>
               </div>
             ))}
@@ -419,61 +537,64 @@ export default function CalendarPage() {
         )}
       </Modal>
 
-      {/* Stats */}
+      {/* Stats - Enhanced */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-text-muted">
-              Total Bookings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-text-main">{bookings.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-text-muted">
-              Upcoming
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* FIX: Use IST time for accurate upcoming count */}
-            <div className="text-2xl font-bold text-accent-blue">
-              {bookings.filter(b =>
-                new Date(b.start) > getISTNow() &&
-                ['CONFIRMED', 'PENDING'].includes(b.status)
-              ).length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-text-muted">
-              Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">
-              {bookings.filter(b => b.status === 'CHECKED_IN').length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-text-muted">
-              Completed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-text-muted">
-              {bookings.filter(b => b.status === 'COMPLETED').length}
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          {
+            label: 'Total Bookings',
+            value: bookings.length,
+            emoji: '📊',
+            gradient: 'from-slate-500/20 to-slate-600/10',
+            textColor: 'text-text-main',
+            icon: BarChart3,
+          },
+          {
+            label: 'Upcoming',
+            value: bookings.filter(b =>
+              new Date(b.start) > getISTNow() &&
+              ['CONFIRMED', 'PENDING'].includes(b.status)
+            ).length,
+            emoji: '🚀',
+            gradient: 'from-accent-blue/20 to-cyan-500/10',
+            textColor: 'text-accent-blue',
+            icon: TrendingUp,
+          },
+          {
+            label: 'Active Now',
+            value: bookings.filter(b => b.status === 'CHECKED_IN').length,
+            emoji: '🔥',
+            gradient: 'from-success/20 to-emerald-500/10',
+            textColor: 'text-success',
+            icon: Sparkles,
+          },
+          {
+            label: 'Completed',
+            value: bookings.filter(b => b.status === 'COMPLETED').length,
+            emoji: '🏆',
+            gradient: 'from-amber-500/20 to-yellow-500/10',
+            textColor: 'text-amber-400',
+            icon: CheckCircle2,
+          },
+        ].map((stat, index) => (
+          <Card 
+            key={stat.label} 
+            className={`bg-gradient-to-br ${stat.gradient} border-card-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-text-muted flex items-center justify-between">
+                <span>{stat.label}</span>
+                <span className="text-xl group-hover:scale-125 transition-transform">{stat.emoji}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${stat.textColor} flex items-center gap-2`}>
+                <span className="tabular-nums">{stat.value}</span>
+                <stat.icon className="h-5 w-5 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

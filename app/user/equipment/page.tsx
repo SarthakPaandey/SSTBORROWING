@@ -10,6 +10,41 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
+import { Package, Sparkles, FlaskConical, Trophy, Clock, ShoppingCart, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react';
+
+// Enhanced sport icons with more detail
+const sportIcons: Record<string, string> = {
+  CRICKET: '🏏',
+  BADMINTON: '🏸',
+  TABLE_TENNIS: '🏓',
+  BASKETBALL: '🏀',
+  FOOTBALL: '⚽',
+  VOLLEYBALL: '🏐',
+  TENNIS: '🎾',
+  GENERAL: '🎯',
+};
+
+const sportNames: Record<string, string> = {
+  CRICKET: 'Cricket',
+  BADMINTON: 'Badminton',
+  TABLE_TENNIS: 'Table Tennis',
+  BASKETBALL: 'Basketball',
+  FOOTBALL: 'Football',
+  VOLLEYBALL: 'Volleyball',
+  TENNIS: 'Tennis',
+  GENERAL: 'General',
+};
+
+const sportColors: Record<string, { gradient: string; border: string; bg: string }> = {
+  CRICKET: { gradient: 'from-green-500/20 to-emerald-600/10', border: 'border-green-500/30', bg: 'bg-green-500/10' },
+  BADMINTON: { gradient: 'from-blue-500/20 to-cyan-600/10', border: 'border-blue-500/30', bg: 'bg-blue-500/10' },
+  TABLE_TENNIS: { gradient: 'from-orange-500/20 to-amber-600/10', border: 'border-orange-500/30', bg: 'bg-orange-500/10' },
+  BASKETBALL: { gradient: 'from-amber-500/20 to-yellow-600/10', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
+  FOOTBALL: { gradient: 'from-emerald-500/20 to-teal-600/10', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
+  VOLLEYBALL: { gradient: 'from-purple-500/20 to-violet-600/10', border: 'border-purple-500/30', bg: 'bg-purple-500/10' },
+  TENNIS: { gradient: 'from-lime-500/20 to-green-600/10', border: 'border-lime-500/30', bg: 'bg-lime-500/10' },
+  GENERAL: { gradient: 'from-gray-500/20 to-slate-600/10', border: 'border-gray-500/30', bg: 'bg-gray-500/10' },
+};
 
 export default function EquipmentPage() {
   const router = useRouter();
@@ -235,81 +270,135 @@ export default function EquipmentPage() {
     }
   };
 
+  // Calculate total selected items
+  const totalSelected = Object.values(selectedItems).reduce((sum, qty) => sum + qty, 0);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-accent-blue">Borrow Equipment</h1>
-        <p className="text-text-muted">Select sports or lab equipment</p>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-success/20 via-emerald-500/10 to-transparent p-6 border border-success/20">
+        {/* Background decorations */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        {/* Floating equipment icons */}
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">🏸</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🏀</div>
+        <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🏏</div>
+        
+        <div className="relative flex items-center gap-4">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-success to-emerald-500 shadow-lg shadow-success/30">
+            <Package className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-text-main">
+              Borrow Equipment
+            </h1>
+            <p className="text-text-muted">
+              Select sports or lab equipment to borrow
+            </p>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="sports">
+      {/* Cart Summary (if items selected) */}
+      {totalSelected > 0 && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-success/10 to-emerald-500/10 border border-success/30 animate-fade-in-up">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-success/20">
+                <ShoppingCart className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="font-medium text-text-main">
+                  {totalSelected} item{totalSelected !== 1 ? 's' : ''} selected
+                </p>
+                <p className="text-xs text-text-muted">Ready to book</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {Object.entries(selectedItems)
+                .filter(([_, qty]) => qty > 0)
+                .slice(0, 3)
+                .map(([itemId, qty]) => {
+                  const item = [...sportsItems, ...labItems].find(i => i._id === itemId);
+                  return item ? (
+                    <Badge key={itemId} variant="secondary" className="text-xs">
+                      {item.name} ×{qty}
+                    </Badge>
+                  ) : null;
+                })}
+              {Object.entries(selectedItems).filter(([_, qty]) => qty > 0).length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{Object.entries(selectedItems).filter(([_, qty]) => qty > 0).length - 3} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="sports" className="animate-fade-in">
         <TabsList className="mb-6">
-          <TabsTrigger value="sports">Sports Equipment</TabsTrigger>
-          <TabsTrigger value="lab">Lab Equipment</TabsTrigger>
+          <TabsTrigger value="sports" icon={<Trophy className="h-4 w-4" />}>
+            Sports Equipment
+          </TabsTrigger>
+          <TabsTrigger value="lab" icon={<FlaskConical className="h-4 w-4" />}>
+            Lab Equipment
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sports">
-          <Card>
+        <TabsContent value="sports" className="animate-fade-in-up">
+          <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent">
             <CardHeader>
-              <CardTitle>Sports Equipment</CardTitle>
-              <CardDescription>
-                Available for immediate checkout • Max 3 items per booking
-              </CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-success/10">
+                  <Trophy className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    🏆 Sports Equipment
+                    <Badge variant="success" className="text-xs">Instant Checkout</Badge>
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-2 mt-1">
+                    <Zap className="h-3 w-3" />
+                    Available for immediate checkout • Max 3 items per booking
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {/* FIX: Use IST today for accurate minimum date */}
-                <DatePicker
-                  value={date}
-                  onChange={(newDate) => {
-                    if (newDate instanceof Date) setDate(newDate);
-                  }}
-                  minDate={getISTNow()}
-                  placeholder="Select a date"
-                />
-                <CompactTimePicker
-                  date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
-                  value={startTime}
-                  onChange={setStartTime}
-                  minTime="09:00"
-                  maxTime="20:00"
-                  stepMinutes={30}
-                  label="Pickup Time"
-                  durationHint="Sports: 75 min • Lab: 24 hours"
-                />
+            <CardContent className="space-y-6">
+              {/* Date/Time Selection */}
+              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-text-main">
+                  <Clock className="h-4 w-4 text-success" />
+                  📅 Select Pickup Time
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <DatePicker
+                    value={date}
+                    onChange={(newDate) => {
+                      if (newDate instanceof Date) setDate(newDate);
+                    }}
+                    minDate={getISTNow()}
+                    placeholder="Select a date"
+                  />
+                  <CompactTimePicker
+                    date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
+                    value={startTime}
+                    onChange={setStartTime}
+                    minTime="09:00"
+                    maxTime="20:00"
+                    stepMinutes={30}
+                    label="Pickup Time"
+                    durationHint="⏱️ Duration: 75 minutes"
+                  />
+                </div>
               </div>
 
-              {/* Sport Category Groups */}
+              {/* Sport Category Groups - Enhanced */}
               <div className="space-y-4">
                 {(() => {
-                  // Group items by sport category
-                  const sportIcons: Record<string, string> = {
-                    CRICKET: '🏏',
-                    BADMINTON: '🏸',
-                    TABLE_TENNIS: '🏓',
-                    BASKETBALL: '🏀',
-                    FOOTBALL: '⚽',
-                    GENERAL: '🎯',
-                  };
-
-                  const sportNames: Record<string, string> = {
-                    CRICKET: 'Cricket',
-                    BADMINTON: 'Badminton',
-                    TABLE_TENNIS: 'Table Tennis',
-                    BASKETBALL: 'Basketball',
-                    FOOTBALL: 'Football',
-                    GENERAL: 'General',
-                  };
-
-                  const sportColors: Record<string, string> = {
-                    CRICKET: 'from-green-500/10 to-green-600/5 border-green-500/20',
-                    BADMINTON: 'from-blue-500/10 to-blue-600/5 border-blue-500/20',
-                    TABLE_TENNIS: 'from-orange-500/10 to-orange-600/5 border-orange-500/20',
-                    BASKETBALL: 'from-amber-500/10 to-amber-600/5 border-amber-500/20',
-                    FOOTBALL: 'from-emerald-500/10 to-emerald-600/5 border-emerald-500/20',
-                    GENERAL: 'from-gray-500/10 to-gray-600/5 border-gray-500/20',
-                  };
-
                   // Group items
                   const grouped = sportsItems.reduce((acc: Record<string, any[]>, item) => {
                     const category = item.sportCategory || 'GENERAL';
@@ -318,65 +407,104 @@ export default function EquipmentPage() {
                     return acc;
                   }, {});
 
-                  const categoryOrder = ['CRICKET', 'BADMINTON', 'TABLE_TENNIS', 'BASKETBALL', 'FOOTBALL', 'GENERAL'];
+                  const categoryOrder = ['CRICKET', 'BADMINTON', 'TABLE_TENNIS', 'BASKETBALL', 'FOOTBALL', 'VOLLEYBALL', 'TENNIS', 'GENERAL'];
 
-                  return categoryOrder.map((category) => {
+                  return categoryOrder.map((category, catIndex) => {
                     const items = grouped[category];
                     if (!items || items.length === 0) return null;
+
+                    const colors = sportColors[category] || sportColors.GENERAL;
+                    const availableCount = items.filter((i: any) => i.availableNow > 0).length;
 
                     return (
                       <div
                         key={category}
-                        className={`rounded-xl border bg-gradient-to-br ${sportColors[category]} p-4 space-y-3`}
+                        className={`rounded-2xl border ${colors.border} bg-gradient-to-br ${colors.gradient} p-4 space-y-3 animate-fade-in-up hover:shadow-lg transition-all duration-300`}
+                        style={{ animationDelay: `${catIndex * 50}ms` }}
                       >
                         {/* Category Header */}
-                        <div className="flex items-center gap-2 pb-2 border-b border-border-subtle/50">
-                          <span className="text-2xl">{sportIcons[category]}</span>
-                          <h3 className="font-semibold text-text-main">{sportNames[category]}</h3>
-                          <Badge variant="secondary" className="ml-auto text-xs">
+                        <div className="flex items-center justify-between pb-3 border-b border-card-border/30">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl hover:scale-125 transition-transform cursor-default">
+                              {sportIcons[category]}
+                            </span>
+                            <div>
+                              <h3 className="font-bold text-text-main text-lg">{sportNames[category]}</h3>
+                              <p className="text-xs text-text-muted">
+                                {availableCount}/{items.length} items available
+                              </p>
+                            </div>
+                          </div>
+                          <Badge className={`${colors.bg} text-xs`}>
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
                         </div>
 
                         {/* Items */}
                         <div className="space-y-2">
-                          {items.map((item: any) => (
-                            <div
-                              key={item._id}
-                              className="flex items-center justify-between bg-surface-card/50 rounded-lg p-3 hover:bg-surface-card transition-colors"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-text-main truncate">{item.name}</p>
-                                  {item.availableNow === 0 && (
-                                    <Badge variant="destructive" className="text-xs">Out</Badge>
-                                  )}
+                          {items.map((item: any, itemIndex: number) => {
+                            const isSelected = (selectedItems[item._id] || 0) > 0;
+                            const isOutOfStock = item.availableNow === 0;
+                            
+                            return (
+                              <div
+                                key={item._id}
+                                className={`flex items-center justify-between rounded-xl p-3 transition-all duration-200 ${
+                                  isSelected 
+                                    ? 'bg-success/10 border border-success/30 shadow-sm' 
+                                    : isOutOfStock
+                                    ? 'bg-bg-dark/30 opacity-60'
+                                    : 'bg-card/50 hover:bg-card border border-transparent hover:border-card-border'
+                                }`}
+                                style={{ animationDelay: `${itemIndex * 30}ms` }}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    {isSelected && <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />}
+                                    <p className="font-medium text-text-main truncate">{item.name}</p>
+                                    {isOutOfStock && (
+                                      <Badge variant="destructive" className="text-xs flex-shrink-0">
+                                        ❌ Out
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <div className="flex-1 h-1.5 bg-bg-dark rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full rounded-full transition-all ${
+                                          item.availableNow === 0 ? 'bg-destructive' :
+                                          item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
+                                        }`}
+                                        style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs text-text-muted whitespace-nowrap">
+                                      {item.availableNow}/{item.qtyTotal}
+                                    </span>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-text-muted">
-                                  {item.availableNow}/{item.qtyTotal} available
-                                </p>
+                                <div className="flex items-center gap-1 ml-4">
+                                  <button
+                                    onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
+                                    disabled={(selectedItems[item._id] || 0) === 0}
+                                    className="w-9 h-9 rounded-xl bg-bg-dark border border-card-border flex items-center justify-center hover:bg-card hover:border-destructive/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-text-main hover:text-destructive"
+                                  >
+                                    −
+                                  </button>
+                                  <span className={`w-10 text-center font-bold text-lg ${isSelected ? 'text-success' : 'text-text-main'}`}>
+                                    {selectedItems[item._id] || 0}
+                                  </span>
+                                  <button
+                                    onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
+                                    disabled={isOutOfStock || (selectedItems[item._id] || 0) >= item.availableNow}
+                                    className="w-9 h-9 rounded-xl bg-success/10 border border-success/30 flex items-center justify-center hover:bg-success/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-success"
+                                  >
+                                    +
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
-                                  disabled={(selectedItems[item._id] || 0) === 0}
-                                  className="w-8 h-8 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-center hover:bg-surface-card disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-lg font-medium"
-                                >
-                                  −
-                                </button>
-                                <span className="w-8 text-center font-semibold text-text-main">
-                                  {selectedItems[item._id] || 0}
-                                </span>
-                                <button
-                                  onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
-                                  disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
-                                  className="w-8 h-8 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center hover:bg-accent-blue/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-lg font-medium text-accent-blue"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -384,126 +512,245 @@ export default function EquipmentPage() {
                 })()}
               </div>
 
+              {/* Error/Success Messages - Enhanced */}
               {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
+                <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
+                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-destructive">Booking Error</p>
+                    <p className="text-sm text-destructive/80">{error}</p>
+                  </div>
                 </div>
               )}
 
               {success && (
-                <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
-                  Booking successful! Redirecting...
+                <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
+                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-success">🎉 Booking Successful!</p>
+                    <p className="text-sm text-success/80">Redirecting to your bookings...</p>
+                  </div>
                 </div>
               )}
 
+              {/* Book Button - Enhanced */}
               <Button
                 onClick={() => handleBook(sportsResources[0]?._id, 'EQUIPMENT')}
                 disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
-                className="w-full"
+                className="w-full h-12 text-lg font-semibold group relative overflow-hidden"
+                variant={Object.values(selectedItems).some((v) => v > 0) ? 'default' : 'outline'}
               >
-                {loading ? 'Booking...' : 'Book Equipment'}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    Booking...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Package className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                    {Object.values(selectedItems).some((v) => v > 0) 
+                      ? `🎾 Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
+                      : 'Select Items to Book'
+                    }
+                  </span>
+                )}
               </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="lab">
-          <Card>
+        <TabsContent value="lab" className="animate-fade-in-up">
+          <Card className="border-accent-purple-1/20 bg-gradient-to-br from-accent-purple-1/5 to-transparent">
             <CardHeader>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <CardTitle className="mb-0">Lab Equipment</CardTitle>
-                  <Badge variant="warning">Requires Admin Approval</Badge>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-accent-purple-1/10">
+                  <FlaskConical className="h-6 w-6 text-accent-purple-1" />
                 </div>
-                <CardDescription>Max 1 item per booking</CardDescription>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <CardTitle className="flex items-center gap-2">
+                      🔬 Lab Equipment
+                    </CardTitle>
+                    <Badge variant="warning" className="animate-pulse-subtle">
+                      ⏳ Requires Approval
+                    </Badge>
+                  </div>
+                  <CardDescription className="mt-1">
+                    Max 1 item per booking • 24-hour borrowing period
+                  </CardDescription>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {/* FIX: Use IST today for accurate minimum date */}
-                <DatePicker
-                  value={date}
-                  onChange={(newDate) => {
-                    if (newDate instanceof Date) setDate(newDate);
-                  }}
-                  minDate={getISTNow()}
-                  placeholder="Select a date"
-                />
-                <CompactTimePicker
-                  date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
-                  value={startTime}
-                  onChange={setStartTime}
-                  minTime="09:00"
-                  maxTime="20:00"
-                  stepMinutes={30}
-                  label="Pickup Time"
-                  durationHint="Lab: 24 hours"
-                />
+            <CardContent className="space-y-6">
+              {/* Info Banner */}
+              <div className="p-4 rounded-xl bg-accent-purple-1/10 border border-accent-purple-1/20 flex items-start gap-3">
+                <Info className="h-5 w-5 text-accent-purple-1 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-text-main">Approval Required</p>
+                  <p className="text-sm text-text-muted">
+                    Lab equipment requests need admin approval. You&apos;ll receive a notification once approved.
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                {labItems.map((item) => (
-                  <div
-                    key={item._id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{item.name}</p>
-                        {item.availableNow === 0 && (
-                          <Badge variant="destructive">Out of Stock</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Available: {item.availableNow}/{item.qtyTotal}
-                      </p>
-                      {item.restricted && <Badge variant="destructive" className="mt-1">Restricted</Badge>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
-                        }
-                        disabled={(selectedItems[item._id] || 0) === 0}
-                      >
-                        -
-                      </Button>
-                      <span className="w-8 text-center">{selectedItems[item._id] || 0}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
-                        }
-                        disabled={item.availableNow === 0 || (selectedItems[item._id] || 0) >= item.availableNow}
-                      >
-                        +
-                      </Button>
-                    </div>
+              {/* Date/Time Selection */}
+              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-text-main">
+                  <Clock className="h-4 w-4 text-accent-purple-1" />
+                  📅 Select Pickup Time
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <DatePicker
+                    value={date}
+                    onChange={(newDate) => {
+                      if (newDate instanceof Date) setDate(newDate);
+                    }}
+                    minDate={getISTNow()}
+                    placeholder="Select a date"
+                  />
+                  <CompactTimePicker
+                    date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
+                    value={startTime}
+                    onChange={setStartTime}
+                    minTime="09:00"
+                    maxTime="20:00"
+                    stepMinutes={30}
+                    label="Pickup Time"
+                    durationHint="⏱️ Duration: 24 hours"
+                  />
+                </div>
+              </div>
+
+              {/* Lab Items - Enhanced */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-text-muted flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Available Equipment
+                </h3>
+                {labItems.length === 0 ? (
+                  <div className="text-center py-8 text-text-muted">
+                    <span className="text-4xl mb-2 block">🔬</span>
+                    <p>No lab equipment available</p>
                   </div>
-                ))}
+                ) : (
+                  labItems.map((item, index) => {
+                    const isSelected = (selectedItems[item._id] || 0) > 0;
+                    const isOutOfStock = item.availableNow === 0;
+                    
+                    return (
+                      <div
+                        key={item._id}
+                        className={`rounded-xl border p-4 transition-all duration-200 animate-fade-in-up ${
+                          isSelected 
+                            ? 'bg-accent-purple-1/10 border-accent-purple-1/30 shadow-lg shadow-accent-purple-1/10' 
+                            : isOutOfStock
+                            ? 'bg-bg-dark/30 opacity-60 border-card-border'
+                            : 'bg-card border-card-border hover:border-accent-purple-1/30 hover:shadow-md'
+                        }`}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isSelected && <CheckCircle2 className="h-4 w-4 text-accent-purple-1" />}
+                              <span className="text-xl">🔬</span>
+                              <p className="font-semibold text-text-main">{item.name}</p>
+                              {isOutOfStock && (
+                                <Badge variant="destructive">❌ Out of Stock</Badge>
+                              )}
+                              {item.restricted && (
+                                <Badge variant="destructive" className="text-xs">
+                                  🔒 Restricted
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-2">
+                              <div className="flex-1 max-w-[200px] h-2 bg-bg-dark rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all ${
+                                    item.availableNow === 0 ? 'bg-destructive' :
+                                    item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-accent-purple-1'
+                                  }`}
+                                  style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-text-muted">
+                                {item.availableNow}/{item.qtyTotal} available
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
+                              }
+                              disabled={(selectedItems[item._id] || 0) === 0}
+                              className="w-10 h-10 text-lg hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                            >
+                              −
+                            </Button>
+                            <span className={`w-10 text-center font-bold text-lg ${isSelected ? 'text-accent-purple-1' : 'text-text-main'}`}>
+                              {selectedItems[item._id] || 0}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
+                              }
+                              disabled={isOutOfStock || (selectedItems[item._id] || 0) >= item.availableNow}
+                              className="w-10 h-10 text-lg hover:bg-accent-purple-1/10 hover:text-accent-purple-1 hover:border-accent-purple-1/30"
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
+              {/* Error/Success Messages */}
               {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
+                <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
+                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-destructive">Request Error</p>
+                    <p className="text-sm text-destructive/80">{error}</p>
+                  </div>
                 </div>
               )}
 
               {success && (
-                <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">
-                  Booking request submitted! Awaiting approval...
+                <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
+                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-success">📨 Request Submitted!</p>
+                    <p className="text-sm text-success/80">Awaiting admin approval...</p>
+                  </div>
                 </div>
               )}
 
+              {/* Submit Button */}
               <Button
                 onClick={() => handleBook(labResources[0]?._id, 'EQUIPMENT')}
                 disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
-                className="w-full"
+                className="w-full h-12 text-lg font-semibold group bg-gradient-to-r from-accent-purple-1 to-pink-500 hover:from-accent-purple-1/90 hover:to-pink-500/90"
               >
-                {loading ? 'Submitting...' : 'Request Lab Equipment'}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    Submitting Request...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <FlaskConical className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                    🔬 Request Lab Equipment
+                  </span>
+                )}
               </Button>
             </CardContent>
           </Card>

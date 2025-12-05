@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
-import { QrCode, Clock } from 'lucide-react';
+import { QrCode, Clock, Calendar, ArrowRight, RefreshCw, X, Sparkles, Package, AlertCircle } from 'lucide-react';
 import { EnrichedBooking, BookingItem } from '@/types/booking';
 
 export default function BookingsPage() {
@@ -342,10 +342,10 @@ export default function BookingsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-12 w-64 animate-pulse rounded bg-card"></div>
+        <div className="h-12 w-64 skeleton rounded-xl"></div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 animate-pulse rounded-lg bg-card"></div>
+            <div key={i} className="h-32 skeleton rounded-xl" style={{ animationDelay: `${i * 0.1}s` }}></div>
           ))}
         </div>
       </div>
@@ -353,111 +353,181 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">My Bookings</h1>
-        <p className="text-gray-600">View and manage your bookings</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="animate-fade-in-down">
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <span className="text-4xl animate-bounce-subtle">📋</span>
+          My Bookings
+        </h1>
+        <p className="text-text-muted mt-1">View and manage your reservations ✨</p>
       </div>
 
-      <Card>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
+        <div className="p-4 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
+          <p className="text-2xl font-bold text-success">{upcomingBookings.filter(b => b.status === 'CONFIRMED').length}</p>
+          <p className="text-sm text-text-muted">✅ Confirmed</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-warning/10 to-warning/5 border border-warning/20">
+          <p className="text-2xl font-bold text-warning">{upcomingBookings.filter(b => b.status === 'PENDING').length}</p>
+          <p className="text-sm text-text-muted">⏳ Pending</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 border border-accent-blue/20">
+          <p className="text-2xl font-bold text-accent-blue">{upcomingBookings.filter(b => b.status === 'CHECKED_IN').length}</p>
+          <p className="text-sm text-text-muted">📍 Checked In</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-text-muted/10 to-text-muted/5 border border-text-muted/20">
+          <p className="text-2xl font-bold text-text-muted">{pastBookings.length}</p>
+          <p className="text-sm text-text-muted">📜 Past</p>
+        </div>
+      </div>
+
+      {/* Upcoming Bookings */}
+      <Card variant="glow" className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader>
-          <CardTitle>Upcoming Bookings</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">📅</span>
+            Upcoming Bookings
+            {upcomingBookings.length > 0 && (
+              <Badge variant="info" className="ml-2">{upcomingBookings.length}</Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {upcomingBookings.length === 0 ? (
-            <p className="text-center text-gray-500">No upcoming bookings</p>
+            <div className="empty-state py-12">
+              <div className="empty-state-icon text-6xl">📭</div>
+              <h3 className="text-xl font-semibold text-text-main mb-2">No Upcoming Bookings</h3>
+              <p className="text-text-muted mb-6">Your schedule is clear! Time to book something? 🚀</p>
+              <Button variant="gradient" onClick={() => window.location.href = '/user/facilities'}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Browse Facilities
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
-              {upcomingBookings.map((booking) => (
+              {upcomingBookings.map((booking, index) => (
                 <div
                   key={booking._id}
-                  className="flex items-start justify-between rounded-lg border p-4"
+                  className="group relative overflow-hidden rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-5 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 animate-fade-in-left"
+                  style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
-                    </div>
-                    <p className="mt-1 text-sm text-gray-600">
-                      {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
-                      {booking.kind !== 'EQUIPMENT' && ` - ${formatDateTime(booking.end)}`}
-                    </p>
-                    {booking.kind === 'EQUIPMENT' && (
-                      <p className="mt-1 text-sm text-gray-600">
-                        Return by: {formatDateTime(booking.end)}
-                      </p>
-                    )}
-                    {booking.items && booking.items.length > 0 && (
-                      <div className="mt-2 text-sm text-gray-600">
-                        Items: {booking.items.map((item: BookingItem) => `${item.name} (${item.qty})`).join(', ')}
+                  {/* Status indicator line */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                    booking.status === 'CONFIRMED' ? 'bg-success' :
+                    booking.status === 'PENDING' ? 'bg-warning' :
+                    booking.status === 'CHECKED_IN' ? 'bg-accent-blue' :
+                    'bg-text-muted'
+                  }`} />
+                  
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-text-main text-lg group-hover:text-accent-blue transition-colors">
+                          {booking.resourceName}
+                        </p>
+                        {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                       </div>
-                    )}
-                    {/* Show reschedule count badge if applicable */}
-                    {(booking.rescheduleCount || 0) > 0 && (
-                      <Badge variant="secondary" className="mt-2">
-                        Rescheduled {booking.rescheduleCount}x
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleGenerateQR(booking._id, new Date(booking.start).toISOString())}
-                      >
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Get QR
-                      </Button>
-                    )}
-                    {/* Reschedule button with validation */}
-                    {(() => {
-                      const rescheduleCheck = canReschedule(booking);
-                      if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
-                        return rescheduleCheck.allowed ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const today = getISTNow();
-                              const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                              setRescheduleModal({
-                                open: true,
-                                booking,
-                                selectedDate: todayDateStr,
-                                selectedSlot: undefined,
-                                newStart: undefined,
-                                newEnd: undefined,
-                              });
-                              setConfirmedPenalty(false);
-                            }}
-                          >
-                            <Clock className="mr-2 h-4 w-4" />
-                            Reschedule
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled
-                            title={rescheduleCheck.reason}
-                          >
-                            <Clock className="mr-2 h-4 w-4" />
-                            Reschedule
-                          </Button>
-                        );
-                      }
-                      return null;
-                    })()}
-                    {/* Cancel button */}
-                    {['CONFIRMED', 'PENDING'].includes(booking.status) && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleCancel(booking._id)}
-                      >
-                        Cancel
-                      </Button>
-                    )}
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4 text-accent-blue" />
+                          {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
+                          {booking.kind !== 'EQUIPMENT' && ` → ${formatDateTime(booking.end)}`}
+                        </span>
+                        {booking.kind === 'EQUIPMENT' && (
+                          <span className="flex items-center gap-1.5 text-warning">
+                            <Clock className="h-4 w-4" />
+                            Return by: {formatDateTime(booking.end)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {booking.items && booking.items.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {booking.items.map((item: BookingItem, i: number) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-accent-blue/10 text-xs text-accent-blue">
+                              <Package className="h-3 w-3" />
+                              {item.name} ({item.qty})
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {(booking.rescheduleCount || 0) > 0 && (
+                        <Badge variant="secondary" icon="🔄" className="mt-2">
+                          Rescheduled {booking.rescheduleCount}x
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateQR(booking._id, new Date(booking.start).toISOString())}
+                          loading={generatingQR === booking._id}
+                          className="group/btn"
+                        >
+                          <QrCode className="mr-2 h-4 w-4 group-hover/btn:animate-pulse" />
+                          Get QR
+                        </Button>
+                      )}
+                      
+                      {(() => {
+                        const rescheduleCheck = canReschedule(booking);
+                        if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
+                          return rescheduleCheck.allowed ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const today = getISTNow();
+                                const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                                setRescheduleModal({
+                                  open: true,
+                                  booking,
+                                  selectedDate: todayDateStr,
+                                  selectedSlot: undefined,
+                                  newStart: undefined,
+                                  newEnd: undefined,
+                                });
+                                setConfirmedPenalty(false);
+                              }}
+                              className="group/btn"
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4 group-hover/btn:rotate-180 transition-transform duration-500" />
+                              Reschedule
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled
+                              title={rescheduleCheck.reason}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Reschedule
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
+                      
+                      {['CONFIRMED', 'PENDING'].includes(booking.status) && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleCancel(booking._id)}
+                          className="group/btn"
+                        >
+                          <X className="mr-2 h-4 w-4 group-hover/btn:rotate-90 transition-transform" />
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -466,31 +536,58 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Past Bookings */}
+      <Card className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <CardHeader>
-          <CardTitle>Past Bookings</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">📜</span>
+            Past Bookings
+            {pastBookings.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{pastBookings.length}</Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {pastBookings.length === 0 ? (
-            <p className="text-center text-gray-500">No past bookings</p>
+            <div className="text-center py-8">
+              <p className="text-text-muted">No past bookings yet 🌱</p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {pastBookings.slice(0, 10).map((booking) => (
+            <div className="space-y-3">
+              {pastBookings.slice(0, 10).map((booking, index) => (
                 <div
                   key={booking._id}
-                  className="flex items-start justify-between rounded-lg border p-4"
+                  className="flex items-center justify-between rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
+                  style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{booking.resourceName}</p>
-                      {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
+                      booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
+                      booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
+                      'bg-text-muted/10 text-text-muted'
+                    }`}>
+                      {booking.status === 'COMPLETED' ? '✅' :
+                       booking.status === 'CANCELLED' ? '❌' :
+                       booking.status === 'NO_SHOW' ? '👻' : '📋'}
                     </div>
-                    <p className="mt-1 text-sm text-gray-600">
-                      {formatDateTime(booking.start)}
-                    </p>
+                    <div>
+                      <p className="font-medium text-text-main">{booking.resourceName}</p>
+                      <p className="text-sm text-text-muted flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatDateTime(booking.start)}
+                      </p>
+                    </div>
                   </div>
+                  {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                 </div>
               ))}
+              
+              {pastBookings.length > 10 && (
+                <p className="text-center text-sm text-text-muted pt-4">
+                  Showing 10 of {pastBookings.length} past bookings
+                </p>
+              )}
             </div>
           )}
         </CardContent>

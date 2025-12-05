@@ -6,7 +6,17 @@ import { cn } from '@/lib/utils';
 const TabsContext = React.createContext<{
   value: string;
   onValueChange: (value: string) => void;
-}>({ value: '', onValueChange: () => {} });
+  variant: 'default' | 'pills' | 'underline';
+}>({ value: '', onValueChange: () => {}, variant: 'default' });
+
+interface TabsProps {
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children: React.ReactNode;
+  className?: string;
+  variant?: 'default' | 'pills' | 'underline';
+}
 
 export function Tabs({
   defaultValue,
@@ -14,21 +24,15 @@ export function Tabs({
   onValueChange: controlledOnValueChange,
   children,
   className,
-}: {
-  defaultValue?: string;
-  value?: string;
-  onValueChange?: (value: string) => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
+  variant = 'default',
+}: TabsProps) {
   const [internalValue, setInternalValue] = React.useState(defaultValue || '');
 
-  // Use controlled value if provided, otherwise use internal state
   const value = controlledValue !== undefined ? controlledValue : internalValue;
   const onValueChange = controlledOnValueChange || setInternalValue;
 
   return (
-    <TabsContext.Provider value={{ value, onValueChange }}>
+    <TabsContext.Provider value={{ value, onValueChange, variant }}>
       <div className={className}>{children}</div>
     </TabsContext.Provider>
   );
@@ -41,10 +45,16 @@ export function TabsList({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { variant } = React.useContext(TabsContext);
+
   return (
     <div
       className={cn(
-        'inline-flex h-12 items-center justify-center rounded-full bg-bg-dark border border-card-border p-1.5 gap-1',
+        'inline-flex items-center justify-center',
+        // Variant styles - cleaner, more minimal
+        variant === 'default' && 'h-11 rounded-xl bg-bg-dark/80 border border-card-border/50 p-1 gap-1',
+        variant === 'pills' && 'h-11 rounded-xl bg-bg-dark/50 border border-card-border/50 p-1 gap-1',
+        variant === 'underline' && 'border-b border-card-border pb-1 gap-0',
         className
       )}
     >
@@ -53,30 +63,84 @@ export function TabsList({
   );
 }
 
+interface TabsTriggerProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+  icon?: React.ReactNode;
+  badge?: string | number;
+}
+
 export function TabsTrigger({
   value,
   children,
   className,
-}: {
-  value: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const { value: selectedValue, onValueChange } = React.useContext(TabsContext);
+  icon,
+  badge,
+}: TabsTriggerProps) {
+  const { value: selectedValue, onValueChange, variant } = React.useContext(TabsContext);
   const isSelected = selectedValue === value;
 
   return (
     <button
       onClick={() => onValueChange(value)}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-full px-6 py-2 text-sm font-semibold transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
-        isSelected
-          ? 'bg-gradient-purple text-white shadow-glow-purple'
-          : 'text-text-muted hover:text-text-main',
+        'relative inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium',
+        'transition-all duration-200 ease-out',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50',
+        'disabled:pointer-events-none disabled:opacity-50',
+        
+        // Default variant - clean and professional
+        variant === 'default' && [
+          'rounded-lg px-4 py-2',
+          isSelected
+            ? 'bg-accent-blue text-white shadow-sm'
+            : 'text-text-muted hover:text-text-main hover:bg-white/5',
+        ],
+        
+        // Pills variant
+        variant === 'pills' && [
+          'rounded-lg px-4 py-2',
+          isSelected
+            ? 'bg-accent-blue text-white shadow-sm'
+            : 'text-text-muted hover:text-text-main hover:bg-white/5',
+        ],
+        
+        // Underline variant
+        variant === 'underline' && [
+          'px-4 py-2 border-b-2 -mb-[3px]',
+          isSelected
+            ? 'border-accent-blue text-accent-blue'
+            : 'border-transparent text-text-muted hover:text-text-main hover:border-text-muted/30',
+        ],
+        
         className
       )}
     >
-      {children}
+      {/* Icon */}
+      {icon && (
+        <span className={cn(
+          'transition-colors duration-200',
+          isSelected ? 'text-white' : 'text-text-muted'
+        )}>
+          {icon}
+        </span>
+      )}
+      
+      {/* Label */}
+      <span>{children}</span>
+      
+      {/* Badge */}
+      {badge !== undefined && (
+        <span className={cn(
+          'ml-1 px-1.5 py-0.5 rounded text-xs font-medium',
+          isSelected 
+            ? 'bg-white/20 text-white' 
+            : 'bg-text-muted/20 text-text-muted'
+        )}>
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -85,21 +149,28 @@ export function TabsContent({
   value,
   children,
   className,
+  forceMount = false,
 }: {
   value: string;
   children: React.ReactNode;
   className?: string;
+  forceMount?: boolean;
 }) {
   const { value: selectedValue } = React.useContext(TabsContext);
+  const isSelected = selectedValue === value;
 
-  if (selectedValue !== value) return null;
+  if (!isSelected && !forceMount) return null;
 
   return (
     <div
       className={cn(
-        'mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'mt-4 ring-offset-background',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'animate-fade-in-up',
+        !isSelected && forceMount && 'hidden',
         className
       )}
+      data-state={isSelected ? 'active' : 'inactive'}
     >
       {children}
     </div>

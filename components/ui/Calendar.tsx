@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
@@ -20,12 +20,21 @@ export interface CalendarProps {
   onEventClick?: (event: CalendarEvent) => void;
   onMonthChange?: (date: Date) => void;
   selectedDate?: Date;
-  viewDate?: Date; // Controlled date for the current view
+  viewDate?: Date;
 }
 
+// Type icons and emojis
+const typeConfig = {
+  FACILITY: { emoji: '🏟️', color: 'bg-accent-blue', gradient: 'from-accent-blue to-cyan-500' },
+  ROOM: { emoji: '🚪', color: 'bg-accent-purple-1', gradient: 'from-accent-purple-1 to-pink-500' },
+  EQUIPMENT: { emoji: '🎾', color: 'bg-success', gradient: 'from-success to-emerald-400' },
+  LIBRARY: { emoji: '📚', color: 'bg-warning', gradient: 'from-warning to-amber-400' },
+};
+
 export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange, selectedDate, viewDate }: CalendarProps) {
-  // Use viewDate if provided, otherwise use internal state
   const [internalDate, setInternalDate] = useState(getISTNow());
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationDirection, setAnimationDirection] = useState<'left' | 'right'>('right');
   const currentDate = viewDate || internalDate;
 
   const monthNames = [
@@ -33,18 +42,19 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const monthEmojis = ['❄️', '💝', '🌸', '🌷', '🌺', '☀️', '🌴', '🌻', '🍂', '🎃', '🍁', '🎄'];
+
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayEmojis = ['🌞', '🌙', '🔥', '💧', '⚡', '💚', '⭐'];
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Get first day of month and number of days
   const firstDayOfMonth = new Date(year, month, 1);
   const lastDayOfMonth = new Date(year, month + 1, 0);
   const daysInMonth = lastDayOfMonth.getDate();
   const startingDayOfWeek = firstDayOfMonth.getDay();
 
-  // Get events for a specific date
   const getEventsForDate = (date: Date) => {
     return events.filter(event => {
       const eventDate = new Date(event.date);
@@ -56,7 +66,6 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
     });
   };
 
-  // Check if date is today (using IST timezone)
   const isToday = (date: Date) => {
     const today = getISTNow();
     return (
@@ -66,7 +75,6 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
     );
   };
 
-  // Check if date is selected
   const isSelected = (date: Date) => {
     if (!selectedDate) return false;
     return (
@@ -76,70 +84,69 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
     );
   };
 
-  // Navigate months
-  // Navigate months
+  const animateTransition = (direction: 'left' | 'right') => {
+    setAnimationDirection(direction);
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 300);
+  };
+
   const goToPreviousMonth = () => {
+    animateTransition('right');
     const newDate = new Date(year, month - 1, 1);
     if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 
   const goToNextMonth = () => {
+    animateTransition('left');
     const newDate = new Date(year, month + 1, 1);
     if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 
   const goToToday = () => {
-    // FIX: Use IST timezone when navigating to today
     const newDate = getISTNow();
     if (!viewDate) setInternalDate(newDate);
     onMonthChange?.(newDate);
   };
 
-  // Generate calendar days
   const calendarDays = [];
-
-  // Add empty cells for days before the first day of the month
   for (let i = 0; i < startingDayOfWeek; i++) {
     calendarDays.push(null);
   }
-
-  // Add cells for each day of the month
   for (let day = 1; day <= daysInMonth; day++) {
     calendarDays.push(new Date(year, month, day));
   }
 
-  // Get event type color
   const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case 'FACILITY':
-        return 'bg-accent-blue';
-      case 'ROOM':
-        return 'bg-accent-purple-1';
-      case 'EQUIPMENT':
-        return 'bg-success';
-      case 'LIBRARY':
-        return 'bg-warning';
-      default:
-        return 'bg-badge-blue';
-    }
+    return typeConfig[type as keyof typeof typeConfig]?.color || 'bg-badge-blue';
+  };
+
+  const getEventTypeEmoji = (type: string) => {
+    return typeConfig[type as keyof typeof typeConfig]?.emoji || '📌';
   };
 
   return (
     <div className="space-y-4">
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between">
+      {/* Calendar Header - Enhanced */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-bg-dark/50 to-transparent rounded-xl p-4 border border-card-border/50">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-text-main">
-            {monthNames[month]} {year}
-          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-3xl animate-bounce-subtle">{monthEmojis[month]}</span>
+            <div>
+              <h2 className="text-2xl font-bold text-text-main">
+                {monthNames[month]}
+              </h2>
+              <p className="text-sm text-text-muted">{year}</p>
+            </div>
+          </div>
           <Button
             variant="outline"
             size="sm"
             onClick={goToToday}
-            className="hidden sm:inline-flex"
+            className="hidden sm:inline-flex gap-2 group"
           >
+            <CalendarIcon className="h-4 w-4 group-hover:animate-pulse" />
             Today
           </Button>
         </div>
@@ -148,43 +155,52 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
             variant="outline"
             size="sm"
             onClick={goToPreviousMonth}
-            className="h-9 w-9 p-0"
+            className="h-10 w-10 p-0 hover:bg-accent-blue/10 hover:border-accent-blue/30 group"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-5 w-5 group-hover:-translate-x-0.5 transition-transform" />
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={goToNextMonth}
-            className="h-9 w-9 p-0"
+            className="h-10 w-10 p-0 hover:bg-accent-blue/10 hover:border-accent-blue/30 group"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="rounded-xl border border-card-border bg-card overflow-hidden shadow-lg">
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 bg-bg-dark">
-          {daysOfWeek.map((day) => (
+      {/* Calendar Grid - Enhanced */}
+      <div className={cn(
+        "rounded-2xl border border-card-border bg-card overflow-hidden shadow-xl transition-all duration-300",
+        isAnimating && animationDirection === 'left' && 'animate-fade-in-left',
+        isAnimating && animationDirection === 'right' && 'animate-fade-in-right'
+      )}>
+        {/* Day Headers with emojis */}
+        <div className="grid grid-cols-7 bg-gradient-to-r from-bg-dark via-bg-dark to-bg-dark/80">
+          {daysOfWeek.map((day, index) => (
             <div
               key={day}
-              className="p-3 text-center text-sm font-semibold text-text-muted uppercase tracking-wider"
+              className="p-3 text-center group cursor-default"
             >
-              {day}
+              <span className="text-lg opacity-50 group-hover:opacity-100 transition-opacity hidden sm:block">
+                {dayEmojis[index]}
+              </span>
+              <span className="text-sm font-semibold text-text-muted uppercase tracking-wider">
+                {day}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Calendar Days */}
-        <div className="grid grid-cols-7 gap-px bg-card-border">
+        <div className="grid grid-cols-7 gap-px bg-card-border/50">
           {calendarDays.map((date, index) => {
             if (!date) {
               return (
                 <div
                   key={`empty-${index}`}
-                  className="min-h-[90px] sm:min-h-[110px] bg-bg-very-dark/30"
+                  className="min-h-[90px] sm:min-h-[120px] bg-bg-very-dark/20"
                 />
               );
             }
@@ -192,34 +208,48 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
             const dayEvents = getEventsForDate(date);
             const isCurrentDay = isToday(date);
             const isSelectedDay = isSelected(date);
+            const hasEvents = dayEvents.length > 0;
 
             return (
               <div
                 key={date.toISOString()}
                 onClick={() => onDateClick?.(date)}
                 className={cn(
-                  'min-h-[90px] sm:min-h-[110px] p-2 transition-all cursor-pointer bg-card relative group',
+                  'min-h-[90px] sm:min-h-[120px] p-2 transition-all duration-200 cursor-pointer bg-card relative group',
                   'hover:bg-accent-blue/5 hover:shadow-inner',
-                  isCurrentDay && 'bg-accent-blue/10',
-                  isSelectedDay && 'bg-accent-purple-1/10',
-                  dayEvents.length > 0 && 'font-medium'
+                  isCurrentDay && 'bg-gradient-to-br from-accent-blue/15 to-accent-blue/5',
+                  isSelectedDay && 'bg-gradient-to-br from-accent-purple-1/15 to-accent-purple-1/5 ring-2 ring-accent-purple-1/30 ring-inset',
+                  hasEvents && 'font-medium'
                 )}
               >
-                <div className="flex flex-col h-full">
+                {/* Hover glow effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 to-transparent" />
+                </div>
+
+                <div className="flex flex-col h-full relative">
+                  {/* Date number */}
                   <div
                     className={cn(
-                      'text-sm mb-2 w-8 h-8 flex items-center justify-center rounded-full transition-all',
-                      isCurrentDay && 'bg-accent-blue text-white font-bold shadow-lg shadow-accent-blue/30',
-                      isSelectedDay && !isCurrentDay && 'bg-accent-purple-1 text-white',
-                      !isCurrentDay && !isSelectedDay && 'text-text-main group-hover:bg-bg-dark'
+                      'text-sm mb-2 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300',
+                      isCurrentDay && 'bg-gradient-to-br from-accent-blue to-cyan-500 text-white font-bold shadow-lg shadow-accent-blue/40 animate-pulse',
+                      isSelectedDay && !isCurrentDay && 'bg-gradient-to-br from-accent-purple-1 to-pink-500 text-white shadow-lg shadow-accent-purple-1/40',
+                      !isCurrentDay && !isSelectedDay && 'text-text-main group-hover:bg-bg-dark group-hover:scale-110'
                     )}
                   >
                     {date.getDate()}
                   </div>
 
+                  {/* Today indicator */}
+                  {isCurrentDay && (
+                    <div className="absolute top-1 right-1">
+                      <Sparkles className="h-3 w-3 text-accent-blue animate-pulse" />
+                    </div>
+                  )}
+
                   {/* Event indicators */}
                   <div className="flex-1 space-y-1 overflow-hidden">
-                    {dayEvents.slice(0, 3).map((event) => (
+                    {dayEvents.slice(0, 3).map((event, eventIndex) => (
                       <div
                         key={event.id}
                         onClick={(e) => {
@@ -227,25 +257,39 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
                           onEventClick?.(event);
                         }}
                         className={cn(
-                          'text-[10px] sm:text-xs px-2 py-1 rounded-md truncate text-white cursor-pointer transition-all hover:scale-105 hover:shadow-md',
+                          'text-[10px] sm:text-xs px-2 py-1 rounded-lg truncate text-white cursor-pointer',
+                          'transition-all duration-200 hover:scale-[1.02] hover:shadow-md',
+                          'flex items-center gap-1',
                           getEventTypeColor(event.type)
                         )}
+                        style={{ animationDelay: `${eventIndex * 50}ms` }}
                       >
-                        {event.title}
+                        <span className="hidden sm:inline text-xs">{getEventTypeEmoji(event.type)}</span>
+                        <span className="truncate">{event.title}</span>
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
                       <div
-                        className="text-xs text-text-muted px-2 font-medium cursor-pointer hover:text-accent-blue transition-colors"
+                        className="text-xs text-accent-blue px-2 font-medium cursor-pointer hover:text-accent-purple-1 transition-colors flex items-center gap-1"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDateClick?.(date);
                         }}
                       >
-                        +{dayEvents.length - 3} more
+                        <span>+{dayEvents.length - 3}</span>
+                        <span className="hidden sm:inline">more</span>
                       </div>
                     )}
                   </div>
+
+                  {/* Event count indicator for mobile */}
+                  {hasEvents && (
+                    <div className="absolute bottom-1 right-1 sm:hidden">
+                      <div className="w-5 h-5 rounded-full bg-accent-blue/20 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-accent-blue">{dayEvents.length}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -253,24 +297,22 @@ export function Calendar({ events = [], onDateClick, onEventClick, onMonthChange
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-accent-blue" />
-          <span className="text-text-muted">Facility</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-accent-purple-1" />
-          <span className="text-text-muted">Room</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-success" />
-          <span className="text-text-muted">Equipment</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-warning" />
-          <span className="text-text-muted">Library</span>
-        </div>
+      {/* Legend - Enhanced */}
+      <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 p-4 bg-bg-dark/30 rounded-xl border border-card-border/50">
+        <span className="text-xs text-text-muted font-medium">Legend:</span>
+        {Object.entries(typeConfig).map(([type, config]) => (
+          <div key={type} className="flex items-center gap-2 group cursor-default">
+            <div className={cn(
+              'w-4 h-4 rounded-lg transition-transform group-hover:scale-110',
+              config.color
+            )}>
+              <span className="text-[10px] flex items-center justify-center h-full">{config.emoji}</span>
+            </div>
+            <span className="text-sm text-text-muted group-hover:text-text-main transition-colors">
+              {type.charAt(0) + type.slice(1).toLowerCase()}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -4,19 +4,52 @@ import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut, User, Menu, X, Bell } from 'lucide-react';
+import { LogOut, User, Menu, X, Bell, Sparkles } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+
+// Navigation icons for each section
+const navIcons: Record<string, string> = {
+  '/user/dashboard': '🏠',
+  '/user/facilities': '🏟️',
+  '/user/rooms': '🚪',
+  '/user/equipment': '🎾',
+  '/user/library': '📚',
+  '/user/group-invitations': '👥',
+  '/user/bookings': '📅',
+  '/user/calendar': '🗓️',
+  '/admin/dashboard': '📊',
+  '/admin/resources': '🗂️',
+  '/admin/library': '📖',
+  '/admin/lab-approvals': '🔬',
+  '/admin/bookings': '📋',
+  '/admin/group-bookings': '👨‍👩‍👧‍👦',
+  '/admin/blocks': '🚫',
+  '/admin/penalties': '⚠️',
+  '/guard/scanner': '📷',
+  '/guard/returns': '↩️',
+  '/guard/library-returns': '📕',
+  '/guard/history': '📜',
+};
 
 export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Track scroll for navbar effects
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Fetch pending approvals count for admins
-  // Must be called before early return to satisfy Rules of Hooks
   useEffect(() => {
     if (session?.user?.role === 'ADMIN') {
       const fetchPendingCount = async () => {
@@ -30,8 +63,6 @@ export function Navbar() {
       };
 
       fetchPendingCount();
-
-      // Refresh every 30 seconds
       const interval = setInterval(fetchPendingCount, 30000);
       return () => clearInterval(interval);
     }
@@ -79,19 +110,38 @@ export function Navbar() {
 
   const navLinks = getNavLinks();
 
+  // Get greeting based on time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '🌅 Good morning';
+    if (hour < 17) return '☀️ Good afternoon';
+    return '🌙 Good evening';
+  };
+
   return (
-    <nav className="border-b border-border/50 bg-card/30 backdrop-blur-lg sticky top-0 z-50">
+    <nav 
+      className={cn(
+        'border-b border-border/50 sticky top-0 z-50',
+        'transition-all duration-300',
+        scrolled 
+          ? 'bg-card/80 backdrop-blur-xl shadow-lg shadow-black/10' 
+          : 'bg-card/30 backdrop-blur-lg'
+      )}
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between items-center">
-          {/* Logo */}
+          {/* Logo with hover effect */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
+            <Link 
+              href="/" 
+              className="flex items-center group transition-transform duration-300 hover:scale-105"
+            >
               <Image
                 src="/sst-logo.png"
                 alt="SST Logo"
                 width={180}
                 height={50}
-                className="object-contain h-10 sm:h-12"
+                className="object-contain h-10 sm:h-12 transition-all duration-300 group-hover:brightness-110"
                 priority
               />
             </Link>
@@ -99,18 +149,37 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link) => (
+            {navLinks.map((link, index) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  'inline-flex items-center rounded-lg px-3 lg:px-4 py-2 text-sm font-medium transition-all',
+                  'inline-flex items-center gap-1.5 rounded-lg px-3 lg:px-4 py-2 text-sm font-medium',
+                  'transition-all duration-300 relative overflow-hidden group',
                   pathname === link.href
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm shadow-primary/20'
+                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:scale-105'
                 )}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                {link.label}
+                {/* Animated background on hover */}
+                <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
+                
+                {/* Icon */}
+                <span className={cn(
+                  'text-sm transition-transform duration-300',
+                  pathname === link.href ? 'animate-bounce-subtle' : 'group-hover:scale-110'
+                )}>
+                  {navIcons[link.href] || '📌'}
+                </span>
+                
+                {/* Label */}
+                <span className="relative">{link.label}</span>
+                
+                {/* Active indicator dot */}
+                {pathname === link.href && (
+                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-pulse" />
+                )}
               </Link>
             ))}
           </div>
@@ -121,33 +190,44 @@ export function Navbar() {
             {role === 'ADMIN' && (
               <Link
                 href="/admin/lab-approvals"
-                className="relative p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+                className={cn(
+                  'relative p-2 rounded-lg transition-all duration-300',
+                  'hover:bg-secondary/50 hover:scale-110',
+                  pendingApprovalsCount > 0 && 'animate-bounce-subtle'
+                )}
                 title="Lab Approvals"
               >
                 <Bell className={cn(
-                  "h-5 w-5",
+                  "h-5 w-5 transition-colors duration-300",
                   pendingApprovalsCount > 0 ? "text-accent-blue" : "text-muted-foreground"
                 )} />
                 {pendingApprovalsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white animate-pulse shadow-lg shadow-danger/50">
                     {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
                   </span>
                 )}
               </Link>
             )}
 
-            <div className="hidden lg:flex items-center space-x-2 rounded-lg bg-secondary/50 px-3 py-1.5 text-sm border border-border/50">
-              <User className="h-4 w-4 text-primary" />
+            {/* User info pill */}
+            <div className="hidden lg:flex items-center space-x-2 rounded-full bg-gradient-to-r from-secondary/50 to-secondary/30 px-4 py-2 text-sm border border-border/50 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 group">
+              <div className="p-1 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                <User className="h-3.5 w-3.5 text-primary" />
+              </div>
               <span className="font-medium text-foreground truncate max-w-[120px]">{session.user.name}</span>
-              <span className="text-muted-foreground">({role})</span>
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                {role === 'ADMIN' ? '👑 Admin' : role === 'GUARD' ? '🛡️ Guard' : '🎓 Student'}
+              </span>
             </div>
+
+            {/* Logout button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="hover:bg-destructive/10 hover:text-destructive"
+              className="hover:bg-destructive/10 hover:text-destructive group transition-all duration-300"
             >
-              <LogOut className="h-4 w-4 lg:mr-2" />
+              <LogOut className="h-4 w-4 lg:mr-2 transition-transform duration-300 group-hover:rotate-12" />
               <span className="hidden lg:inline">Sign Out</span>
             </Button>
           </div>
@@ -155,68 +235,103 @@ export function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden rounded-lg p-2 text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+            className={cn(
+              'md:hidden rounded-lg p-2 transition-all duration-300',
+              'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+              mobileMenuOpen && 'bg-secondary/50 text-foreground rotate-90'
+            )}
           >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6 animate-scale-in" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border/50 bg-card/95 backdrop-blur-lg">
-          <div className="space-y-1 px-4 pb-3 pt-2">
-            {navLinks.map((link) => (
+      {/* Mobile Menu with animation */}
+      <div 
+        className={cn(
+          'md:hidden overflow-hidden transition-all duration-300 ease-out',
+          mobileMenuOpen 
+            ? 'max-h-[80vh] opacity-100 border-t border-border/50' 
+            : 'max-h-0 opacity-0'
+        )}
+      >
+        <div className="bg-card/95 backdrop-blur-xl">
+          <div className="space-y-1 px-4 pb-4 pt-3">
+            {/* Greeting */}
+            <div className="px-3 py-2 mb-2">
+              <p className="text-sm text-text-muted">{getGreeting()}, {session.user.name?.split(' ')[0]}! 👋</p>
+            </div>
+
+            {navLinks.map((link, index) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={cn(
-                  'block rounded-lg px-3 py-3 text-base font-medium transition-all',
+                  'flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium',
+                  'transition-all duration-300 animate-fade-in-left',
                   pathname === link.href
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:translate-x-2'
                 )}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
-                {link.label}
+                <span className="text-xl">{navIcons[link.href] || '📌'}</span>
+                <span>{link.label}</span>
+                {pathname === link.href && (
+                  <Sparkles className="h-4 w-4 ml-auto text-primary animate-pulse" />
+                )}
               </Link>
             ))}
+
             {/* Mobile Notification for Admins */}
             {role === 'ADMIN' && pendingApprovalsCount > 0 && (
               <Link
                 href="/admin/lab-approvals"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-lg bg-accent-blue/10 border border-accent-blue/30 px-3 py-3 text-sm font-medium text-accent-blue"
+                className="flex items-center justify-between rounded-xl bg-gradient-to-r from-accent-blue/20 to-accent-blue/10 border border-accent-blue/30 px-4 py-3 text-sm font-medium text-accent-blue animate-pulse"
               >
-                <span className="flex items-center">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Pending Lab Approvals
+                <span className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  🔔 Pending Lab Approvals
                 </span>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger text-xs font-bold text-white shadow-lg shadow-danger/50">
                   {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
                 </span>
               </Link>
             )}
 
-            <div className="pt-3 border-t border-border/50 mt-2">
-              <div className="flex items-center space-x-2 rounded-lg bg-secondary/50 px-3 py-2.5 text-sm border border-border/50 mb-2">
-                <User className="h-4 w-4 text-primary flex-shrink-0" />
-                <span className="font-medium text-foreground truncate">{session.user.name}</span>
-                <span className="text-muted-foreground flex-shrink-0">({role})</span>
+            {/* User section */}
+            <div className="pt-4 border-t border-border/50 mt-3 space-y-3">
+              <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-secondary/50 to-secondary/30 px-4 py-3 text-sm border border-border/50">
+                <div className="p-2 rounded-full bg-primary/20">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{session.user.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {role === 'ADMIN' ? '👑 Administrator' : role === 'GUARD' ? '🛡️ Security Guard' : '🎓 Student'}
+                  </p>
+                </div>
               </div>
+              
               <Button
-                variant="ghost"
+                variant="destructive"
                 size="sm"
                 onClick={() => signOut({ callbackUrl: '/login' })}
-                className="w-full justify-start hover:bg-destructive/10 hover:text-destructive"
+                className="w-full justify-center gap-2"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 Sign Out
               </Button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 }

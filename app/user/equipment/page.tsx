@@ -191,10 +191,10 @@ export default function EquipmentPage() {
         return;
       }
 
-      // Equipment pickup time must be between 9am and 8pm (inclusive)
+      // Equipment pickup time must be between 8am and 8pm (aligned with backend)
       // Hour 20 = 8:00 PM (should be allowed), Hour 21 = 9:00 PM (should be rejected)
-      if (startHour < 9 || startHour > 20) {
-        setError('Equipment pickup time must be between 9:00 AM and 8:00 PM');
+      if (startHour < 8 || startHour > 20) {
+        setError('Equipment pickup time must be between 8:00 AM and 8:00 PM');
         setLoading(false);
         return;
       }

@@ -247,7 +247,9 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         start: { $gte: today, $lt: tomorrow },
     }).session(session);
 
-    if (todayBookingsCount >= POLICIES.MAX_BOOKINGS_PER_DAY) {
+    // FIX: Only check daily limit if it's enabled (value > 0)
+    // When MAX_BOOKINGS_PER_DAY is 0, the limit is disabled
+    if (POLICIES.MAX_BOOKINGS_PER_DAY > 0 && todayBookingsCount >= POLICIES.MAX_BOOKINGS_PER_DAY) {
         return {
             allowed: false,
             reason: `You can only make ${POLICIES.MAX_BOOKINGS_PER_DAY} bookings per day`,

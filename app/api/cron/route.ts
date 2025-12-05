@@ -9,8 +9,11 @@ import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 import { getDaysAgo } from '@/lib/timezone';
 import { acquireCronLock, releaseCronLock } from '@/lib/cron-lock';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
+    let lockAcquired = false;
+
     try {
         // Verify cron secret to prevent unauthorized access
         const authHeader = req.headers.get('authorization');
@@ -18,187 +21,179 @@ export async function GET(req: NextRequest) {
             throw new AuthorizationError('Invalid cron secret');
         }
 
-        await connectDB();
+        const conn = await connectDB();
 
         // FIX EC-72: Acquire mutex lock to prevent concurrent execution
-        const lockAcquired = await acquireCronLock();
+        lockAcquired = await acquireCronLock();
         if (!lockAcquired) {
             return NextResponse.json({
                 message: 'CRON job already running, skipping this execution'
             }, { status: 200 });
         }
 
-        try {
-            // Use UTC for database comparisons (DB stores UTC timestamps)
-            const now = new Date();
-            const results = {
-                noShows: 0,
-                expiredPending: 0,
-                qrTokensDeleted: 0,
-                libraryNoPickups: 0,
-                overdueCompleted: 0,
-            };
+        // Use UTC for database comparisons (DB stores UTC timestamps)
+        const now = new Date();
+        const results = {
+            noShows: 0,
+            expiredPending: 0,
+            qrTokensDeleted: 0,
+            libraryNoPickups: 0,
+            overdueCompleted: 0,
+        };
 
-            // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
-            // FIX: Check if grace period has passed OR booking has ended
-            // This ensures long bookings are marked no-show early (after 15 mins)
-            // and short bookings are marked immediately after they end
-            // FIX: Only apply to EQUIPMENT and LIBRARY which require physical check-in
-            // Rooms and Facilities do not have a check-in mechanism, so they shouldn't be penalized
-            const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
-            const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
+        // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
+        // FIX: Each booking update + penalty is now wrapped in a transaction for atomicity
+        const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
 
-            const noShowBookings = await Booking.find({
-                status: 'CONFIRMED',
-                kind: { $in: ['EQUIPMENT', 'LIBRARY'] }, // Only these types require check-in
-                $or: [
-                    { start: { $lt: noShowCutoff } }, // Grace period passed
-                    { end: { $lt: now } }             // Booking ended (for short bookings)
-                ],
-                checkedInAt: null,  // Never checked in
-            });
+        const noShowBookings = await Booking.find({
+            status: 'CONFIRMED',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            $or: [
+                { start: { $lt: noShowCutoff } },
+                { end: { $lt: now } }
+            ],
+            checkedInAt: null,
+        });
 
-            for (const booking of noShowBookings) {
-                // No need to release qtyReserved as we no longer use it for blocking
-                // (Time-based overlap checking is used instead)
+        for (const booking of noShowBookings) {
+            const session = await mongoose.startSession();
+            try {
+                await session.startTransaction();
 
                 // Mark as NO_SHOW
                 booking.status = 'NO_SHOW';
-                await booking.save();
+                await booking.save({ session });
 
                 // Apply penalty
-                await Penalty.create({
+                await Penalty.create([{
                     userId: booking.userId,
                     bookingId: booking.id,
                     points: POLICIES.PENALTY_NO_SHOW,
                     reason: 'No-show for booking',
-                });
+                }], { session });
 
-                // Update user points
-                // FIX: booking.userId is the ObjectId, not email
-                const user = await User.findById(booking.userId);
+                // Update user points atomically
+                const user = await User.findById(booking.userId).session(session);
                 if (user) {
                     user.penaltyPoints += POLICIES.PENALTY_NO_SHOW;
                     if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
                         user.suspendedUntil = calculateSuspensionDate();
                     }
-                    await user.save();
+                    await user.save({ session });
                 }
 
+                await session.commitTransaction();
                 results.noShows++;
+            } catch (error) {
+                await session.abortTransaction();
+                console.error(`Failed to process no-show for booking ${booking.id}:`, error);
+                // Continue processing other bookings
+            } finally {
+                session.endSession();
             }
+        }
 
-            // 1.5 Auto-Complete Rooms and Facilities
-            // Since Rooms and Facilities don't have check-in, we auto-complete them when they end
-            const completedBookings = await Booking.updateMany(
-                {
-                    status: 'CONFIRMED',
-                    kind: { $in: ['ROOM', 'FACILITY'] },
-                    end: { $lt: now } // Booking has ended
-                },
-                {
-                    $set: { status: 'COMPLETED' }
-                }
-            );
+        // 1.5 Auto-Complete Rooms and Facilities
+        await Booking.updateMany(
+            {
+                status: 'CONFIRMED',
+                kind: { $in: ['ROOM', 'FACILITY'] },
+                end: { $lt: now }
+            },
+            {
+                $set: { status: 'COMPLETED' }
+            }
+        );
 
-            // We don't track the count of auto-completed bookings in the results object currently,
-            // but we could add it if needed. For now, this is a silent cleanup.
+        // 2. Handle Library Book Pickup Window (with transactions)
+        const pickupWindowMs = POLICIES.LIBRARY_BOOK_PICKUP_WINDOW_HOURS * 60 * 60 * 1000;
+        const pickupCutoff = new Date(now.getTime() - pickupWindowMs);
 
-            // 2. Handle Library Book Pickup Window
-            // If a library booking isn't picked up within 24 hours, cancel it with penalty
-            const pickupWindowMs = POLICIES.LIBRARY_BOOK_PICKUP_WINDOW_HOURS * 60 * 60 * 1000;
-            const pickupCutoff = new Date(now.getTime() - pickupWindowMs);
+        const libraryNoPickupBookings = await Booking.find({
+            kind: 'LIBRARY',
+            status: 'CONFIRMED',
+            checkedInAt: null,
+            createdAt: { $lt: pickupCutoff }
+        });
 
-            const libraryNoPickupBookings = await Booking.find({
-                kind: 'LIBRARY',
-                status: 'CONFIRMED',  // Was confirmed but never checked in
-                checkedInAt: null,
-                createdAt: { $lt: pickupCutoff }  // Created more than 24 hours ago
-            });
-
-            for (const booking of libraryNoPickupBookings) {
-                // No need to release qtyReserved as we no longer use it for blocking
-                // (Time-based overlap checking is used instead)
+        for (const booking of libraryNoPickupBookings) {
+            const session = await mongoose.startSession();
+            try {
+                await session.startTransaction();
 
                 booking.status = 'CANCELLED';
-                await booking.save();
+                await booking.save({ session });
 
-                // Apply smaller penalty for not picking up (0.5 points per policy)
-                await Penalty.create({
+                await Penalty.create([{
                     userId: booking.userId,
                     bookingId: booking.id,
                     points: POLICIES.PENALTY_BOOK_NO_PICKUP,
                     reason: 'Library book not picked up within 24 hours',
-                });
+                }], { session });
 
-                // Update user penalty points
-                // FIX: booking.userId is the ObjectId, not email
-                const user = await User.findById(booking.userId);
+                const user = await User.findById(booking.userId).session(session);
                 if (user) {
                     user.penaltyPoints += POLICIES.PENALTY_BOOK_NO_PICKUP;
                     if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
                         user.suspendedUntil = calculateSuspensionDate();
                     }
-                    await user.save();
+                    await user.save({ session });
                 }
 
+                await session.commitTransaction();
                 results.libraryNoPickups++;
+            } catch (error) {
+                await session.abortTransaction();
+                console.error(`Failed to process library no-pickup for booking ${booking.id}:`, error);
+            } finally {
+                session.endSession();
             }
+        }
 
-            // 3. Handle Overdue CHECKED_IN Bookings
-            // Equipment/Library that was checked in but never returned should be flagged
-            // Note: We don't auto-complete these because they need physical return
-            // But we can mark them for admin attention and notify guards
-            const overdueCheckedIn = await Booking.find({
-                status: 'CHECKED_IN',
-                kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
-                end: { $lt: now }  // Past their return time
-            });
+        // 3. Handle Overdue CHECKED_IN Bookings (just count, penalties on return)
+        const overdueCheckedIn = await Booking.countDocuments({
+            status: 'CHECKED_IN',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            end: { $lt: now }
+        });
+        results.overdueCompleted = overdueCheckedIn;
 
-            // For now, just count them - penalties are applied when guard processes the return
-            results.overdueCompleted = overdueCheckedIn.length;
-
-            // 4. Handle Expired Pending Bookings
-            // If a booking is pending approval for more than 7 days (or start time passed), cancel it
-            const expiredPendingBookings = await Booking.find({
+        // 4. Handle Expired Pending Bookings (no penalties, just cancel)
+        const expiredPendingResult = await Booking.updateMany(
+            {
                 status: 'PENDING',
                 $or: [
-                    { start: { $lt: now } }, // Start time passed
-                    { createdAt: { $lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } // Created > 7 days ago
+                    { start: { $lt: now } },
+                    { createdAt: { $lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }
                 ]
-            });
-
-            for (const booking of expiredPendingBookings) {
-                // No need to release qtyReserved as we no longer use it for blocking
-                // (Time-based overlap checking is used instead)
-
-                booking.status = 'CANCELLED';
-                booking.approval = 'REJECTED';
-                await booking.save();
-                results.expiredPending++;
+            },
+            {
+                $set: { status: 'CANCELLED', approval: 'REJECTED' }
             }
+        );
+        results.expiredPending = expiredPendingResult.modifiedCount || 0;
 
-            // 5. Cleanup Old QR Tokens
-            // FIX EC-34: Delete QR tokens older than 1 day (they expire in 10 minutes anyway)
-            // Previously was 7 days, causing massive buildup of expired tokens
-            const oneDayAgo = getDaysAgo(1);
-            const deleteResult = await QRToken.deleteMany({
-                createdAt: { $lt: oneDayAgo }
-            });
-            results.qrTokensDeleted = deleteResult.deletedCount || 0;
+        // 5. Cleanup Old QR Tokens
+        const oneDayAgo = getDaysAgo(1);
+        const deleteResult = await QRToken.deleteMany({
+            createdAt: { $lt: oneDayAgo }
+        });
+        results.qrTokensDeleted = deleteResult.deletedCount || 0;
 
-            return NextResponse.json({ success: true, results });
-        } catch (error) {
-            console.error('Cron job error:', error);
-            return handleApiError(error);
-        } finally {
-            // FIX EC-72: Always release lock when done
-            await releaseCronLock();
-        }
+        return NextResponse.json({ success: true, results });
     } catch (error) {
         console.error('Cron job error:', error);
-        // Release lock on error too
-        await releaseCronLock().catch(console.error);
         return handleApiError(error);
+    } finally {
+        // FIX: Always release lock in finally block - guaranteed to run
+        if (lockAcquired) {
+            try {
+                await releaseCronLock();
+            } catch (releaseError) {
+                console.error('Failed to release cron lock:', releaseError);
+            }
+        }
     }
 }
+

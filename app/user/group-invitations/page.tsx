@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Users, Clock, MapPin, CheckCircle, XCircle, Calendar, Sparkles, AlertTriangle } from 'lucide-react';
 import { GroupInvitation } from '@/types/booking';
+import { formatDateTime } from '@/lib/utils';
 
 interface InvitationsResponse {
   pending: GroupInvitation[];
@@ -59,15 +60,7 @@ export default function GroupInvitationsPage() {
     }
   };
 
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (date: string | Date) => formatDateTime(date);
 
   const getTimeRemaining = (expiresAt: string | Date) => {
     const now = new Date().getTime();

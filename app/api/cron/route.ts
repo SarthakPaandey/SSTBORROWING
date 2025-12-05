@@ -11,6 +11,11 @@ import { getDaysAgo } from '@/lib/timezone';
 import { acquireCronLock, releaseCronLock } from '@/lib/cron-lock';
 import mongoose from 'mongoose';
 
+// Dynamic node runtime: reads request headers and performs DB writes
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
     let lockAcquired = false;
 

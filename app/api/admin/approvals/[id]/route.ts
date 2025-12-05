@@ -3,8 +3,12 @@ import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
-import { getNow } from '@/lib/timezone';
 import mongoose from 'mongoose';
+
+// Dynamic route since we read auth via cookies/headers
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function POST(
   req: NextRequest,
@@ -38,7 +42,8 @@ export async function POST(
       booking.approval = 'APPROVED';
       booking.status = 'CONFIRMED';
       booking.approvedBy = admin.id;
-      booking.approvedAt = getNow();
+      // Use UTC timestamp for DB consistency
+      booking.approvedAt = new Date();
     }
     if (action === 'reject') {
       // No need to release qtyReserved as we no longer use it for blocking

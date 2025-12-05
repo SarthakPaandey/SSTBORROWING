@@ -53,6 +53,7 @@ export default function EquipmentPage() {
   const [sportsItems, setSportsItems] = useState<any[]>([]);
   const [labItems, setLabItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
+  const [tab, setTab] = useState<'sports' | 'lab'>('sports');
   // FIX: Use IST timezone for accurate date display
   const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
@@ -370,12 +371,14 @@ export default function EquipmentPage() {
       )}
 
       <Tabs 
-        defaultValue="sports" 
+        value={tab}
         className="animate-fade-in"
-        onValueChange={() => {
+        onValueChange={(value) => {
+          setTab(value as 'sports' | 'lab'); // Keep Tabs state in sync so switching works
           // Clear selected items when switching between tabs to avoid confusion
           setSelectedItems({});
           setError('');
+          setSuccess(false); // Also clear success banner so it doesn't appear on other tabs
         }}
       >
         <TabsList className="mb-6">

@@ -3,7 +3,6 @@ import { authOptions } from './config';
 import { UserRole, User } from '@/models/User';
 import { AuthenticationError, AuthorizationError } from '@/lib/errors';
 import { connectDB } from '@/lib/db';
-import { getNow } from '@/lib/timezone';
 
 export async function requireAuth(allowedRoles?: UserRole[]) {
   const session = await getServerSession(authOptions);
@@ -29,8 +28,8 @@ export async function requireAuth(allowedRoles?: UserRole[]) {
     throw new AuthorizationError('Your account has been blocked by an administrator. Please contact support.');
   }
 
-  // Check if user is temporarily suspended (using IST timezone)
-  if (dbUser.suspendedUntil && dbUser.suspendedUntil > getNow()) {
+  // Check if user is temporarily suspended (compare with UTC timestamps)
+  if (dbUser.suspendedUntil && dbUser.suspendedUntil > new Date()) {
     throw new AuthorizationError('Your account is suspended');
   }
 

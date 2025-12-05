@@ -6,7 +6,7 @@ import { Block } from '@/models/Block';
 import { POLICIES, isWithinAdvanceWindow, hasMinimumGap, hasConsecutiveBookings, calculateTotalHours } from './policies';
 import { checkBookingAvailability } from './inventory';
 import { ValidationError, ConflictError } from './errors';
-import { getNow, getStartOfDay, getTodayStart } from './timezone';
+import { getStartOfDay, getTodayStart, toIST } from './timezone';
 import mongoose from 'mongoose';
 
 export interface RescheduleParams {
@@ -37,7 +37,10 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     const { booking, user, resource, newStart, newEnd, session } = params;
 
     // Get current time once at the start
-    const now = getNow();
+    // Use UTC for DB comparisons and persistence
+    const now = new Date();
+    // Use IST to anchor calendar boundaries (month start/end) correctly
+    const nowIST = toIST(now);
 
     // 1. Status Check: Only CONFIRMED or PENDING bookings can be rescheduled
     if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
@@ -56,7 +59,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // NEW: 1b. Monthly reschedule limit
-    const reschedMonthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+    const reschedMonthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const reschedMonthEnd = new Date(reschedMonthStart);
     reschedMonthEnd.setMonth(reschedMonthEnd.getMonth() + 1);
 
@@ -278,7 +281,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // Weekly limit
-    const weekAgo = getNow();
+    const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const weekBookingsCount = await Booking.countDocuments({
@@ -296,7 +299,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // Monthly limits
-    const monthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const monthEnd = new Date(monthStart);
     monthEnd.setMonth(monthEnd.getMonth() + 1);
 

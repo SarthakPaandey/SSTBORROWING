@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Booking, BookingKind, IBooking } from '@/models/Booking';
 import { POLICIES } from '@/lib/policies';
-import { getStartOfDay, getNow, toIST } from '@/lib/timezone';
+import { getStartOfDay, toIST } from '@/lib/timezone';
 
 export type BookingCategory = BookingKind;
 
@@ -54,8 +54,9 @@ export async function canUserCreateBookingWithCaps(options: {
   }
 
   // MONTHLY LIMITS (reuse existing global policy by kind)
-  const now = getNow();
-  const monthStart = getStartOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+  // Anchor month boundaries in IST (like daily logic) to avoid 5.5h offsets
+  const nowIST = toIST(new Date());
+  const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
   const monthEnd = new Date(monthStart);
   monthEnd.setMonth(monthEnd.getMonth() + 1);
 

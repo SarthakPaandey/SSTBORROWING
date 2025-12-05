@@ -10,7 +10,6 @@ import { verifyQRToken } from '@/lib/qr';
 import { handleApiError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
 import { parseStudentEmail } from '@/lib/utils';
 import mongoose from 'mongoose';
-import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
   let session: mongoose.ClientSession | null = null;
@@ -94,7 +93,8 @@ export async function POST(req: NextRequest) {
       throw new NotFoundError('Booking owner');
     }
 
-    if (bookingOwner.suspendedUntil && bookingOwner.suspendedUntil > getNow()) {
+    // Compare against UTC timestamp stored in DB
+    if (bookingOwner.suspendedUntil && bookingOwner.suspendedUntil > new Date()) {
       await session.abortTransaction();
       throw new ValidationError('User is currently suspended and cannot pick up equipment');
     }

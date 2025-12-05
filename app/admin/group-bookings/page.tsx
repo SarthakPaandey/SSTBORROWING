@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Users, Clock, MapPin, Calendar, Mail, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 
 export default function AdminGroupBookingsPage() {
@@ -33,15 +34,7 @@ export default function AdminGroupBookingsPage() {
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (date: string) => formatDateTime(date);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

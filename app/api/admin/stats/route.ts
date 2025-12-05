@@ -7,6 +7,11 @@ import { Penalty } from '@/models/Penalty';
 import { format } from 'date-fns';
 import { getNow, getStartOfDay, getEndOfDay, getDaysAgo } from '@/lib/timezone';
 
+// Dynamic route: uses auth session (headers/cookies) and DB
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);

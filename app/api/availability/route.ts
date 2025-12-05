@@ -7,6 +7,11 @@ import { authOptions } from '@/lib/auth/config';
 import { handleApiError, ValidationError, NotFoundError, AuthenticationError } from '@/lib/errors';
 import { toIST, getStartOfDay } from '@/lib/timezone';
 
+// Dynamic route: depends on session headers/cookies
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/availability
  * Returns available and busy time slots for a resource on a specific date

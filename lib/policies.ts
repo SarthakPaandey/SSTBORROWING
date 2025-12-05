@@ -97,8 +97,8 @@ export function canUserBook(user: {
   penaltyPoints: number;
   suspendedUntil?: Date;
 }): { allowed: boolean; reason?: string } {
-  // Use IST timezone for accurate suspension check
-  if (user.suspendedUntil && getNow() < new Date(user.suspendedUntil)) {
+  // Compare using UTC to match stored DB timestamps
+  if (user.suspendedUntil && new Date() < new Date(user.suspendedUntil)) {
     return {
       allowed: false,
       reason: `You are suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}`,
@@ -116,8 +116,8 @@ export function canUserBook(user: {
 }
 
 export function calculateSuspensionDate(): Date {
-  // Use IST timezone for suspension calculation
-  const date = getNow();
+  // Use UTC for persisted suspension timestamp
+  const date = new Date();
   date.setDate(date.getDate() + POLICIES.SUSPENSION_DAYS);
   return date;
 }

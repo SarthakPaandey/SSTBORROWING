@@ -6,7 +6,6 @@ import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 import { PenaltyQuery } from '@/types/api';
 import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
-import { getNow } from '@/lib/timezone';
 import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
@@ -106,7 +105,8 @@ export async function POST(req: NextRequest) {
       // Waive all penalties for user
       await Penalty.updateMany(
         { userId, waivedBy: null },
-        { waivedBy: admin.id, waivedAt: getNow() }
+        // Use UTC for audit timestamps
+        { waivedBy: admin.id, waivedAt: new Date() }
       );
 
       // FIX Issue #8: Recalculate penalty points from actual records

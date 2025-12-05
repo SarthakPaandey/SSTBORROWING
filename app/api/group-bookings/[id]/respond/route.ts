@@ -5,7 +5,6 @@ import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
-import { getNow } from '@/lib/timezone';
 import mongoose from 'mongoose';
 
 export async function PATCH(
@@ -136,7 +135,8 @@ export async function PATCH(
     } else {
       // REJECT
       groupBooking.members[memberIndex].status = 'REJECTED';
-      groupBooking.members[memberIndex].respondedAt = getNow();
+      // Store UTC timestamp to avoid IST-shift in DB
+      groupBooking.members[memberIndex].respondedAt = new Date();
       await groupBooking.save();
 
       // Check if we can still reach minimum with remaining pending members

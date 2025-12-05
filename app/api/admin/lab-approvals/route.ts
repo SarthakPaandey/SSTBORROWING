@@ -7,6 +7,11 @@ import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError } from '@/lib/errors';
 import { BookingQuery } from '@/types/api';
 
+// Force dynamic execution since auth relies on request headers/cookies
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     await requireAuth(['ADMIN']);

@@ -7,6 +7,11 @@ import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError } from '@/lib/errors';
 
+// Force dynamic execution since we read auth headers/cookies
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     await requireAuth(['ADMIN']);

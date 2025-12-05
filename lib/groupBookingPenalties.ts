@@ -17,7 +17,8 @@ import { getNow } from './timezone';
  * Call this after any penalty modification (add, waive, etc.)
  */
 export async function recalculatePenaltyPoints(userId: string): Promise<number> {
-  const now = getNow();
+  // Use UTC for persisted timestamps and comparisons
+  const now = new Date();
 
   // Calculate total points from non-waived AND non-served penalties
   const result = await Penalty.aggregate([

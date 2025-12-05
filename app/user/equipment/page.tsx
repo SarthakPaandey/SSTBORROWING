@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
+import { LoadingState, InlineLoading } from '@/components/ui/LoadingState';
 import { Package, Sparkles, FlaskConical, Trophy, Clock, ShoppingCart, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react';
 
 // Enhanced sport icons with more detail
@@ -58,6 +59,8 @@ export default function EquipmentPage() {
   const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -107,21 +110,29 @@ export default function EquipmentPage() {
   }, [date, startTime]);
 
   const fetchResources = async () => {
-    const sportsRes = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
-    const sportsData = await sportsRes.json();
-    setSportsResources(sportsData.resources);
+    try {
+      setInitialLoading(true);
+      const sportsRes = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
+      const sportsData = await sportsRes.json();
+      setSportsResources(sportsData.resources);
 
-    const labRes = await fetch('/api/resources?type=LAB_EQUIPMENT');
-    const labData = await labRes.json();
-    setLabResources(labData.resources);
+      const labRes = await fetch('/api/resources?type=LAB_EQUIPMENT');
+      const labData = await labRes.json();
+      setLabResources(labData.resources);
 
-    // Fetch initial items after resources are loaded
-    if (sportsData.resources.length > 0 || labData.resources.length > 0) {
-      await fetchItems(sportsData.resources, labData.resources);
+      // Fetch initial items after resources are loaded
+      if (sportsData.resources.length > 0 || labData.resources.length > 0) {
+        await fetchItems(sportsData.resources, labData.resources, false);
+      }
+    } catch (err) {
+      console.error('Failed to fetch equipment resources:', err);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
-  const fetchItems = async (sportsRes = sportsResources, labRes = labResources) => {
+  const fetchItems = async (sportsRes = sportsResources, labRes = labResources, showLoader = true) => {
+    if (showLoader) setItemsLoading(true);
     // Build time window for availability check
     const dateStr = formatISTDate(date);
     const start = new Date(`${dateStr}T${startTime}:00+05:30`);
@@ -143,25 +154,31 @@ export default function EquipmentPage() {
     const startISO = start.toISOString();
     const endISO = end.toISOString();
 
-    if (sportsRes.length > 0) {
-      const itemsRes = await fetch(
-        `/api/admin/equipment?resourceId=${sportsRes[0]._id}&start=${startISO}&end=${endISO}`
-      );
-      const itemsData = await itemsRes.json();
-      setSportsItems(itemsData.items);
-    }
+    try {
+      if (sportsRes.length > 0) {
+        const itemsRes = await fetch(
+          `/api/admin/equipment?resourceId=${sportsRes[0]._id}&start=${startISO}&end=${endISO}`
+        );
+        const itemsData = await itemsRes.json();
+        setSportsItems(itemsData.items);
+      }
 
-    if (labRes.length > 0) {
-      // Lab equipment has 24-hour duration
-      const labEnd = new Date(start);
-      labEnd.setHours(labEnd.getHours() + 24);
-      const labEndISO = labEnd.toISOString();
+      if (labRes.length > 0) {
+        // Lab equipment has 24-hour duration
+        const labEnd = new Date(start);
+        labEnd.setHours(labEnd.getHours() + 24);
+        const labEndISO = labEnd.toISOString();
 
-      const itemsRes = await fetch(
-        `/api/admin/equipment?resourceId=${labRes[0]._id}&start=${startISO}&end=${labEndISO}`
-      );
-      const itemsData = await itemsRes.json();
-      setLabItems(itemsData.items);
+        const itemsRes = await fetch(
+          `/api/admin/equipment?resourceId=${labRes[0]._id}&start=${startISO}&end=${labEndISO}`
+        );
+        const itemsData = await itemsRes.json();
+        setLabItems(itemsData.items);
+      }
+    } catch (err) {
+      console.error('Failed to fetch equipment availability:', err);
+    } finally {
+      if (showLoader) setItemsLoading(false);
     }
   };
 
@@ -301,6 +318,15 @@ export default function EquipmentPage() {
   // Calculate total selected items
   const totalSelected = Object.values(selectedItems).reduce((sum, qty) => sum + qty, 0);
 
+  if (initialLoading) {
+    return (
+      <LoadingState
+        title="Loading equipment"
+        subtitle="Fetching available sports and lab inventory..."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Hero Header */}
@@ -367,6 +393,12 @@ export default function EquipmentPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {itemsLoading && (
+        <div className="flex items-center gap-3 rounded-xl border border-card-border bg-bg-dark/70 px-4 py-3">
+          <InlineLoading text="Updating availability for your selected time..." />
         </div>
       )}
 

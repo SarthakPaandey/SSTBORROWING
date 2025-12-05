@@ -9,6 +9,7 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
 import { Search, BookOpen, Grid3X3, List } from 'lucide-react';
 
@@ -444,10 +445,10 @@ export default function LibraryPage() {
       </div>
 
       {resourcesLoading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-12 bg-card rounded-xl w-full max-w-sm" />
-          <div className="h-64 bg-card rounded-xl" />
-        </div>
+        <LoadingState
+          title="Loading library collection"
+          subtitle="Fetching categories and available books..."
+        />
       ) : (
         <Tabs defaultValue="fiction" className="animate-fade-in">
           <TabsList className="mb-6">

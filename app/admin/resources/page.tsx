@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -239,7 +240,12 @@ export default function ResourcesPage() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <LoadingState
+        title="Loading resources"
+        subtitle="Fetching facilities, rooms, and equipment..."
+      />
+    );
   }
 
   const facilities = resources.filter((r) => r.type === 'FACILITY');

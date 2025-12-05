@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -174,7 +175,12 @@ export default function LibraryManagementPage() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <LoadingState
+        title="Loading library inventory"
+        subtitle="Fetching categories and books..."
+      />
+    );
   }
 
   // FIX EC-30: Organize books by category using exact matching

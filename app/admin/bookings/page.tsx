@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { formatDateTime, parseStudentEmail } from '@/lib/utils';
 
 export default function AdminBookingsPage() {
@@ -49,7 +50,12 @@ export default function AdminBookingsPage() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <LoadingState
+        title="Loading bookings"
+        subtitle="Fetching the latest booking activity..."
+      />
+    );
   }
 
   return (

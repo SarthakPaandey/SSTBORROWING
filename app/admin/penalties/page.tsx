@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { formatDate } from '@/lib/utils';
 import { Search, Shield, Ban, CheckCircle2 } from 'lucide-react';
 
@@ -186,7 +187,12 @@ export default function PenaltiesPage() {
   }, [userSearchQuery]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <LoadingState
+        title="Loading penalties"
+        subtitle="Fetching user penalties and access status..."
+      />
+    );
   }
 
   if (error) {

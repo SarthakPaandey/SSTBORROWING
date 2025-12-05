@@ -98,22 +98,24 @@ export function LoadingState({
       <div className="relative flex flex-col items-center gap-3">
         <div className="relative flex items-center justify-center">
           {isGalaxy ? (
-            <div className="relative h-20 w-20">
-              <div className="absolute inset-0 rounded-full border border-accent-blue/15 blur-sm" />
+            <div className="relative h-24 w-24">
+              <div className="absolute inset-[2px] rounded-full border border-accent-blue/15 blur-sm" />
               <div
-                className="absolute inset-1 rounded-full border border-accent-purple-1/25 animate-spin-slow"
+                className="absolute inset-0.5 rounded-full border border-accent-purple-1/25 animate-spin-slow"
                 style={{ animationDuration: '14s' }}
               >
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-accent-blue shadow-[0_0_10px_rgba(13,140,232,0.8)]" />
-                <div className="absolute top-1/2 -right-1 -translate-y-1/2 h-2 w-2 rounded-full bg-accent-cyan shadow-[0_0_10px_rgba(0,217,255,0.7)]" />
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-base">🚀</div>
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-base">🛰️</div>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-base">🚀</div>
+                <div className="absolute top-1/2 -left-2 -translate-y-1/2 text-base">🛰️</div>
               </div>
               <div
-                className="absolute inset-3 rounded-full border border-accent-cyan/30 animate-spin-slow"
+                className="absolute inset-4 rounded-full border border-accent-cyan/30 animate-spin-slow"
                 style={{ animationDuration: '9s' }}
               />
-              <div className="absolute inset-5 rounded-full bg-gradient-to-br from-accent-blue/40 via-accent-purple-1/30 to-accent-cyan/30 blur-md animate-pulse" />
-              <div className="absolute inset-[18px] rounded-full bg-bg-dark flex items-center justify-center">
-                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple-1 shadow-[0_0_18px_rgba(13,140,232,0.45)] animate-pulse" />
+              <div className="absolute inset-6 rounded-full bg-gradient-to-br from-accent-blue/40 via-accent-purple-1/30 to-accent-cyan/30 blur-md animate-pulse" />
+              <div className="absolute inset-[24px] rounded-full bg-bg-dark flex items-center justify-center">
+                <div className="text-3xl drop-shadow-[0_0_14px_rgba(13,140,232,0.6)]">🪐</div>
               </div>
             </div>
           ) : (

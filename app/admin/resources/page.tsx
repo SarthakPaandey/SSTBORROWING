@@ -244,6 +244,7 @@ export default function ResourcesPage() {
       <LoadingState
         title="Loading resources"
         subtitle="Fetching facilities, rooms, and equipment..."
+        variant="galaxy"
       />
     );
   }

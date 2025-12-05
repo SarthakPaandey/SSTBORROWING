@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -63,6 +63,7 @@ export default function EquipmentPage() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const fetchRequestId = useRef(0);
 
   useEffect(() => {
     fetchResources();
@@ -132,6 +133,7 @@ export default function EquipmentPage() {
   };
 
   const fetchItems = async (sportsRes = sportsResources, labRes = labResources, showLoader = true) => {
+    const requestId = ++fetchRequestId.current;
     if (showLoader) setItemsLoading(true);
     // Build time window for availability check
     const dateStr = formatISTDate(date);
@@ -160,7 +162,9 @@ export default function EquipmentPage() {
           `/api/admin/equipment?resourceId=${sportsRes[0]._id}&start=${startISO}&end=${endISO}`
         );
         const itemsData = await itemsRes.json();
-        setSportsItems(itemsData.items);
+        if (requestId === fetchRequestId.current) {
+          setSportsItems(itemsData.items);
+        }
       }
 
       if (labRes.length > 0) {
@@ -173,12 +177,16 @@ export default function EquipmentPage() {
           `/api/admin/equipment?resourceId=${labRes[0]._id}&start=${startISO}&end=${labEndISO}`
         );
         const itemsData = await itemsRes.json();
-        setLabItems(itemsData.items);
+        if (requestId === fetchRequestId.current) {
+          setLabItems(itemsData.items);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch equipment availability:', err);
     } finally {
-      if (showLoader) setItemsLoading(false);
+      if (showLoader && requestId === fetchRequestId.current) {
+        setItemsLoading(false);
+      }
     }
   };
 
@@ -323,6 +331,7 @@ export default function EquipmentPage() {
       <LoadingState
         title="Loading equipment"
         subtitle="Fetching available sports and lab inventory..."
+        variant="galaxy"
       />
     );
   }

@@ -179,6 +179,7 @@ export default function LibraryManagementPage() {
       <LoadingState
         title="Loading library inventory"
         subtitle="Fetching categories and books..."
+        variant="galaxy"
       />
     );
   }

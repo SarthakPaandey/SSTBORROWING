@@ -191,6 +191,7 @@ export default function PenaltiesPage() {
       <LoadingState
         title="Loading penalties"
         subtitle="Fetching user penalties and access status..."
+        variant="galaxy"
       />
     );
   }

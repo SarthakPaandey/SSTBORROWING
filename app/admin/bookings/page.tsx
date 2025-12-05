@@ -54,6 +54,7 @@ export default function AdminBookingsPage() {
       <LoadingState
         title="Loading bookings"
         subtitle="Fetching the latest booking activity..."
+        variant="galaxy"
       />
     );
   }

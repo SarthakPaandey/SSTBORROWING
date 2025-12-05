@@ -448,6 +448,7 @@ export default function LibraryPage() {
         <LoadingState
           title="Loading library collection"
           subtitle="Fetching categories and available books..."
+          variant="galaxy"
         />
       ) : (
         <Tabs defaultValue="fiction" className="animate-fade-in">

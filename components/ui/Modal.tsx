@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +35,10 @@ export function Modal({
         setIsAnimating(true);
       });
     } else {
+      // When closed via isOpen prop change (not handleClose), 
+      // immediately update animation states
       setIsVisible(false);
+      setIsAnimating(false);
       document.body.style.overflow = 'unset';
     }
 
@@ -43,6 +46,15 @@ export function Modal({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    // Small delay to allow fade-out animation before calling onClose
+    setTimeout(() => {
+      setIsAnimating(false);
+      onClose();
+    }, 150);
+  }, [onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -53,15 +65,7 @@ export function Modal({
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onClose();
-      setIsAnimating(false);
-    }, 200);
-  };
+  }, [isOpen, handleClose]);
 
   if (!isOpen && !isAnimating) return null;
 
@@ -87,7 +91,11 @@ export function Modal({
           'fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300',
           isVisible ? 'opacity-100' : 'opacity-0'
         )}
-        onClick={handleClose}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleClose();
+        }}
       />
       
       {/* Modal container */}
@@ -107,6 +115,7 @@ export function Modal({
             'max-w-[95vw] max-h-[95vh]': size === 'full',
           }
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Animated gradient border effect */}
         <div className="absolute -inset-[1px] bg-gradient-to-r from-accent-blue/20 via-accent-purple-1/20 to-accent-blue/20 rounded-2xl opacity-50 blur-sm -z-10 animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
@@ -124,7 +133,12 @@ export function Modal({
               {title}
             </h2>
             <button
-              onClick={handleClose}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleClose();
+              }}
               className="text-muted-foreground hover:text-foreground transition-all duration-200 rounded-lg hover:bg-secondary/50 p-2 hover:rotate-90 group"
             >
               <X className="h-5 w-5 transition-transform group-hover:scale-110" />

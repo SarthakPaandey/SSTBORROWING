@@ -259,17 +259,66 @@ export default function LibraryManagementPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-text-main">Library Management</h1>
-        <p className="text-text-muted">Manage library book inventory by category</p>
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent p-6 border border-amber-500/20">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📚</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📖</div>
+        <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>📕</div>
+
+        <div className="relative flex items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">📚</span>
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-text-main">Library Management</h1>
+            <p className="text-text-muted">Manage library book inventory by category</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
+        <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">📖</span>
+            <p className="text-2xl font-bold text-blue-400">{fictionBooks.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Fiction Books</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">📗</span>
+            <p className="text-2xl font-bold text-emerald-400">{nonFictionBooks.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Non-Fiction</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:border-purple-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">📕</span>
+            <p className="text-2xl font-bold text-purple-400">{textbooks.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Textbooks</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 hover:border-amber-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">📚</span>
+            <p className="text-2xl font-bold text-amber-400">{books.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Total Books</p>
+        </div>
       </div>
 
       <Tabs defaultValue="fiction">
         <TabsList>
-          <TabsTrigger value="fiction">Fiction</TabsTrigger>
-          <TabsTrigger value="non-fiction">Non-Fiction</TabsTrigger>
-          <TabsTrigger value="textbooks">Textbooks</TabsTrigger>
+          <TabsTrigger value="fiction">📖 Fiction</TabsTrigger>
+          <TabsTrigger value="non-fiction">📗 Non-Fiction</TabsTrigger>
+          <TabsTrigger value="textbooks">📕 Textbooks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fiction">

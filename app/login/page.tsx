@@ -222,6 +222,11 @@ function LoginContent() {
           <CardContent className="pb-8">
             {!isGuardLogin ? (
               <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                {/* Welcome message */}
+                <p className="text-center text-sm text-text-muted">
+                  Access facilities, equipment, and library resources
+                </p>
+
                 {/* Google Sign In Button - Modern white style */}
                 <button
                   onClick={handleGoogleSignIn}
@@ -241,19 +246,34 @@ function LoginContent() {
                   <span>{loading ? 'Signing in...' : 'Continue with Google'}</span>
                 </button>
 
-                {/* Security badge */}
-                <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span>Secure SSO authentication</span>
+                {/* Feature highlights */}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                    <span className="text-xl">🏟️</span>
+                    <span className="text-[10px] text-text-muted text-center">Facilities</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                    <span className="text-xl">🎾</span>
+                    <span className="text-[10px] text-text-muted text-center">Equipment</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                    <span className="text-xl">📚</span>
+                    <span className="text-[10px] text-text-muted text-center">Library</span>
+                  </div>
                 </div>
 
-                {/* Student domain info - subtle pill */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20">
-                    <span className="text-lg">🎓</span>
-                    <span className="text-sm text-accent-blue font-medium">@sst.scaler.com</span>
+                {/* Security and domain info */}
+                <div className="flex items-center justify-center gap-4 text-xs text-text-muted pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="h-3.5 w-3.5 text-success" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Secure SSO</span>
+                  </div>
+                  <div className="w-px h-3 bg-text-muted/30" />
+                  <div className="flex items-center gap-1.5">
+                    <span>🎓</span>
+                    <span className="text-accent-blue">@sst.scaler.com</span>
                   </div>
                 </div>
 

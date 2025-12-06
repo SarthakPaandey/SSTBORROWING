@@ -88,7 +88,7 @@ export function Navbar() {
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/resources', label: 'Resources' },
         { href: '/admin/library', label: 'Library' },
-        { href: '/admin/lab-approvals', label: 'Lab Approvals' },
+        { href: '/admin/lab-approvals', label: 'Approvals' },
         { href: '/admin/bookings', label: 'Bookings' },
         { href: '/admin/group-bookings', label: 'Group Bookings' },
         { href: '/admin/blocks', label: 'Blocks' },
@@ -123,12 +123,12 @@ export function Navbar() {
   };
 
   return (
-    <nav 
+    <nav
       className={cn(
         'border-b border-border/50 sticky top-0 z-50',
         'transition-all duration-300',
-        scrolled 
-          ? 'bg-card/80 backdrop-blur-xl shadow-lg shadow-black/10' 
+        scrolled
+          ? 'bg-card/80 backdrop-blur-xl shadow-lg shadow-black/10'
           : 'bg-card/30 backdrop-blur-lg'
       )}
     >
@@ -136,8 +136,8 @@ export function Navbar() {
         <div className="flex h-16 justify-between items-center">
           {/* Logo with hover effect */}
           <div className="flex items-center">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex items-center group transition-transform duration-300 hover:scale-105"
             >
               <Image
@@ -168,7 +168,7 @@ export function Navbar() {
               >
                 {/* Animated background on hover */}
                 <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                
+
                 {/* Icon */}
                 <span className={cn(
                   'text-base leading-none opacity-90 transition-transform duration-300',
@@ -176,10 +176,10 @@ export function Navbar() {
                 )}>
                   {navIcons[link.href] || '📌'}
                 </span>
-                
+
                 {/* Label */}
                 <span className="relative">{link.label}</span>
-                
+
                 {/* Active indicator dot */}
                 {pathname === link.href && (
                   <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-pulse" />
@@ -199,7 +199,7 @@ export function Navbar() {
                   'hover:bg-secondary/50 hover:scale-110',
                   pendingApprovalsCount > 0 && 'animate-bounce-subtle'
                 )}
-                title="Lab Approvals"
+                title="Approvals"
               >
                 <Bell className={cn(
                   "h-5 w-5 transition-colors duration-300",
@@ -219,7 +219,7 @@ export function Navbar() {
                 <User className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="font-medium text-foreground truncate max-w-[120px]">{session.user.name}</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 <span className="text-sm leading-none opacity-90" aria-hidden>
                   {role === 'ADMIN' ? '🛠️' : role === 'GUARD' ? '🛡️' : '🎓'}
                 </span>
@@ -260,11 +260,11 @@ export function Navbar() {
       </div>
 
       {/* Mobile Menu with animation */}
-      <div 
+      <div
         className={cn(
           'md:hidden overflow-hidden transition-all duration-300 ease-out',
-          mobileMenuOpen 
-            ? 'max-h-[80vh] opacity-100 border-t border-border/50' 
+          mobileMenuOpen
+            ? 'max-h-[80vh] opacity-100 border-t border-border/50'
             : 'max-h-0 opacity-0'
         )}
       >
@@ -306,7 +306,7 @@ export function Navbar() {
               >
                 <span className="flex items-center gap-2">
                   <Bell className="h-5 w-5" />
-                  Pending Lab Approvals
+                  Pending Approvals
                 </span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger text-xs font-bold text-white shadow-lg shadow-danger/50">
                   {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
@@ -332,7 +332,7 @@ export function Navbar() {
                   </p>
                 </div>
               </div>
-              
+
               <Button
                 variant="destructive"
                 size="sm"

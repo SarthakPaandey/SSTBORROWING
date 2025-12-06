@@ -18,7 +18,7 @@ const quickActions = [
   {
     href: '/admin/lab-approvals',
     emoji: '🔬',
-    title: 'Review Lab Approvals',
+    title: 'Review Approvals',
     description: 'pending requests',
     gradient: 'from-amber-500/20 to-orange-500/10',
     borderColor: 'border-amber-500/20 hover:border-amber-500/40',
@@ -100,7 +100,7 @@ export default async function AdminDashboard() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-purple-1/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-blue/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -114,7 +114,7 @@ export default async function AdminDashboard() {
               System overview and management controls
             </p>
           </div>
-          
+
           {/* Quick stats summary */}
           {pendingApprovals > 0 && (
             <Link href="/admin/lab-approvals">
@@ -253,7 +253,7 @@ export default async function AdminDashboard() {
                     {action.title}
                   </p>
                   <p className="text-sm text-text-muted">
-                    {action.countKey === 'pendingApprovals' 
+                    {action.countKey === 'pendingApprovals'
                       ? `${pendingApprovals} ${action.description}`
                       : action.description
                     }
@@ -281,9 +281,9 @@ export default async function AdminDashboard() {
               { label: 'QR System', icon: '📱', status: 'Operational', color: 'success' },
               { label: 'Email Service', icon: '📧', status: 'Running', color: 'success' },
             ].map((item, index) => (
-              <div 
+              <div
                 key={item.label}
-                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-success/5 border border-success/10 transition-all duration-300 hover:bg-success/10 animate-fade-in-up"
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-success/5 border border-success/10 transition-all duration-300 hover:bg-success/10 animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-3">

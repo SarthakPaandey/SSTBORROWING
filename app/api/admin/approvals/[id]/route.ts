@@ -34,6 +34,11 @@ export async function POST(
       throw new NotFoundError('Booking');
     }
 
+    // Prevent approving bookings in the past
+    if (new Date(booking.start) < new Date()) {
+      throw new ValidationError('Cannot approve bookings that have already started or ended');
+    }
+
     if (booking.approval !== 'PENDING') {
       throw new ValidationError('Booking does not require approval');
     }

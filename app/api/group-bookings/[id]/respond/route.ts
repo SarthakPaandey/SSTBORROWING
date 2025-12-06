@@ -77,14 +77,18 @@ export async function PATCH(
 
     // Update member status
     if (response === 'ACCEPT') {
-      // FIX EC-1: Complete atomic update including status change
-      // First increment and update member status
-      const updatedGroupBooking = await GroupBooking.findByIdAndUpdate(
-        params.id,
+      // FIX EC-1: Atomic update guarded on pending status to block post-rejection confirmations
+      const updatedGroupBooking = await GroupBooking.findOneAndUpdate(
+        {
+          _id: params.id,
+          status: 'PENDING_CONFIRMATIONS',
+          'members.userId': user.id,
+          'members.status': 'PENDING',
+        },
         {
           $set: {
-            [`members.${memberIndex}.status`]: 'CONFIRMED',
-            [`members.${memberIndex}.respondedAt`]: new Date(),
+            'members.$.status': 'CONFIRMED',
+            'members.$.respondedAt': new Date(),
           },
           $inc: { confirmedCount: 1 }
         },
@@ -92,7 +96,7 @@ export async function PATCH(
       );
 
       if (!updatedGroupBooking) {
-        throw new NotFoundError('Group booking');
+        throw new ValidationError('You have already responded to this invitation');
       }
 
       // Check if we now have enough confirmations and atomically update status if needed

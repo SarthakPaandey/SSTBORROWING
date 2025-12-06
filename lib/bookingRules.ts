@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Booking, BookingKind, IBooking } from '@/models/Booking';
 import { POLICIES } from '@/lib/policies';
 import { getStartOfDay, toIST } from '@/lib/timezone';
+import { getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 
 export type BookingCategory = BookingKind;
 
@@ -25,6 +26,12 @@ export async function canUserCreateBookingWithCaps(options: {
 }): Promise<{ allowed: boolean; reason?: string }> {
   const { userId, kind, start, end, session } = options;
 
+  // Group booking participation (only relevant for facility/room limits)
+  const participantBookings =
+    kind === 'FACILITY' || kind === 'ROOM'
+      ? await getGroupParticipantBookings(userId, session)
+      : [];
+
   // DAILY LIMITS (per category & user, based on the day of the booking start in IST)
   const startIST = toIST(start);
   const dayStart = getStartOfDay(startIST);
@@ -45,7 +52,16 @@ export async function canUserCreateBookingWithCaps(options: {
       ? await Booking.countDocuments(dailyCountQuery).session(session)
       : await Booking.countDocuments(dailyCountQuery);
 
-    if (dailyCount >= dailyLimit) {
+    const dailyGroupCount =
+      participantBookings.length === 0
+        ? 0
+        : participantBookings.filter(
+            (b) => new Date(b.start) >= dayStart && new Date(b.start) < dayEnd
+          ).length;
+
+    const dailyTotal = dailyCount + dailyGroupCount;
+
+    if (dailyTotal >= dailyLimit) {
       return {
         allowed: false,
         reason: `You have reached the daily limit of ${dailyLimit} ${kind.toLowerCase()} bookings for this day.`,
@@ -72,8 +88,15 @@ export async function canUserCreateBookingWithCaps(options: {
     ? await Booking.find(monthlyQuery).session(session)
     : await Booking.find(monthlyQuery);
 
+  const monthlyGroupBookings =
+    participantBookings.length === 0
+      ? []
+      : participantBookings.filter(
+          (b) => new Date(b.start) >= monthStart && new Date(b.start) < monthEnd
+        );
+
   if (kind === 'FACILITY') {
-    const totalHours = monthlyBookings.reduce((total, b) => {
+    const totalHours = [...monthlyBookings, ...monthlyGroupBookings].reduce((total, b) => {
       const hours = (new Date(b.end).getTime() - new Date(b.start).getTime()) / (1000 * 60 * 60);
       return total + hours;
     }, 0);
@@ -90,7 +113,7 @@ export async function canUserCreateBookingWithCaps(options: {
   }
 
   if (kind === 'ROOM') {
-    const totalHours = monthlyBookings.reduce((total, b) => {
+    const totalHours = [...monthlyBookings, ...monthlyGroupBookings].reduce((total, b) => {
       const hours = (new Date(b.end).getTime() - new Date(b.start).getTime()) / (1000 * 60 * 60);
       return total + hours;
     }, 0);

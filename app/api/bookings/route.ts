@@ -26,6 +26,7 @@ import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
 import { canBorrowSportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
 import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFacilities } from '@/lib/sportEquipmentKits';
+import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
 
 export async function GET(req: NextRequest) {
   try {
@@ -142,16 +143,16 @@ async function postHandler(req: Request) {
       const endMinutes = endIST.getMinutes();
 
       // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
-      const WORKING_HOURS_START = 8;  // 8:00 AM
-      const WORKING_HOURS_END = 20;   // 8:00 PM
-
-      if (startHour < WORKING_HOURS_START) {
-        throw new ValidationError(`Bookings cannot start before ${WORKING_HOURS_START}:00 AM`);
+      if (startHour < POLICIES.WORKING_HOURS_START) {
+        throw new ValidationError(`Bookings cannot start before ${POLICIES.WORKING_HOURS_START}:00 AM`);
       }
 
       // End time can be exactly 8:00 PM (20:00) but not after
-      if (endHour > WORKING_HOURS_END || (endHour === WORKING_HOURS_END && endMinutes > 0)) {
-        throw new ValidationError(`Bookings cannot end after ${WORKING_HOURS_END % 12 || 12}:00 PM`);
+      if (
+        endHour > POLICIES.WORKING_HOURS_END ||
+        (endHour === POLICIES.WORKING_HOURS_END && endMinutes > 0)
+      ) {
+        throw new ValidationError(`Bookings cannot end after ${POLICIES.WORKING_HOURS_END % 12 || 12}:00 PM`);
       }
 
       // Get user with penalty info
@@ -258,12 +259,15 @@ async function postHandler(req: Request) {
       // Equipment and Library have their own separate quantity limits and should not
       // block users from booking facilities/rooms while holding items
 
-      const totalActiveBookings = await Booking.countDocuments({
+      const personalActiveBookings = await Booking.countDocuments({
         userId: user.id,
         kind: { $in: ['FACILITY', 'ROOM'] },
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
         end: { $gt: new Date() },
       }).session(session);
+
+      const groupActiveBookings = await countActiveGroupParticipations(user.id, session);
+      const totalActiveBookings = personalActiveBookings + groupActiveBookings;
 
       if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
         throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active facility/room bookings at a time. Please cancel or complete existing bookings first.`);

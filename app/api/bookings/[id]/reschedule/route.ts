@@ -128,8 +128,10 @@ export async function PATCH(
             }
 
             // Handle approval revalidation if needed
+            const wasApproved = booking.approval === 'APPROVED';
+            const wasPendingApproval = booking.approval === 'PENDING';
             let needsApprovalEmail = false;
-            if (validationResult2.requiresApproval && booking.status === 'CONFIRMED') {
+            if (validationResult2.requiresApproval) {
                 // Reset to pending if it was confirmed but new time requires approval
                 booking.status = 'PENDING';
                 booking.approval = 'PENDING';
@@ -139,6 +141,19 @@ export async function PATCH(
                 booking.approvalEmailSentAt = undefined;
                 booking.approvalEmailError = undefined;
                 needsApprovalEmail = true;
+            } else {
+                // Clear stale approval state when approval is no longer required
+                booking.approval = 'NOT_REQUIRED';
+                booking.approvedBy = undefined;
+                booking.approvedAt = undefined;
+                booking.approvalEmailSent = false;
+                booking.approvalEmailSentAt = undefined;
+                booking.approvalEmailError = undefined;
+
+                // If the booking was pending approval, restore it to confirmed since no approval is needed now
+                if (wasPendingApproval) {
+                    booking.status = 'CONFIRMED';
+                }
             }
 
             // Invalidate any existing QR codes for this booking

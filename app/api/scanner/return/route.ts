@@ -3,12 +3,11 @@ import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
-import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
-import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { POLICIES } from '@/lib/policies';
+import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
 import { handleApiError, NotFoundError, ValidationError, ConflictError } from '@/lib/errors';
 import mongoose from 'mongoose';
-import { getNow } from '@/lib/timezone';
 
 export async function POST(req: NextRequest) {
   let session: mongoose.ClientSession | null = null;
@@ -101,18 +100,6 @@ export async function POST(req: NextRequest) {
         reason: 'Late equipment return',
       }], { session });
 
-      // FIX: booking.userId is the ObjectId, not email
-      const user = await User.findById(booking.userId).session(session);
-      if (user) {
-        user.penaltyPoints += POLICIES.PENALTY_LATE_RETURN;
-
-        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          user.suspendedUntil = calculateSuspensionDate();
-        }
-
-        await user.save({ session });
-      }
-
       penaltyApplied = true;
     }
 
@@ -125,18 +112,6 @@ export async function POST(req: NextRequest) {
         reason: 'Equipment returned damaged',
       }], { session });
 
-      // FIX: booking.userId is the ObjectId, not email
-      const user = await User.findById(booking.userId).session(session);
-      if (user) {
-        user.penaltyPoints += POLICIES.PENALTY_DAMAGE;
-
-        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          user.suspendedUntil = calculateSuspensionDate();
-        }
-
-        await user.save({ session });
-      }
-
       penaltyApplied = true;
     }
 
@@ -146,6 +121,11 @@ export async function POST(req: NextRequest) {
     await booking.save({ session });
 
     // Commit transaction
+    if (penaltyApplied) {
+      // Enforce three-strike escalation logic inside the transaction to prevent races
+      await recalculatePenaltyPoints(booking.userId, session);
+    }
+
     await session.commitTransaction();
 
     return NextResponse.json({

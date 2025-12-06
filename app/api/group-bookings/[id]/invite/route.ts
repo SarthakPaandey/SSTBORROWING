@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { GroupBooking } from '@/models/GroupBooking';
 import { Booking } from '@/models/Booking';
+import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
 import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { getTodayStart } from '@/lib/timezone';
+import { sendEmail } from '@/lib/email';
+import { formatDateTime } from '@/lib/utils';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -134,6 +137,13 @@ export async function POST(
 
     await groupBooking.save();
 
+    await sendSingleInvitationEmail({
+      groupBookingId: groupBooking.id,
+      member: groupBooking.members[groupBooking.members.length - 1],
+      booking,
+      resource: await Resource.findById(booking.resourceId),
+    });
+
     return NextResponse.json({
       message: `Invitation sent to ${email}`,
       groupBooking,
@@ -142,5 +152,62 @@ export async function POST(
   } catch (error) {
     console.error('Invite replacement error:', error);
     return handleApiError(error);
+  }
+}
+
+const INVITE_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+const INVITE_SMTP_CONFIGURED = Boolean(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+
+async function sendSingleInvitationEmail(options: {
+  groupBookingId: string;
+  member: { email: string; name?: string };
+  booking: any;
+  resource: any;
+}) {
+  const { groupBookingId, member, booking, resource } = options;
+  if (!member?.email) return;
+
+  const statusUpdate = async (emailSent: boolean, emailError?: string) => {
+    await GroupBooking.updateOne(
+      { _id: groupBookingId, 'members.email': member.email },
+      {
+        $set: {
+          'members.$.emailSent': emailSent,
+          'members.$.emailSentAt': emailSent ? new Date() : undefined,
+          'members.$.emailError': emailError,
+        }
+      }
+    );
+  };
+
+  if (!INVITE_SMTP_CONFIGURED) {
+    await statusUpdate(false, 'SMTP not configured');
+    return;
+  }
+
+  const invitationUrl = `${INVITE_BASE_URL}/user/group-invitations`;
+  const startTime = formatDateTime(new Date(booking.start));
+  const endTime = formatDateTime(new Date(booking.end));
+
+  try {
+    await sendEmail({
+      to: member.email,
+      subject: `Updated invitation: ${resource?.name || 'Group booking'}`,
+      html: `
+        <p>Hi ${member.name || member.email},</p>
+        <p>You have been invited to a group booking for <strong>${resource?.name || 'a facility'}</strong>.</p>
+        <ul>
+          <li>Start: ${startTime}</li>
+          <li>End: ${endTime}</li>
+          <li>Location: ${resource?.location || 'On campus'}</li>
+        </ul>
+        <p>Please respond in your dashboard: <a href="${invitationUrl}">${invitationUrl}</a></p>
+      `,
+    });
+
+    await statusUpdate(true);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to send invitation email';
+    await statusUpdate(false, errorMessage);
   }
 }

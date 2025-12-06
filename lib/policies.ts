@@ -25,6 +25,8 @@ export const POLICIES = {
   // Dynamic slot booking constraints
   MIN_BOOKING_DURATION_MINUTES: 15, // Minimum 15 minutes per booking
   MAX_BOOKING_DURATION_MINUTES: 120, // Maximum 2 hours per booking
+  WORKING_HOURS_START: 8, // 8 AM IST
+  WORKING_HOURS_END: 20,  // 8 PM IST
 
   // Cancellation limits
   LATE_CANCELLATION_HOURS: 2,

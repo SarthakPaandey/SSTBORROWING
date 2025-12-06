@@ -11,8 +11,11 @@ import { groupBookingSchema } from '@/lib/validations';
 import { withRateLimit } from '@/lib/ratelimit';
 import { withTransaction } from '@/lib/transaction';
 import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
-import { getNow, getTodayStart, toIST } from '@/lib/timezone';
+import { toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
+import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
+import { sendEmail } from '@/lib/email';
+import { formatDateTime } from '@/lib/utils';
 
 async function postHandler(req: Request) {
   try {
@@ -82,16 +85,13 @@ async function postHandler(req: Request) {
       const endMinutes = endIST.getMinutes();
       
       // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
-      const WORKING_HOURS_START = 8;  // 8:00 AM
-      const WORKING_HOURS_END = 20;   // 8:00 PM
-
-      if (startHour < WORKING_HOURS_START) {
-        throw new ValidationError(`Bookings cannot start before ${WORKING_HOURS_START}:00 AM`);
+      if (startHour < POLICIES.WORKING_HOURS_START) {
+        throw new ValidationError(`Bookings cannot start before ${POLICIES.WORKING_HOURS_START}:00 AM`);
       }
 
       // End time can be exactly 8:00 PM (20:00) but not after
-      if (endHour > WORKING_HOURS_END || (endHour === WORKING_HOURS_END && endMinutes > 0)) {
-        throw new ValidationError(`Bookings cannot end after ${WORKING_HOURS_END % 12 || 12}:00 PM`);
+      if (endHour > POLICIES.WORKING_HOURS_END || (endHour === POLICIES.WORKING_HOURS_END && endMinutes > 0)) {
+        throw new ValidationError(`Bookings cannot end after ${POLICIES.WORKING_HOURS_END % 12 || 12}:00 PM`);
       }
 
       // Validate booking duration
@@ -187,19 +187,22 @@ async function postHandler(req: Request) {
         }
       }
 
-      // Check active booking count for all members
+      // Check active booking count for all members (direct + group participation)
       // This prevents users from bypassing the "3 active facilities/rooms" limit via group bookings
       for (const member of [...members, organizer]) {
-        const activeCount = await Booking.countDocuments({
+        const activePersonal = await Booking.countDocuments({
           userId: member.id,
           kind: { $in: ['FACILITY', 'ROOM'] },
           status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
           end: { $gt: new Date() },
         }).session(txSession);
 
-        if (activeCount >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+        const activeGroup = await countActiveGroupParticipations(member.id, txSession);
+        const activeTotal = activePersonal + activeGroup;
+
+        if (activeTotal >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
           throw new ValidationError(
-            `${member.email} already has ${activeCount} active facility/room bookings. ` +
+            `${member.email} already has ${activeTotal} active facility/room bookings. ` +
             `Maximum allowed is ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS}. Please cancel an existing booking first.`
           );
         }
@@ -250,17 +253,35 @@ async function postHandler(req: Request) {
       const expiresInMs = expiresAt.getTime() - now.getTime();
       const expiresInHours = Math.round((expiresInMs / (1000 * 60 * 60)) * 10) / 10; // Round to 1 decimal
 
-      return NextResponse.json({
-        message: 'Group booking created. Invitations sent to members.',
+      return {
         booking: booking[0],
         groupBooking: groupBooking[0],
+        resource,
+        organizer,
         expiresAt,
         expiresIn: expiresInHours >= 1
           ? `${expiresInHours} hours`
           : `${Math.round(expiresInMs / (1000 * 60))} minutes`,
-      }, { status: 201 });
+      };
     }); // End of withTransaction
 
+    await sendGroupInvitationEmails(
+      transactionResult.groupBooking,
+      transactionResult.booking,
+      transactionResult.resource,
+      transactionResult.organizer
+    );
+
+    // Re-fetch to include email tracking updates
+    const refreshedGroupBooking = await GroupBooking.findById(transactionResult.groupBooking.id);
+
+    return NextResponse.json({
+      message: 'Group booking created. Invitations sent to members.',
+      booking: transactionResult.booking,
+      groupBooking: refreshedGroupBooking || transactionResult.groupBooking,
+      expiresAt: transactionResult.expiresAt,
+      expiresIn: transactionResult.expiresIn,
+    }, { status: 201 });
   } catch (error) {
     console.error('Group booking creation error:', error);
     return handleApiError(error);
@@ -268,3 +289,79 @@ async function postHandler(req: Request) {
 }
 
 export const POST = withRateLimit(postHandler);
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+const SMTP_CONFIGURED = Boolean(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+
+async function markInvitationStatus(groupBookingId: string, email: string, status: {
+  emailSent?: boolean;
+  emailSentAt?: Date;
+  emailError?: string;
+}) {
+  await GroupBooking.updateOne(
+    { _id: groupBookingId, 'members.email': email },
+    {
+      $set: {
+        'members.$.emailSent': status.emailSent ?? false,
+        'members.$.emailSentAt': status.emailSentAt,
+        'members.$.emailError': status.emailError,
+      }
+    }
+  );
+}
+
+async function sendGroupInvitationEmails(
+  groupBooking: any,
+  booking: any,
+  resource: any,
+  organizer: any
+) {
+  const invitationUrl = `${BASE_URL}/user/group-invitations`;
+  const startTime = formatDateTime(new Date(booking.start));
+  const endTime = formatDateTime(new Date(booking.end));
+  const organizerDisplay = organizer?.name || organizer?.email || 'Organizer';
+
+  for (const member of groupBooking.members) {
+    if (!member.email) continue;
+
+    // Track failure when SMTP is not configured to surface in UI
+    if (!SMTP_CONFIGURED) {
+      await markInvitationStatus(groupBooking.id, member.email, {
+        emailSent: false,
+        emailError: 'SMTP not configured',
+      });
+      continue;
+    }
+
+    const html = `
+      <p>Hi ${member.name || member.email},</p>
+      <p>${organizerDisplay} invited you to a group booking for <strong>${resource.name}</strong>.</p>
+      <ul>
+        <li>Start: ${startTime}</li>
+        <li>End: ${endTime}</li>
+        <li>Location: ${resource.location || 'On campus'}</li>
+      </ul>
+      <p>Please respond in your dashboard: <a href="${invitationUrl}">${invitationUrl}</a></p>
+    `;
+
+    try {
+      await sendEmail({
+        to: member.email,
+        subject: `Invitation: ${resource.name} group booking`,
+        html,
+      });
+
+      await markInvitationStatus(groupBooking.id, member.email, {
+        emailSent: true,
+        emailSentAt: new Date(),
+        emailError: undefined,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send invitation email';
+      await markInvitationStatus(groupBooking.id, member.email, {
+        emailSent: false,
+        emailError: errorMessage,
+      });
+    }
+  }
+}

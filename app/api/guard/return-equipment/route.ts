@@ -3,12 +3,11 @@ import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
-import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
-import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { POLICIES } from '@/lib/policies';
 import { handleApiError, AuthorizationError, ValidationError, NotFoundError, ConflictError } from '@/lib/errors';
 import mongoose from 'mongoose';
-import { getNow } from '@/lib/timezone';
+import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
 
 export async function POST(req: NextRequest) {
   let session: mongoose.ClientSession | null = null;
@@ -145,21 +144,6 @@ export async function POST(req: NextRequest) {
         }], { session });
       }
 
-      // FIX: Single atomic update for user penalty points
-      // Previously, if both late AND damaged, we fetched user twice and saved twice
-      // which could cause race conditions and incorrect suspension checks
-      // FIX: booking.userId is the ObjectId, not email
-      const user = await User.findById(booking.userId).session(session);
-      if (user) {
-        user.penaltyPoints += totalPenaltyPoints;
-
-        if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-          user.suspendedUntil = calculateSuspensionDate();
-        }
-
-        await user.save({ session });
-      }
-
       penaltyApplied = true;
     }
 
@@ -170,6 +154,11 @@ export async function POST(req: NextRequest) {
     booking.returnNotes = notes || '';
     booking.returnedBy = guard.id;
     await booking.save({ session });
+
+    // Recalculate inside the transaction to avoid race conditions
+    if (penaltyApplied) {
+      await recalculatePenaltyPoints(booking.userId, session);
+    }
 
     // Commit transaction
     await session.commitTransaction();

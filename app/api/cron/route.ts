@@ -88,7 +88,6 @@ export async function GET(req: NextRequest) {
                 // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
                 // This properly tracks suspension levels and resets points after serving suspensions
                 await session.commitTransaction();
-                session.endSession();
                 await recalculatePenaltyPoints(booking.userId);
 
                 results.noShows++;
@@ -96,7 +95,6 @@ export async function GET(req: NextRequest) {
                 if (session.inTransaction()) {
                     await session.abortTransaction();
                 }
-                session.endSession();
                 console.error(`Failed to process no-show for booking ${booking.id}:`, error);
                 // Continue processing other bookings
             } finally {
@@ -144,7 +142,6 @@ export async function GET(req: NextRequest) {
 
                 // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
                 await session.commitTransaction();
-                session.endSession();
                 await recalculatePenaltyPoints(booking.userId);
 
                 results.libraryNoPickups++;
@@ -152,7 +149,6 @@ export async function GET(req: NextRequest) {
                 if (session.inTransaction()) {
                     await session.abortTransaction();
                 }
-                session.endSession();
                 console.error(`Failed to process library no-pickup for booking ${booking.id}:`, error);
             } finally {
                 session.endSession();

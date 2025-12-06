@@ -20,6 +20,8 @@ const TIMEZONE = 'Asia/Kolkata';
  * 
  * Why? This function returns a Date object that's "shifted" by +5:30 hours.
  * Comparing it with DB timestamps (which are UTC) causes a 5.5-hour offset error.
+ * Always compare like-with-like: use `new Date()` for persisted values and
+ * convert both sides to IST only for display or boundary calculations.
  */
 export function getNow(): Date {
     return toZonedTime(new Date(), TIMEZONE);

@@ -11,6 +11,7 @@ import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
 import { LoadingState, InlineLoading } from '@/components/ui/LoadingState';
+import { triggerBookingSuccess } from '@/lib/confetti';
 import { Package, Sparkles, FlaskConical, Trophy, Clock, ShoppingCart, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react';
 
 // Enhanced sport icons with more detail
@@ -155,10 +156,10 @@ export default function EquipmentPage() {
     // Dynamic duration: min(75 minutes, time until 8 PM IST closing)
     // FIX: Create closing time explicitly in IST to avoid browser timezone issues
     const closingTime = new Date(`${dateStr}T20:00:00+05:30`); // 8:00 PM IST
-    
+
     const maxEndWithDuration = new Date(start);
     maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
-    
+
     if (maxEndWithDuration <= closingTime) {
       end.setMinutes(end.getMinutes() + 75);
     } else {
@@ -266,17 +267,17 @@ export default function EquipmentPage() {
         // Dynamic duration: min(75 minutes, time until 8 PM IST)
         // FIX: Create closing time explicitly in IST to avoid browser timezone issues
         const closingTime = new Date(`${dateStr}T20:00:00+05:30`); // 8:00 PM IST
-        
+
         const maxEndWithDuration = new Date(start);
         maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
-        
+
         // Use the earlier of: 75 min from pickup OR 8 PM IST closing
         if (maxEndWithDuration <= closingTime) {
           end.setMinutes(end.getMinutes() + 75);
         } else {
           end.setTime(closingTime.getTime());
         }
-        
+
         // Validate minimum 15 minutes session
         const sessionMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
         if (sessionMinutes < 15) {
@@ -327,6 +328,7 @@ export default function EquipmentPage() {
       }
 
       setSuccess(true);
+      triggerBookingSuccess();
       setTimeout(() => router.push('/user/bookings'), 2000);
     } catch (err: any) {
       setError(err.message);
@@ -357,12 +359,12 @@ export default function EquipmentPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-success/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating equipment icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">🏸</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🏀</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🏏</div>
-        
+
         <div className="relative flex items-center gap-4">
           <div className="relative">
             {/* Animated glow ring */}
@@ -425,7 +427,7 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      <Tabs 
+      <Tabs
         value={tab}
         className="animate-fade-in"
         onValueChange={(value) => {
@@ -572,17 +574,16 @@ export default function EquipmentPage() {
                           {items.map((item: any, itemIndex: number) => {
                             const isSelected = (selectedItems[item._id] || 0) > 0;
                             const isOutOfStock = item.availableNow === 0;
-                            
+
                             return (
                               <div
                                 key={item._id}
-                                className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl p-3 transition-all duration-200 ${
-                                  isSelected 
-                                    ? 'bg-success/10 border border-success/30 shadow-sm' 
-                                    : isOutOfStock
+                                className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl p-3 transition-all duration-200 ${isSelected
+                                  ? 'bg-success/10 border border-success/30 shadow-sm'
+                                  : isOutOfStock
                                     ? 'bg-bg-dark/30 opacity-60'
                                     : 'bg-card/50 hover:bg-card border border-transparent hover:border-card-border'
-                                }`}
+                                  }`}
                                 style={{ animationDelay: `${itemIndex * 30}ms` }}
                               >
                                 <div className="flex-1 min-w-0">
@@ -597,11 +598,10 @@ export default function EquipmentPage() {
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <div className="flex-1 h-1.5 bg-bg-dark rounded-full overflow-hidden">
-                                      <div 
-                                        className={`h-full rounded-full transition-all ${
-                                          item.availableNow === 0 ? 'bg-destructive' :
+                                      <div
+                                        className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
                                           item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
-                                        }`}
+                                          }`}
                                         style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
                                       />
                                     </div>
@@ -675,7 +675,7 @@ export default function EquipmentPage() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <Package className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {Object.values(selectedItems).some((v) => v > 0) 
+                    {Object.values(selectedItems).some((v) => v > 0)
                       ? `Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
                       : 'Select Items to Book'
                     }
@@ -763,17 +763,16 @@ export default function EquipmentPage() {
                   labItems.map((item, index) => {
                     const isSelected = (selectedItems[item._id] || 0) > 0;
                     const isOutOfStock = item.availableNow === 0;
-                    
+
                     return (
                       <div
                         key={item._id}
-                        className={`rounded-xl border p-4 transition-all duration-200 animate-fade-in-up ${
-                          isSelected 
-                            ? 'bg-accent-purple-1/10 border-accent-purple-1/30 shadow-lg shadow-accent-purple-1/10' 
-                            : isOutOfStock
+                        className={`rounded-xl border p-4 transition-all duration-200 animate-fade-in-up ${isSelected
+                          ? 'bg-accent-purple-1/10 border-accent-purple-1/30 shadow-lg shadow-accent-purple-1/10'
+                          : isOutOfStock
                             ? 'bg-bg-dark/30 opacity-60 border-card-border'
                             : 'bg-card border-card-border hover:border-accent-purple-1/30 hover:shadow-md'
-                        }`}
+                          }`}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -793,11 +792,10 @@ export default function EquipmentPage() {
                             </div>
                             <div className="flex items-center gap-3 mt-2">
                               <div className="flex-1 max-w-[200px] h-2 bg-bg-dark rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full rounded-full transition-all ${
-                                    item.availableNow === 0 ? 'bg-destructive' :
+                                <div
+                                  className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
                                     item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-accent-purple-1'
-                                  }`}
+                                    }`}
                                   style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
                                 />
                               </div>

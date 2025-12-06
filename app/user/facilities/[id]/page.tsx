@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { SuccessCelebration } from '@/components/ui/SuccessCelebration';
 import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
@@ -400,14 +401,13 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
             </div>
           )}
 
-          {/* Success Message */}
-          {success && (
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4">
-              <p className="text-sm text-emerald-300">
-                ✓ Booking successful! Redirecting to your bookings...
-              </p>
-            </div>
-          )}
+          {/* Success Celebration */}
+          <SuccessCelebration
+            show={success}
+            message="Booking Confirmed!"
+            subMessage="Redirecting to your bookings..."
+            type="booking"
+          />
 
           {/* Book Button */}
           <Button

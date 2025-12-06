@@ -15,10 +15,13 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "bcryptjs": "^2.4.3",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
+    "framer-motion": "^12.23.25",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.378.0",
     "mongoose": "^8.3.0",

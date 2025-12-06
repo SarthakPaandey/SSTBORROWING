@@ -3,7 +3,7 @@ import { IUser } from '@/models/User';
 import { IResource } from '@/models/Resource';
 import { Booking } from '@/models/Booking';
 import { Block } from '@/models/Block';
-import { POLICIES, isWithinAdvanceWindow, hasMinimumGap, hasConsecutiveBookings, calculateTotalHours } from './policies';
+import { POLICIES, isWithinAdvanceWindow, hasMinimumGap, hasConsecutiveBookings, calculateTotalHours, canUserBook } from './policies';
 import { checkBookingAvailability } from './inventory';
 import { ValidationError, ConflictError } from './errors';
 import { getStartOfDay, getTodayStart, toIST } from './timezone';
@@ -47,6 +47,15 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         return {
             allowed: false,
             reason: `Cannot reschedule ${booking.status.toLowerCase()} bookings. Only confirmed or pending bookings can be rescheduled.`,
+        };
+    }
+
+    // FIX: Check if user is blocked or suspended before allowing reschedule
+    const userCanBook = canUserBook(user);
+    if (!userCanBook.allowed) {
+        return {
+            allowed: false,
+            reason: userCanBook.reason || 'You are not permitted to reschedule bookings.',
         };
     }
 
@@ -123,20 +132,20 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     } else if (booking.kind === 'EQUIPMENT') {
         // Determine if sports or lab equipment based on resource type
         const isSportsEquipment = resource.type === 'SPORTS_EQUIPMENT';
-        
+
         if (isSportsEquipment) {
             // Sports equipment: 15-75 minutes (dynamic based on closing time)
             // Must match the booking creation logic to allow rescheduling
             const maxDuration = POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES; // 75 min
             const minDuration = POLICIES.MIN_BOOKING_DURATION_MINUTES; // 15 min
-            
+
             if (duration < minDuration) {
                 return {
                     allowed: false,
                     reason: `Sports equipment borrow duration must be at least ${minDuration} minutes`,
                 };
             }
-            
+
             if (duration > maxDuration) {
                 return {
                     allowed: false,
@@ -146,7 +155,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         } else {
             // Lab equipment: Fixed 24-hour duration
             const expectedDuration = POLICIES.LAB_EQUIPMENT_BORROW_MINUTES; // 1440 min (24h)
-            
+
             if (duration !== expectedDuration) {
                 return {
                     allowed: false,

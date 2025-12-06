@@ -45,7 +45,8 @@ export async function getAvailableQuantity(
     // Sum up the quantities reserved in overlapping bookings
     let reservedQuantity = 0;
     for (const booking of overlappingBookings) {
-        const item = booking.items?.find((i: any) => i.itemId.toString() === itemId.toString());
+        // FIX: Add null safety for item ID comparison
+        const item = booking.items?.find((i: any) => i.itemId?.toString() === itemId?.toString());
         if (item) {
             reservedQuantity += item.qty;
         }

@@ -5,7 +5,8 @@ import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { QRToken } from '@/models/QRToken';
-import { POLICIES, calculateSuspensionDate } from '@/lib/policies';
+import { POLICIES } from '@/lib/policies';
+import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 import { getDaysAgo } from '@/lib/timezone';
 import { acquireCronLock, releaseCronLock } from '@/lib/cron-lock';
@@ -78,20 +79,18 @@ export async function GET(req: NextRequest) {
                     reason: 'No-show for booking',
                 }], { session });
 
-                // Update user points atomically
-                const user = await User.findById(booking.userId).session(session);
-                if (user) {
-                    user.penaltyPoints += POLICIES.PENALTY_NO_SHOW;
-                    if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-                        user.suspendedUntil = calculateSuspensionDate();
-                    }
-                    await user.save({ session });
-                }
-
+                // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
+                // This properly tracks suspension levels and resets points after serving suspensions
                 await session.commitTransaction();
+                session.endSession();
+                await recalculatePenaltyPoints(booking.userId);
+
                 results.noShows++;
             } catch (error) {
-                await session.abortTransaction();
+                if (session.inTransaction()) {
+                    await session.abortTransaction();
+                }
+                session.endSession();
                 console.error(`Failed to process no-show for booking ${booking.id}:`, error);
                 // Continue processing other bookings
             } finally {
@@ -137,19 +136,17 @@ export async function GET(req: NextRequest) {
                     reason: 'Library book not picked up within 24 hours',
                 }], { session });
 
-                const user = await User.findById(booking.userId).session(session);
-                if (user) {
-                    user.penaltyPoints += POLICIES.PENALTY_BOOK_NO_PICKUP;
-                    if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
-                        user.suspendedUntil = calculateSuspensionDate();
-                    }
-                    await user.save({ session });
-                }
-
+                // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
                 await session.commitTransaction();
+                session.endSession();
+                await recalculatePenaltyPoints(booking.userId);
+
                 results.libraryNoPickups++;
             } catch (error) {
-                await session.abortTransaction();
+                if (session.inTransaction()) {
+                    await session.abortTransaction();
+                }
+                session.endSession();
                 console.error(`Failed to process library no-pickup for booking ${booking.id}:`, error);
             } finally {
                 session.endSession();

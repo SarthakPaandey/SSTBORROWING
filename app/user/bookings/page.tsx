@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { toast } from "@/components/ui/Toaster";
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
 import { QrCode, Clock, Calendar, ArrowRight, RefreshCw, X, Sparkles, Package, AlertCircle } from 'lucide-react';
@@ -65,7 +66,7 @@ export default function BookingsPage() {
         clearInterval(timer);
         setTimeout(() => {
           setQrModal({ open: false });
-          alert('QR code has expired. Please generate a new one.');
+          toast.warning('QR code has expired. Please generate a new one.');
         }, 1000);
       } else {
         const minutes = Math.floor(diff / 60000);
@@ -131,11 +132,11 @@ export default function BookingsPage() {
         fetchBookings();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to cancel booking');
+        toast.error(data.error || 'Failed to cancel booking');
       }
     } catch (error) {
       console.error(error);
-      alert('Failed to cancel booking');
+      toast.error('Failed to cancel booking');
     }
   };
 
@@ -176,14 +177,14 @@ export default function BookingsPage() {
 
       // Show success message
       if (data.requiresApproval) {
-        alert('Booking rescheduled successfully! Since the new time requires approval, your booking status has been reset to "Awaiting Approval".');
+        toast.success('Booking rescheduled! Status reset to Awaiting Approval.');
       } else {
-        alert('Booking rescheduled successfully!');
+        toast.success('Booking rescheduled successfully!');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to reschedule booking';
       setError(errorMessage);
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setRescheduling(false);
     }

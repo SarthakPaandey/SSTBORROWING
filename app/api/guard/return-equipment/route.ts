@@ -60,19 +60,7 @@ export async function POST(req: NextRequest) {
       throw new ConflictError('Equipment already returned');
     }
 
-    // FIX: Restore equipment quantities atomically (only if checked in)
-    // Using $inc for atomic operations to prevent race conditions
-    if (booking.items) {
-      for (const item of booking.items) {
-        await EquipmentItem.findByIdAndUpdate(
-          item.itemId,
-          {
-            $inc: { qtyAvailable: item.qty }
-          },
-          { session }
-        );
-      }
-    }
+    // NOTE: No need to update qtyAvailable here.\n    // The inventory system uses time-based overlap calculation (lib/inventory.ts)\n    // to determine availability, not qtyAvailable. Once the booking status is\n    // set to COMPLETED, this booking won't be included in overlap queries,\n    // automatically making the items available for future bookings.\n    // qtyAvailable should only be modified for PERMANENT physical stock changes\n    // (e.g., damaged item removed from circulation).
 
     // FIX EC-6: Check if late using UTC for consistency
     const now = new Date();

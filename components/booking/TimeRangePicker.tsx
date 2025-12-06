@@ -359,16 +359,22 @@ export default function TimeRangePicker({
                                 <p className="text-xs text-slate-400">{formatTime12(workStart)} – {formatTime12(workEnd)}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
+                            {/* Mobile: Simplified legend */}
+                            <div className="flex sm:hidden items-center gap-3 text-[10px]">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400"></span>Free</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400"></span>Busy</span>
+                            </div>
+                            {/* Desktop: Full legend */}
+                            <div className="hidden sm:flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-green-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"></div>
                                 <span className="text-xs text-slate-400">Available</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="hidden sm:flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-rose-400 to-red-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]"></div>
                                 <span className="text-xs text-slate-400">Booked</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="hidden sm:flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
                                 <span className="text-xs text-slate-400">Past</span>
                             </div>
@@ -499,7 +505,7 @@ export default function TimeRangePicker({
             </div>
 
             {/* Time Selection Controls - Grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Start Time Dropdown */}
                 <div className="relative" ref={startDropdownRef}>
                     <label className="block text-xs font-semibold text-text-muted/80 mb-2 uppercase tracking-wide">
@@ -607,7 +613,7 @@ export default function TimeRangePicker({
                         <Zap className="h-4 w-4 text-amber-400" />
                         <span className="text-sm font-semibold text-text-muted/80 uppercase tracking-wide">Quick Pick</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap scrollbar-hide">
                         {quickSlots.map((slot, i) => {
                             const isSelected = selectedStartTime === slot.start && selectedDuration === (slot.end - slot.start);
                             return (
@@ -637,7 +643,7 @@ export default function TimeRangePicker({
                     <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl ${isCurrentSelectionValid ? 'bg-emerald-500/20' : 'bg-amber-500/20'
                         }`} />
 
-                    <div className="relative flex items-center justify-between">
+                    <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
                         <div className="flex items-center gap-3">
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCurrentSelectionValid
                                 ? 'bg-emerald-500/20 text-emerald-400'
@@ -658,7 +664,7 @@ export default function TimeRangePicker({
                                 </p>
                             </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                             <p className="text-xs text-text-muted/70 uppercase tracking-wide font-semibold">Duration</p>
                             <p className={`text-3xl font-black ${isCurrentSelectionValid ? 'text-emerald-400' : 'text-amber-400'}`}>
                                 {selectedDuration >= 60

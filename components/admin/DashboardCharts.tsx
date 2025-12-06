@@ -176,6 +176,7 @@ function ProgressBar3D({
 function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] }) {
     const maxCount = Math.max(...data.map(d => d.count), 1);
     const [animated, setAnimated] = useState(false);
+    const chartHeight = 180; // Fixed height in pixels
 
     useEffect(() => {
         setTimeout(() => setAnimated(true), 100);
@@ -188,7 +189,7 @@ function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] })
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
             <div className="relative">
-                <div className="flex items-center gap-3 mb-8">
+                <div className="flex items-center gap-3 mb-6">
                     <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30">
                         <Activity className="w-5 h-5 text-blue-400" />
                     </div>
@@ -198,42 +199,45 @@ function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] })
                     </div>
                 </div>
 
-                {/* 3D Bar Chart */}
-                <div className="flex items-end justify-between gap-3 h-48 px-2">
+                {/* 3D Bar Chart with fixed height */}
+                <div className="flex items-end justify-between gap-4 px-2" style={{ height: `${chartHeight}px` }}>
                     {data.map((day, index) => {
-                        const height = (day.count / maxCount) * 100;
-                        return (
-                            <div key={day.date} className="flex-1 flex flex-col items-center group">
-                                {/* Value tooltip on hover */}
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-2 px-2 py-1 rounded bg-white/10 backdrop-blur-sm text-xs font-medium text-text-main">
-                                    {day.count}
-                                </div>
+                        const barHeight = Math.max((day.count / maxCount) * chartHeight, 8); // Min 8px
+                        const isToday = index === data.length - 1;
 
-                                {/* 3D Bar */}
-                                <div className="relative w-full flex-1 flex items-end">
+                        return (
+                            <div key={day.date} className="flex-1 flex flex-col items-center group h-full">
+                                {/* Bar container */}
+                                <div className="flex-1 w-full flex items-end justify-center">
                                     <div
-                                        className="relative w-full rounded-t-lg overflow-hidden transition-all duration-700 ease-out"
+                                        className="relative w-full max-w-[40px] rounded-t-lg overflow-visible transition-all duration-700 ease-out"
                                         style={{
-                                            height: animated ? `${Math.max(height, 5)}%` : '5%',
+                                            height: animated ? `${barHeight}px` : '8px',
                                             transitionDelay: `${index * 100}ms`,
-                                            perspective: '100px'
                                         }}
                                     >
-                                        {/* Main bar */}
-                                        <div className={`absolute inset-0 bg-gradient-to-t from-blue-600 via-blue-500 to-cyan-400 rounded-t-lg shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-shadow`}>
+                                        {/* Glow effect behind bar */}
+                                        <div className={`absolute inset-0 bg-blue-500/30 blur-xl scale-150 transition-opacity ${animated ? 'opacity-100' : 'opacity-0'}`} />
+
+                                        {/* Main 3D bar */}
+                                        <div className={`relative h-full w-full rounded-t-lg overflow-hidden ${isToday ? 'bg-gradient-to-t from-cyan-500 via-blue-400 to-blue-300' : 'bg-gradient-to-t from-blue-600 via-blue-500 to-cyan-400'} shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/60 transition-shadow`}>
                                             {/* Top shine */}
-                                            <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/40 to-transparent rounded-t-lg" />
-                                            {/* Side shadow for 3D effect */}
+                                            <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/50 to-transparent rounded-t-lg" />
+                                            {/* Right side shadow for 3D */}
                                             <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-black/20 to-transparent" />
+                                            {/* Bottom glow line */}
+                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                                         </div>
 
-                                        {/* Glow */}
-                                        <div className="absolute -inset-2 bg-blue-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        {/* Value tooltip - always visible */}
+                                        <div className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-xs font-bold transition-all ${animated ? 'opacity-100' : 'opacity-0'} ${day.count > 0 ? 'bg-blue-500/80 text-white' : 'bg-white/10 text-text-muted'}`}>
+                                            {day.count}
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Day label */}
-                                <span className="mt-3 text-xs font-medium text-text-muted group-hover:text-blue-400 transition-colors">
+                                <span className={`mt-3 text-xs font-medium transition-colors ${isToday ? 'text-blue-400' : 'text-text-muted group-hover:text-blue-400'}`}>
                                     {day.date}
                                 </span>
                             </div>

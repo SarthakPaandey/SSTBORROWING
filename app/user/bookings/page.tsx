@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { toast } from "@/components/ui/Toaster";
+import { SkeletonBookingList } from '@/components/ui/Skeleton';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
 import { QrCode, Clock, Calendar, ArrowRight, RefreshCw, X, Sparkles, Package, AlertCircle } from 'lucide-react';
@@ -342,13 +343,16 @@ export default function BookingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-12 w-64 skeleton rounded-xl"></div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 skeleton rounded-xl" style={{ animationDelay: `${i * 0.1}s` }}></div>
-          ))}
+      <div className="space-y-6 animate-fade-in">
+        {/* Hero skeleton */}
+        <div className="h-32 skeleton rounded-2xl" />
+        {/* Stats skeleton */}
+        <div className="flex gap-4">
+          <div className="h-10 w-32 skeleton rounded-full" />
+          <div className="h-10 w-32 skeleton rounded-full" />
         </div>
+        {/* Booking cards skeleton */}
+        <SkeletonBookingList count={3} />
       </div>
     );
   }
@@ -360,12 +364,12 @@ export default function BookingsPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating booking icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📋</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📅</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>✅</div>
-        
+
         <div className="relative flex items-center gap-4">
           <div className="relative">
             {/* Animated glow ring */}
@@ -436,13 +440,12 @@ export default function BookingsPage() {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   {/* Status indicator line */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                    booking.status === 'CONFIRMED' ? 'bg-success' :
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${booking.status === 'CONFIRMED' ? 'bg-success' :
                     booking.status === 'PENDING' ? 'bg-warning' :
-                    booking.status === 'CHECKED_IN' ? 'bg-accent-blue' :
-                    'bg-text-muted'
-                  }`} />
-                  
+                      booking.status === 'CHECKED_IN' ? 'bg-accent-blue' :
+                        'bg-text-muted'
+                    }`} />
+
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -451,7 +454,7 @@ export default function BookingsPage() {
                         </p>
                         {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                       </div>
-                      
+
                       <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-4 w-4 text-accent-blue" />
@@ -465,7 +468,7 @@ export default function BookingsPage() {
                           </span>
                         )}
                       </div>
-                      
+
                       {booking.items && booking.items.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {booking.items.map((item: BookingItem, i: number) => (
@@ -476,14 +479,14 @@ export default function BookingsPage() {
                           ))}
                         </div>
                       )}
-                      
+
                       {(booking.rescheduleCount || 0) > 0 && (
                         <Badge variant="secondary" icon="🔄" className="mt-2">
                           Rescheduled {booking.rescheduleCount}x
                         </Badge>
                       )}
                     </div>
-                    
+
                     {/* Action buttons */}
                     <div className="flex flex-wrap gap-2">
                       {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
@@ -497,7 +500,7 @@ export default function BookingsPage() {
                           Get QR
                         </Button>
                       )}
-                      
+
                       {(() => {
                         const rescheduleCheck = canReschedule(booking);
                         if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
@@ -537,7 +540,7 @@ export default function BookingsPage() {
                         }
                         return null;
                       })()}
-                      
+
                       {['CONFIRMED', 'PENDING'].includes(booking.status) && (
                         <Button
                           size="sm"
@@ -572,7 +575,7 @@ export default function BookingsPage() {
         <CardContent>
           {pastBookings.length === 0 ? (
             <div className="text-center py-8">
-                <p className="text-text-muted">No past bookings yet.</p>
+              <p className="text-text-muted">No past bookings yet.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -583,15 +586,14 @@ export default function BookingsPage() {
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
                       booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
-                      booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
-                      'bg-text-muted/10 text-text-muted'
-                    }`}>
+                        booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
+                          'bg-text-muted/10 text-text-muted'
+                      }`}>
                       {booking.status === 'COMPLETED' ? '✅' :
-                       booking.status === 'CANCELLED' ? '❌' :
-                       booking.status === 'NO_SHOW' ? '👻' : '📋'}
+                        booking.status === 'CANCELLED' ? '❌' :
+                          booking.status === 'NO_SHOW' ? '👻' : '📋'}
                     </div>
                     <div>
                       <p className="font-medium text-text-main">{booking.resourceName}</p>
@@ -604,7 +606,7 @@ export default function BookingsPage() {
                   {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                 </div>
               ))}
-              
+
               {pastBookings.length > 10 && (
                 <p className="text-center text-sm text-text-muted pt-4">
                   Showing 10 of {pastBookings.length} past bookings

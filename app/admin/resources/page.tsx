@@ -269,17 +269,65 @@ export default function ResourcesPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-text-main">Resource Management</h1>
-        <p className="text-text-muted">Manage facilities, rooms, and equipment</p>
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/20 via-purple-600/10 to-transparent p-6 border border-purple-500/20">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">🏟️</div>
+        <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🔬</div>
+
+        <div className="relative flex items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 blur-xl opacity-40 animate-pulse" />
+            <div className="relative p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 backdrop-blur-sm flex items-center justify-center animate-float">
+              <span className="text-4xl drop-shadow-lg">⚙️</span>
+            </div>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-text-main">Resource Management</h1>
+            <p className="text-text-muted">Manage facilities, rooms, and equipment</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
+        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">🏟️</span>
+            <p className="text-2xl font-bold text-emerald-400">{facilities.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Facilities</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">🚪</span>
+            <p className="text-2xl font-bold text-blue-400">{rooms.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Rooms</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 hover:border-orange-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">⚽</span>
+            <p className="text-2xl font-bold text-orange-400">{sportsEquipment.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Sports Equipment</p>
+        </div>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20 hover:border-purple-500/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">🔬</span>
+            <p className="text-2xl font-bold text-purple-400">{labEquipment.length}</p>
+          </div>
+          <p className="text-sm text-text-muted">Lab Equipment</p>
+        </div>
       </div>
 
       <Tabs defaultValue="facilities">
         <TabsList>
-          <TabsTrigger value="facilities">Facilities</TabsTrigger>
-          <TabsTrigger value="rooms">Rooms</TabsTrigger>
-          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="facilities">🏟️ Facilities</TabsTrigger>
+          <TabsTrigger value="rooms">🚪 Rooms</TabsTrigger>
+          <TabsTrigger value="equipment">🔧 Equipment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="facilities">

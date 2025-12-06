@@ -60,7 +60,18 @@ export async function POST(req: NextRequest) {
       throw new ConflictError('Equipment already returned');
     }
 
-    // NOTE: No need to update qtyAvailable here.\n    // The inventory system uses time-based overlap calculation (lib/inventory.ts)\n    // to determine availability, not qtyAvailable. Once the booking status is\n    // set to COMPLETED, this booking won't be included in overlap queries,\n    // automatically making the items available for future bookings.\n    // qtyAvailable should only be modified for PERMANENT physical stock changes\n    // (e.g., damaged item removed from circulation).
+    // FIX: Restore equipment quantities to shelf
+    // qtyAvailable is decremented at QR check-in (app/api/qr/validate/route.ts)
+    // and must be restored when equipment is returned
+    if (booking.items) {
+      for (const item of booking.items) {
+        await EquipmentItem.findByIdAndUpdate(
+          item.itemId,
+          { $inc: { qtyAvailable: item.qty } },
+          { session }
+        );
+      }
+    }
 
     // FIX EC-6: Check if late using UTC for consistency
     const now = new Date();

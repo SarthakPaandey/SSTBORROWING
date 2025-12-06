@@ -22,8 +22,14 @@ export async function GET(req: NextRequest) {
 
     try {
         // Verify cron secret to prevent unauthorized access
+        // FIX: Fail-closed if CRON_SECRET is missing to prevent undefined bypass
+        const cronSecret = process.env.CRON_SECRET;
+        if (!cronSecret) {
+            throw new AuthorizationError('CRON_SECRET environment variable not configured');
+        }
+
         const authHeader = req.headers.get('authorization');
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        if (authHeader !== `Bearer ${cronSecret}`) {
             throw new AuthorizationError('Invalid cron secret');
         }
 

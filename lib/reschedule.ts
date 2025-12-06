@@ -3,7 +3,7 @@ import { IUser } from '@/models/User';
 import { IResource } from '@/models/Resource';
 import { Booking } from '@/models/Booking';
 import { Block } from '@/models/Block';
-import { POLICIES, isWithinAdvanceWindow, hasMinimumGap, hasConsecutiveBookings, calculateTotalHours, canUserBook } from './policies';
+import { POLICIES, isWithinAdvanceWindow, hasConsecutiveBookings, calculateTotalHours, canUserBook } from './policies';
 import { checkBookingAvailability } from './inventory';
 import { ValidationError, ConflictError } from './errors';
 import { getStartOfDay, getTodayStart, toIST } from './timezone';
@@ -47,6 +47,15 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         return {
             allowed: false,
             reason: `Cannot reschedule ${booking.status.toLowerCase()} bookings. Only confirmed or pending bookings can be rescheduled.`,
+        };
+    }
+
+    // FIX: Check if user is permanently blocked (takes precedence over suspension)
+    // This aligns with requireAuth's blocking check to prevent blocked users from rescheduling
+    if ((user as any).blocked) {
+        return {
+            allowed: false,
+            reason: 'Your account has been blocked. You cannot reschedule bookings.',
         };
     }
 

@@ -116,6 +116,11 @@ async function postHandler(req: Request) {
       const { resourceId, start, end, items } = validationResult.data;
       const userId = authSession.user.id;
 
+      // FIX: Validate resourceId format to prevent MongoDB CastError
+      if (!mongoose.Types.ObjectId.isValid(resourceId)) {
+        throw new ValidationError('Invalid resource ID format');
+      }
+
       const startDate = new Date(start);
       const endDate = new Date(end);
 

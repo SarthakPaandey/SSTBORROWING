@@ -108,20 +108,24 @@ export async function PATCH(
             });
 
             // NEW: Add penalty points (3 points per reschedule)
-            const { Penalty } = await import('@/models/Penalty');
-            const { POLICIES } = await import('@/lib/policies');
+            // FIX: Only apply penalty when user reschedules their own booking
+            // Admin-driven reschedules should not penalize the user
+            if (!isAdmin) {
+                const { Penalty } = await import('@/models/Penalty');
+                const { POLICIES } = await import('@/lib/policies');
 
-            // Create penalty record
-            await Penalty.create([{
-                userId: booking.userId,
-                points: POLICIES.RESCHEDULE_PENALTY_POINTS,
-                reason: `Rescheduled booking for ${resource.name}`,
-                bookingId: booking.id,
-            }], { session });
+                // Create penalty record
+                await Penalty.create([{
+                    userId: booking.userId,
+                    points: POLICIES.RESCHEDULE_PENALTY_POINTS,
+                    reason: `Rescheduled booking for ${resource.name}`,
+                    bookingId: booking.id,
+                }], { session });
 
-            // Update user's total penalty points
-            user.penaltyPoints += POLICIES.RESCHEDULE_PENALTY_POINTS;
-            await user.save({ session });
+                // Update user's total penalty points
+                user.penaltyPoints += POLICIES.RESCHEDULE_PENALTY_POINTS;
+                await user.save({ session });
+            }
 
             // Handle approval revalidation if needed
             let needsApprovalEmail = false;

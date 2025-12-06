@@ -54,9 +54,10 @@ export async function canUserCreateBookingWithCaps(options: {
   }
 
   // MONTHLY LIMITS (reuse existing global policy by kind)
-  // Anchor month boundaries in IST (like daily logic) to avoid 5.5h offsets
-  const nowIST = toIST(new Date());
-  const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
+  // FIX: Use BOOKING's start month for limits, not current month
+  // A booking for January 15th on December 31st should check January limits
+  const bookingStartIST = toIST(start);
+  const monthStart = getStartOfDay(new Date(bookingStartIST.getFullYear(), bookingStartIST.getMonth(), 1));
   const monthEnd = new Date(monthStart);
   monthEnd.setMonth(monthEnd.getMonth() + 1);
 

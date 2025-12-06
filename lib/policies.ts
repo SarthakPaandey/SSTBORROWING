@@ -144,59 +144,6 @@ export function calculateTotalHours(bookings: Array<{ start: Date; end: Date }>)
   }, 0);
 }
 
-/**
- * Check if there's a gap between bookings
- * Allows a tolerance of 1 second to handle millisecond precision issues
- */
-export function hasMinimumGap(
-  existingBookings: Array<{ start: Date; end: Date }>,
-  newStart: Date,
-  newEnd: Date
-): boolean {
-  const minGapMs = POLICIES.MIN_GAP_BETWEEN_BOOKINGS_MINUTES * 60 * 1000;
-  const TOLERANCE_MS = 1000; // 1 second tolerance for millisecond precision issues
-
-  // FIX: Convert all dates to IST timezone for proper comparison
-  // This ensures consistent timezone context between existing bookings (from DB)
-  // and new bookings (from frontend)
-  const newStartIST = toIST(new Date(newStart));
-  const newEndIST = toIST(new Date(newEnd));
-
-  // Round to nearest second to avoid millisecond precision issues
-  const roundToSecond = (ms: number) => Math.round(ms / 1000) * 1000;
-
-  for (const booking of existingBookings) {
-    const bookingStartIST = toIST(new Date(booking.start));
-    const bookingEndIST = toIST(new Date(booking.end));
-
-    // Round all times to nearest second
-    const bookingStart = roundToSecond(bookingStartIST.getTime());
-    const bookingEnd = roundToSecond(bookingEndIST.getTime());
-    const newStartTime = roundToSecond(newStartIST.getTime());
-    const newEndTime = roundToSecond(newEndIST.getTime());
-
-    // Check for overlap
-    if (newStartTime < bookingEnd && newEndTime > bookingStart) {
-      return false; // Overlap
-    }
-
-    // Check if new booking is too close to existing booking
-    const gapBefore = newStartTime - bookingEnd;
-    const gapAfter = bookingStart - newEndTime;
-
-    // Apply tolerance: Allow if gap is >= (minGap - tolerance)
-    // This means exactly 30 minutes will pass, even if there's a 1-second precision difference
-    if (gapBefore > 0 && gapBefore < (minGapMs - TOLERANCE_MS)) {
-      return false; // Gap before is too small
-    }
-
-    if (gapAfter > 0 && gapAfter < (minGapMs - TOLERANCE_MS)) {
-      return false; // Gap after is too small
-    }
-  }
-
-  return true;
-}
 
 /**
  * Check for consecutive bookings

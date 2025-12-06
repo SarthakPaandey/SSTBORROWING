@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
       throw new NotFoundError('Booking');
     }
 
-    if (booking.kind !== 'EQUIPMENT') {
+    if (booking.kind !== 'EQUIPMENT' && booking.kind !== 'LIBRARY') {
       await session.abortTransaction();
-      throw new ValidationError('Only equipment bookings can be returned');
+      throw new ValidationError('Only equipment and library bookings can be returned');
     }
 
     if (booking.status !== 'CHECKED_IN') {
@@ -65,9 +65,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if late - use UTC for DB comparison (booking.end is UTC)
+    // Check if late - use UTC for DB comparison
+    // FIX: Apply same grace period logic as guard/return-equipment for consistency
     const now = new Date(); // UTC
-    const isLate = now.getTime() > new Date(booking.end).getTime();
+
+    // Dynamic Return Deadline Logic (aligned with guard/return-equipment):
+    // If user picked up late, they get equal extra time to return.
+    let adjustedEndTime = new Date(booking.end).getTime();
+
+    if (booking.checkedInAt) {
+      const pickupTime = new Date(booking.checkedInAt).getTime();
+      const startTime = new Date(booking.start).getTime();
+      const pickupDelay = pickupTime - startTime;
+
+      // Only extend if picked up late (positive delay)
+      if (pickupDelay > 0) {
+        adjustedEndTime += pickupDelay;
+      }
+    }
+
+    // Add 15-minute grace period for returns
+    const RETURN_GRACE_PERIOD_MS = 15 * 60 * 1000;
+    adjustedEndTime += RETURN_GRACE_PERIOD_MS;
+
+    const isLate = now.getTime() > adjustedEndTime;
 
     let penaltyApplied = false;
 

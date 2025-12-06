@@ -150,6 +150,9 @@ BookingSchema.index({ 'items.itemId': 1, status: 1, start: 1, end: 1 });
 
 // Unique index to prevent overlapping bookings (race condition protection)
 // Only applies to active bookings (PENDING, CONFIRMED, CHECKED_IN)
+// FIX: Only apply to FACILITY and ROOM bookings - equipment/library use inventory-based contention
+// NOTE: Group booking overlap is handled by application logic, not this index
+// (MongoDB partial indexes don't support $ne operator)
 // This ensures database-level enforcement even if application logic has race conditions
 BookingSchema.index(
   { resourceId: 1, start: 1, end: 1 },
@@ -157,8 +160,8 @@ BookingSchema.index(
     unique: true,
     partialFilterExpression: {
       status: { $in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
-      // Group bookings can overlap with individual bookings on same resource
-      isGroupBooking: { $ne: true }
+      // Only enforce for time-slot based bookings (not equipment/library which use inventory)
+      kind: { $in: ['FACILITY', 'ROOM'] }
     },
     name: 'unique_active_booking_slot'
   }

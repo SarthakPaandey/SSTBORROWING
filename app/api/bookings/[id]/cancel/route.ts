@@ -57,8 +57,10 @@ export async function PATCH(
         (new Date(booking.start).getTime() - now.getTime()) / (1000 * 60 * 60);
       const isLateCancellation = hoursUntilStart < POLICIES.LATE_CANCELLATION_HOURS;
 
-      // Apply penalty for all cancellations (0.25 points)
-      const penaltyApplied = POLICIES.PENALTY_CANCELLATION;
+      // Apply penalty for user-initiated cancellations only
+      // FIX: Admins canceling on behalf of operations should not penalize users
+      const isAdminCanceling = user.role === 'ADMIN' && booking.userId !== user.id;
+      const penaltyApplied = isAdminCanceling ? 0 : POLICIES.PENALTY_CANCELLATION;
 
       // FIX EC-5: If booking was CHECKED_IN, restore inventory
       if (booking.status === 'CHECKED_IN' && booking.items && booking.items.length > 0) {
@@ -71,22 +73,23 @@ export async function PATCH(
         }
       }
 
-      // Create penalty record for audit trail
-      await Penalty.create([{
-        userId: booking.userId,
-        bookingId: booking.id,
-        points: penaltyApplied,
-        reason: isLateCancellation
-          ? `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`
-          : 'Booking cancellation',
-      }], { session });
+      // Create penalty record for audit trail (only for user-initiated cancellations)
+      if (penaltyApplied > 0) {
+        await Penalty.create([{
+          userId: booking.userId,
+          bookingId: booking.id,
+          points: penaltyApplied,
+          reason: isLateCancellation
+            ? `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`
+            : 'Booking cancellation',
+        }], { session });
 
-      // Update user penalty points
-      // FIX: booking.userId is the ObjectId, not email
-      const userRecord = await User.findById(booking.userId).session(session);
-      if (userRecord) {
-        userRecord.penaltyPoints += penaltyApplied;
-        await userRecord.save({ session });
+        // Update user penalty points
+        const userRecord = await User.findById(booking.userId).session(session);
+        if (userRecord) {
+          userRecord.penaltyPoints += penaltyApplied;
+          await userRecord.save({ session });
+        }
       }
 
       // Get resource name for logging

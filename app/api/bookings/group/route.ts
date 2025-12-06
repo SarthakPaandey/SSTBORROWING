@@ -42,7 +42,7 @@ async function postHandler(req: Request) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    return await withTransaction(conn, async (txSession) => {
+    const transactionResult = await withTransaction(conn, async (txSession) => {
 
       // Get organizer within transaction
       // FIX: session.user.id is the ObjectId, not email
@@ -72,7 +72,7 @@ async function postHandler(req: Request) {
       // Check advance window
       const startDate = new Date(start);
       const endDate = new Date(end);
-      
+
       if (!isWithinAdvanceWindow(startDate)) {
         throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
       }
@@ -83,7 +83,7 @@ async function postHandler(req: Request) {
       const startHour = startIST.getHours();
       const endHour = endIST.getHours();
       const endMinutes = endIST.getMinutes();
-      
+
       // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
       if (startHour < POLICIES.WORKING_HOURS_START) {
         throw new ValidationError(`Bookings cannot start before ${POLICIES.WORKING_HOURS_START}:00 AM`);
@@ -96,7 +96,7 @@ async function postHandler(req: Request) {
 
       // Validate booking duration
       const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
-      
+
       if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
         throw new ValidationError(
           `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes.`

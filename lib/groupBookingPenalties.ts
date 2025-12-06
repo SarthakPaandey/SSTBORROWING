@@ -95,7 +95,7 @@ export async function recalculatePenaltyPoints(
       await Penalty.updateMany(
         { userId, served: false, waivedBy: null },
         { served: true, servedAt: now }
-      ).session(session ?? undefined);
+      ).session(session ?? null);
     } else {
       // Level 0 or 1 -> Suspend and escalate
       const suspensionDate = new Date(now);
@@ -109,7 +109,7 @@ export async function recalculatePenaltyPoints(
       await Penalty.updateMany(
         { userId, served: false, waivedBy: null },
         { served: true, servedAt: now }
-      ).session(session ?? undefined);
+      ).session(session ?? null);
 
       // Reset penalty points to 0 since all penalties are now served
       user.penaltyPoints = 0;
@@ -121,7 +121,7 @@ export async function recalculatePenaltyPoints(
     }
   }
 
-  await user.save({ session: session ?? undefined });
+  await user.save({ session: session ?? null });
 
   return user.penaltyPoints;
 }

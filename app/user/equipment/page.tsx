@@ -385,7 +385,7 @@ export default function EquipmentPage() {
       {/* Cart Summary (if items selected) */}
       {totalSelected > 0 && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-success/10 to-emerald-500/10 border border-success/30 animate-fade-in-up">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-success/20">
                 <ShoppingCart className="h-5 w-5 text-success" />
@@ -397,7 +397,7 @@ export default function EquipmentPage() {
                 <p className="text-xs text-text-muted">Ready to book</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full justify-between sm:w-auto sm:justify-end">
               {Object.entries(selectedItems)
                 .filter(([_, qty]) => qty > 0)
                 .slice(0, 3)
@@ -550,7 +550,7 @@ export default function EquipmentPage() {
                         style={{ animationDelay: `${catIndex * 50}ms` }}
                       >
                         {/* Category Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-card-border/30">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-card-border/30">
                           <div className="flex items-center gap-3">
                             <span className="text-3xl hover:scale-125 transition-transform cursor-default">
                               {sportIcons[category]}
@@ -576,7 +576,7 @@ export default function EquipmentPage() {
                             return (
                               <div
                                 key={item._id}
-                                className={`flex items-center justify-between rounded-xl p-3 transition-all duration-200 ${
+                                className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl p-3 transition-all duration-200 ${
                                   isSelected 
                                     ? 'bg-success/10 border border-success/30 shadow-sm' 
                                     : isOutOfStock
@@ -610,7 +610,7 @@ export default function EquipmentPage() {
                                     </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1 ml-4">
+                                <div className="flex items-center gap-1 w-full justify-between sm:w-auto sm:justify-end sm:gap-2 sm:ml-4">
                                   <button
                                     onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
                                     disabled={(selectedItems[item._id] || 0) === 0}
@@ -776,7 +776,7 @@ export default function EquipmentPage() {
                         }`}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               {isSelected && <CheckCircle2 className="h-4 w-4 text-accent-purple-1" />}
@@ -806,7 +806,7 @@ export default function EquipmentPage() {
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-4">
+                          <div className="flex items-center gap-2 w-full justify-between sm:w-auto sm:justify-end sm:ml-4">
                             <Button
                               variant="outline"
                               size="sm"

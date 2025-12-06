@@ -380,7 +380,7 @@ export default async function PenaltyGuidePage() {
               {penaltyRules.map((rule) => (
                 <div
                   key={rule.label}
-                  className="flex items-center justify-between rounded-lg border border-card-border bg-card/70 px-3 py-2"
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card/70 px-3 py-2"
                 >
                   <p className="text-sm text-text-main">{rule.label}</p>
                   <Badge variant="secondary" icon="⚡">
@@ -399,7 +399,7 @@ export default async function PenaltyGuidePage() {
                   key={step.level}
                   className="rounded-lg border border-card-border bg-card/70 p-3"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="info" icon="📈">
                         {step.level}
@@ -439,7 +439,7 @@ export default async function PenaltyGuidePage() {
                 return (
                   <div
                     key={penalty._id.toString()}
-                    className="flex items-center justify-between rounded-lg border border-card-border bg-card/70 p-4"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card/70 p-4"
                   >
                     <div className="space-y-1">
                       <p className="text-sm font-semibold text-text-main">{penalty.reason}</p>

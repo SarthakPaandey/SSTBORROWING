@@ -50,11 +50,13 @@ export function TabsList({
   return (
     <div
       className={cn(
-        'inline-flex items-center justify-center',
+        'flex items-center gap-1 w-full sm:w-auto',
+        'justify-start sm:justify-center',
+        'overflow-x-auto sm:overflow-visible',
         // Variant styles - cleaner, more minimal
-        variant === 'default' && 'h-11 rounded-xl bg-bg-dark/80 border border-card-border/50 p-1 gap-1',
-        variant === 'pills' && 'h-11 rounded-xl bg-bg-dark/50 border border-card-border/50 p-1 gap-1',
-        variant === 'underline' && 'border-b border-card-border pb-1 gap-0',
+        variant === 'default' && 'min-h-[2.75rem] rounded-xl bg-bg-dark/80 border border-card-border/50 p-1 flex-wrap',
+        variant === 'pills' && 'min-h-[2.75rem] rounded-xl bg-bg-dark/50 border border-card-border/50 p-1 flex-wrap',
+        variant === 'underline' && 'border-b border-card-border pb-1 flex-nowrap',
         className
       )}
     >

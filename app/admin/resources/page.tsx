@@ -280,7 +280,7 @@ export default function ResourcesPage() {
 
         <TabsContent value="facilities">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-text-main">Facilities</CardTitle>
               <Button
                 onClick={() => openAddResource('FACILITY')}
@@ -300,7 +300,7 @@ export default function ResourcesPage() {
                   facilities.map((resource) => (
                     <div
                       key={resource._id}
-                      className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                      className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
                     >
                       <div className="flex-1">
                         <p className="font-medium text-text-main">{resource.name}</p>
@@ -340,7 +340,7 @@ export default function ResourcesPage() {
 
         <TabsContent value="rooms">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-text-main">Rooms</CardTitle>
               <Button
                 onClick={() => openAddResource('ROOM')}
@@ -360,7 +360,7 @@ export default function ResourcesPage() {
                   rooms.map((resource) => (
                     <div
                       key={resource._id}
-                      className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                      className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
                     >
                       <div className="flex-1">
                         <p className="font-medium text-text-main">{resource.name}</p>
@@ -409,7 +409,7 @@ export default function ResourcesPage() {
 
             <TabsContent value="sports">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle className="text-text-main">Sports Equipment</CardTitle>
                   {sportsEquipmentResource && (
                     <Button
@@ -431,7 +431,7 @@ export default function ResourcesPage() {
                       sportsEquipment.map((item) => (
                         <div
                           key={item._id}
-                          className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
                         >
                           <div className="flex-1">
                             <p className="font-medium text-text-main">{item.name}</p>
@@ -471,7 +471,7 @@ export default function ResourcesPage() {
 
             <TabsContent value="lab">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle className="text-text-main">Lab Equipment</CardTitle>
                   {labEquipmentResource && (
                     <Button
@@ -493,7 +493,7 @@ export default function ResourcesPage() {
                       labEquipment.map((item) => (
                         <div
                           key={item._id}
-                          className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
                         >
                           <div className="flex-1">
                             <p className="font-medium text-text-main">{item.name}</p>

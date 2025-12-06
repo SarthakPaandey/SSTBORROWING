@@ -366,7 +366,7 @@ export default function BlocksPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Resource Multi-Select */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
               <label className="block text-sm font-medium text-text-main">
                 Resources <span className="text-danger">*</span>
               </label>

@@ -220,7 +220,7 @@ export default function LibraryManagementPage() {
             bookList.map((book) => (
               <div
                 key={book._id}
-                className="flex items-center justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
               >
                 <div className="flex-1">
                   <p className="font-medium text-text-main">{book.name}</p>

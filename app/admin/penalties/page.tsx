@@ -251,7 +251,7 @@ export default function PenaltiesPage() {
               {searchResults.map((user) => (
                 <div
                   key={user._id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-card-border bg-card hover:bg-accent-blue/5 transition-colors"
+                  className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-card-border bg-card hover:bg-accent-blue/5 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">

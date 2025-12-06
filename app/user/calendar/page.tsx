@@ -396,7 +396,7 @@ export default function CalendarPage() {
                       {selectedEvent.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between text-sm bg-bg-very-dark rounded-lg px-4 py-3 hover:bg-bg-very-dark/80 transition-colors"
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm bg-bg-very-dark rounded-lg px-4 py-3 hover:bg-bg-very-dark/80 transition-colors"
                           style={{ animationDelay: `${idx * 50}ms` }}
                         >
                           <span className="text-text-main font-medium flex items-center gap-2">
@@ -590,7 +590,7 @@ export default function CalendarPage() {
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-text-muted flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-text-muted flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span>{stat.label}</span>
                 <span className="text-xl group-hover:scale-125 transition-transform">{stat.emoji}</span>
               </CardTitle>

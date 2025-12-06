@@ -291,7 +291,7 @@ export default function LibraryPage() {
                   </div>
                   
                   <p className="font-medium text-text-main text-sm truncate">{book.name}</p>
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
                     <span className="text-xs text-text-muted">{book.qtyAvailable}/{book.qtyTotal}</span>
                     {book.qtyAvailable === 0 && (
                       <Badge variant="destructive" className="text-[10px] px-1.5">Out</Badge>

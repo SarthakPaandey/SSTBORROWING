@@ -95,7 +95,7 @@ export default async function RoomsPage() {
             className="p-3 rounded-xl bg-card border border-card-border hover:border-accent-purple-1/30 transition-all group"
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-xs text-text-muted">{stat.label}</span>
               <span className="text-lg group-hover:scale-125 transition-transform">{stat.emoji}</span>
             </div>
@@ -122,7 +122,7 @@ export default async function RoomsPage() {
                 <div className="h-1 bg-gradient-to-r from-accent-purple-1 via-pink-500 to-accent-purple-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                 
                 <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-3xl group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">
                         {config.emoji}
@@ -164,7 +164,7 @@ export default async function RoomsPage() {
                     </div>
                     
                     {/* Book now hint */}
-                    <div className="flex items-center justify-between pt-2 border-t border-card-border/50">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t border-card-border/50">
                       <span className="text-xs text-text-muted group-hover:text-accent-purple-1 transition-colors">
                         Click to book
                       </span>

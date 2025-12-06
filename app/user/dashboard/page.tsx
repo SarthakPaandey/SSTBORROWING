@@ -212,7 +212,7 @@ export default async function UserDashboard() {
       {/* Upcoming Bookings - Enhanced */}
       <Card variant="glow">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2">
               <span className="text-2xl">📋</span>
               Upcoming Bookings
@@ -246,7 +246,7 @@ export default async function UserDashboard() {
               {enrichedBookings.map((booking: any, index: number) => (
                 <div
                   key={booking._id.toString()}
-                  className="flex items-center justify-between rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-4 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 hover:translate-x-1 group animate-fade-in-up"
+                  className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-4 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 hover:translate-x-1 group animate-fade-in-up"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex items-center gap-4">

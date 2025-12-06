@@ -578,7 +578,7 @@ export default function BookingsPage() {
               {pastBookings.slice(0, 10).map((booking, index) => (
                 <div
                   key={booking._id}
-                  className="flex items-center justify-between rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
+                  className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <div className="flex items-center gap-4">

@@ -223,7 +223,7 @@ export default function AdminGroupBookingsPage() {
                       </h4>
                       <div className="space-y-2">
                         {/* Organizer */}
-                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/10 to-accent-blue/5 rounded-lg border border-accent-blue/20">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-gradient-to-r from-accent-blue/10 to-accent-blue/5 rounded-lg border border-accent-blue/20">
                           <div className="flex items-center gap-3">
                             <CheckCircle className="h-4 w-4" style={{ color: 'var(--success)' }} />
                             <div>
@@ -238,7 +238,7 @@ export default function AdminGroupBookingsPage() {
                         {gb.members.map((member: any, index: number) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-3 bg-gradient-to-r from-white/[0.03] to-transparent rounded-lg border border-white/[0.05] hover:border-white/10 transition-colors"
+                            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-gradient-to-r from-white/[0.03] to-transparent rounded-lg border border-white/[0.05] hover:border-white/10 transition-colors"
                           >
                             <div className="flex items-center gap-3">
                               {getMemberStatusIcon(member.status)}

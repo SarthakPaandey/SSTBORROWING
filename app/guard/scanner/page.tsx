@@ -215,7 +215,7 @@ export default function ScannerPage() {
       {mode === 'camera' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-text-main">Camera Scanner</span>
               {isScanning && (
                 <Button
@@ -323,7 +323,7 @@ export default function ScannerPage() {
                       {result.booking.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
+                          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-bg-very-dark rounded px-3 py-2"
                         >
                           <span className="text-text-main font-medium">{item.name}</span>
                           <Badge variant="success">×{item.qty}</Badge>
@@ -429,7 +429,7 @@ export default function ScannerPage() {
                       {result.booking.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between bg-bg-very-dark rounded px-3 py-2"
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-bg-very-dark rounded px-3 py-2"
                         >
                           <span className="text-text-main font-medium">{item.name}</span>
                           <Badge variant="success">×{item.qty}</Badge>

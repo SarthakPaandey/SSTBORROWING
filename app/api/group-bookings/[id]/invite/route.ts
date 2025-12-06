@@ -16,9 +16,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let session: mongoose.ClientSession | null = null;
   try {
     const currentUser = await requireAuth(['STUDENT']);
     await connectDB();
+    session = await mongoose.startSession();
+    await session.startTransaction();
 
     // FIX: Validate ObjectId to prevent MongoDB CastError
     if (!mongoose.Types.ObjectId.isValid(params.id)) {
@@ -32,7 +35,7 @@ export async function POST(
     }
 
     // Find group booking
-    const groupBooking = await GroupBooking.findById(params.id);
+    const groupBooking = await GroupBooking.findById(params.id).session(session);
     if (!groupBooking) {
       throw new NotFoundError('Group booking');
     }
@@ -48,7 +51,7 @@ export async function POST(
     }
 
     // Get booking to check start time
-    const booking = await Booking.findById(groupBooking.bookingId);
+    const booking = await Booking.findById(groupBooking.bookingId).session(session);
     if (!booking) {
       throw new NotFoundError('Booking');
     }
@@ -56,17 +59,20 @@ export async function POST(
     // Check if expired (either expiresAt passed OR booking start time passed)
     if (isGroupBookingExpired(groupBooking.expiresAt, booking.start)) {
       groupBooking.status = 'EXPIRED';
-      await groupBooking.save();
+      await groupBooking.save({ session });
 
       if (booking.status === 'PENDING') {
-        // No need to release qtyReserved as we no longer use it for blocking
-        // (Time-based overlap checking is used instead)
-
         booking.status = 'CANCELLED';
-        await booking.save();
+        await booking.save({ session });
       }
 
-      throw new ValidationError('This group booking has expired');
+      await session.commitTransaction();
+      session.endSession();
+
+      return NextResponse.json(
+        { error: 'This group booking has expired' },
+        { status: 400 }
+      );
     }
 
     // Check if email is already in the group
@@ -86,7 +92,7 @@ export async function POST(
     const newMember = await User.findOne({
       email: email.toLowerCase(),
       role: 'STUDENT'
-    });
+    }).session(session);
 
     if (!newMember) {
       throw new NotFoundError(`${email} is not a registered student`);
@@ -104,7 +110,7 @@ export async function POST(
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $lt: booking.end },
       end: { $gt: booking.start },
-    });
+    }).session(session);
 
     if (conflictingBooking) {
       throw new ConflictError(`${email} has a conflicting booking at this time`);
@@ -119,7 +125,7 @@ export async function POST(
       userId: newMember.id,
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $gte: today, $lt: tomorrow },
-    });
+    }).session(session);
 
     // Only check daily limit if it's enabled (value > 0)
     if (POLICIES.MAX_BOOKINGS_PER_DAY > 0 && todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
@@ -135,7 +141,10 @@ export async function POST(
       invitedAt: new Date(),
     });
 
-    await groupBooking.save();
+    await groupBooking.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     await sendSingleInvitationEmail({
       groupBookingId: groupBooking.id,
@@ -151,6 +160,10 @@ export async function POST(
 
   } catch (error) {
     console.error('Invite replacement error:', error);
+    if (session?.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session?.endSession();
     return handleApiError(error);
   }
 }

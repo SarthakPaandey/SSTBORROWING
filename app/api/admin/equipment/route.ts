@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { EquipmentItem } from '@/models/EquipmentItem';
+import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, NotFoundError, ValidationError } from '@/lib/errors';
 import { getAvailableQuantity } from '@/lib/inventory';
@@ -96,10 +97,24 @@ export async function PATCH(req: NextRequest) {
       throw new NotFoundError('Item');
     }
 
+    // Validate qty changes against active bookings
+    if (qtyTotal !== undefined && qtyTotal < item.qtyTotal) {
+      // Ensure not reducing below currently allocated quantity
+      const allocatedQty = item.qtyTotal - item.qtyAvailable; // currently booked/checked-out
+      if (qtyTotal < allocatedQty) {
+        throw new ValidationError('Cannot reduce total quantity below currently allocated amount.');
+      }
+    }
+
     // Update all provided fields
     if (name !== undefined) item.name = name;
     if (qtyTotal !== undefined) item.qtyTotal = qtyTotal;
-    if (qtyAvailable !== undefined) item.qtyAvailable = qtyAvailable;
+    if (qtyAvailable !== undefined) {
+      if (qtyAvailable > item.qtyTotal) {
+        throw new ValidationError('qtyAvailable cannot exceed qtyTotal');
+      }
+      item.qtyAvailable = qtyAvailable;
+    }
     if (safety !== undefined) item.safety = safety;
     if (restricted !== undefined) item.restricted = restricted;
 

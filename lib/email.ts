@@ -116,7 +116,7 @@ export function generateApprovalEmailHTML(
       <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 4px;">
         <p style="margin: 0; font-size: 14px;">
           <strong>Note:</strong> You can approve or reject this booking directly from this email without logging in. 
-          The links will expire after 7 days for security reasons.
+          The links expire at the earlier of 7 days or the booking start time for security reasons.
         </p>
       </div>
 

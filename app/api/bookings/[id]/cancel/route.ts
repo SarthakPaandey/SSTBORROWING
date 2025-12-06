@@ -8,6 +8,7 @@ import { Penalty } from '@/models/Penalty';
 import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { POLICIES } from '@/lib/policies';
+import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { withTransaction } from '@/lib/transaction';
 import mongoose from 'mongoose';
@@ -60,7 +61,9 @@ export async function PATCH(
       // Apply penalty for user-initiated cancellations only
       // FIX: Admins canceling on behalf of operations should not penalize users
       const isAdminCanceling = user.role === 'ADMIN' && booking.userId !== user.id;
-      const penaltyApplied = isAdminCanceling ? 0 : POLICIES.PENALTY_CANCELLATION;
+      const penaltyPoints = isAdminCanceling
+        ? 0
+        : (isLateCancellation ? POLICIES.PENALTY_LATE_CANCELLATION : POLICIES.PENALTY_CANCELLATION);
 
       // FIX EC-5: If booking was CHECKED_IN, restore inventory
       if (booking.status === 'CHECKED_IN' && booking.items && booking.items.length > 0) {
@@ -74,22 +77,18 @@ export async function PATCH(
       }
 
       // Create penalty record for audit trail (only for user-initiated cancellations)
-      if (penaltyApplied > 0) {
+      if (penaltyPoints > 0) {
         await Penalty.create([{
           userId: booking.userId,
           bookingId: booking.id,
-          points: penaltyApplied,
+          points: penaltyPoints,
           reason: isLateCancellation
             ? `Late cancellation (${hoursUntilStart.toFixed(1)}h before start)`
             : 'Booking cancellation',
         }], { session });
 
-        // Update user penalty points
-        const userRecord = await User.findById(booking.userId).session(session);
-        if (userRecord) {
-          userRecord.penaltyPoints += penaltyApplied;
-          await userRecord.save({ session });
-        }
+        // Recalculate within transaction to enforce three-strike logic
+        await recalculatePenaltyPoints(booking.userId, session);
       }
 
       // Get resource name for logging
@@ -104,7 +103,7 @@ export async function PATCH(
         bookingStart: booking.start,
         cancelledAt: now,
         wasLate: isLateCancellation,
-        penaltyApplied,
+        penaltyApplied: penaltyPoints,
       }], { session });
 
       // Update booking status
@@ -114,7 +113,7 @@ export async function PATCH(
       return {
         booking,
         wasLateCancellation: isLateCancellation,
-        penaltyApplied,
+        penaltyApplied: penaltyPoints,
       };
     });
 

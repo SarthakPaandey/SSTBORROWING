@@ -43,7 +43,7 @@ export async function getGroupParticipantBookings(
     bookingQuery.session(session);
   }
 
-  return bookingQuery;
+  return await bookingQuery;
 }
 
 /**

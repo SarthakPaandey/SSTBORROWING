@@ -56,7 +56,10 @@ export async function canUserCreateBookingWithCaps(options: {
       participantBookings.length === 0
         ? 0
         : participantBookings.filter(
-            (b) => new Date(b.start) >= dayStart && new Date(b.start) < dayEnd
+            (b) => {
+              const startIST = toIST(new Date(b.start));
+              return startIST >= dayStart && startIST < dayEnd;
+            }
           ).length;
 
     const dailyTotal = dailyCount + dailyGroupCount;
@@ -92,7 +95,10 @@ export async function canUserCreateBookingWithCaps(options: {
     participantBookings.length === 0
       ? []
       : participantBookings.filter(
-          (b) => new Date(b.start) >= monthStart && new Date(b.start) < monthEnd
+          (b) => {
+            const startIST = toIST(new Date(b.start));
+            return startIST >= monthStart && startIST < monthEnd;
+          }
         );
 
   if (kind === 'FACILITY') {

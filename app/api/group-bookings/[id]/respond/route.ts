@@ -11,9 +11,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let session: mongoose.ClientSession | null = null;
   try {
     const user = await requireAuth(['STUDENT']);
-    await connectDB();
+    const conn = await connectDB();
 
     // FIX: Validate ObjectId to prevent MongoDB CastError
     if (!mongoose.Types.ObjectId.isValid(params.id)) {
@@ -26,8 +27,11 @@ export async function PATCH(
       throw new ValidationError('Invalid response');
     }
 
+    session = await mongoose.startSession();
+    await session.startTransaction();
+
     // Find group booking
-    const groupBooking = await GroupBooking.findById(params.id);
+    const groupBooking = await GroupBooking.findById(params.id).session(session);
     if (!groupBooking) {
       throw new NotFoundError('Group booking');
     }
@@ -45,7 +49,7 @@ export async function PATCH(
     }
 
     // Get booking to check start time
-    const booking = await Booking.findById(groupBooking.bookingId);
+    const booking = await Booking.findById(groupBooking.bookingId).session(session);
     if (!booking) {
       throw new NotFoundError('Booking');
     }
@@ -53,16 +57,16 @@ export async function PATCH(
     // Check if expired (either expiresAt passed OR booking start time passed)
     if (isGroupBookingExpired(groupBooking.expiresAt, booking.start)) {
       groupBooking.status = 'EXPIRED';
-      await groupBooking.save();
+      await groupBooking.save({ session });
 
       // Cancel the booking if still pending
       if (booking.status === 'PENDING') {
-        // No need to release qtyReserved as we no longer use it for blocking
-        // (Time-based overlap checking is used instead)
-
         booking.status = 'CANCELLED';
-        await booking.save();
+        await booking.save({ session });
       }
+
+      await session.commitTransaction();
+      session.endSession();
 
       return NextResponse.json(
         { error: 'This invitation has expired' },
@@ -92,7 +96,7 @@ export async function PATCH(
           },
           $inc: { confirmedCount: 1 }
         },
-        { new: true }
+        { new: true, session }
       );
 
       if (!updatedGroupBooking) {
@@ -113,13 +117,16 @@ export async function PATCH(
           {
             $set: { status: 'CONFIRMED' }
           },
-          { new: true }
+          { new: true, session }
         );
 
         // Only update main booking if we successfully confirmed the group
         if (confirmedBooking) {
           booking.status = 'CONFIRMED';
-          await booking.save();
+          await booking.save({ session });
+
+          await session.commitTransaction();
+          session.endSession();
 
           return NextResponse.json({
             message: 'Invitation accepted. Group booking confirmed!',
@@ -130,6 +137,9 @@ export async function PATCH(
       }
 
       // If we didn't confirm, just return success
+      await session.commitTransaction();
+      session.endSession();
+
       return NextResponse.json({
         message: 'Invitation accepted',
         groupBooking: updatedGroupBooking,
@@ -141,7 +151,7 @@ export async function PATCH(
       groupBooking.members[memberIndex].status = 'REJECTED';
       // Store UTC timestamp to avoid IST-shift in DB
       groupBooking.members[memberIndex].respondedAt = new Date();
-      await groupBooking.save();
+      await groupBooking.save({ session });
 
       // Check if we can still reach minimum with remaining pending members
       const pendingCount = groupBooking.members.filter(m => m.status === 'PENDING').length;
@@ -150,17 +160,23 @@ export async function PATCH(
       if (possibleTotal < groupBooking.requiredMinimum) {
         // Cancel the booking - can't reach minimum even with all pending accepting
         groupBooking.status = 'CANCELLED';
-        await groupBooking.save();
+        await groupBooking.save({ session });
 
         // Booking already fetched above
         booking.status = 'CANCELLED';
-        await booking.save();
+        await booking.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
 
         return NextResponse.json({
           message: 'Invitation rejected. Group booking cancelled (insufficient members).',
           groupBooking,
         });
       }
+
+      await session.commitTransaction();
+      session.endSession();
 
       return NextResponse.json({
         message: 'Invitation rejected. Organizer can invite a replacement.',
@@ -170,6 +186,10 @@ export async function PATCH(
 
   } catch (error) {
     console.error('Respond to invitation error:', error);
+    if (session?.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session?.endSession();
     return handleApiError(error);
   }
 }

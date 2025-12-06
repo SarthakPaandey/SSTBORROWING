@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Block } from '@/models/Block';
+import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { BlockQuery } from '@/types/api';
@@ -46,6 +47,17 @@ export async function POST(req: NextRequest) {
       type,
       createdBy: admin.id,
     });
+
+    // Cancel overlapping active bookings for the blocked resource
+    await Booking.updateMany(
+      {
+        resourceId,
+        status: { $in: ['CONFIRMED', 'PENDING'] },
+        start: { $lt: new Date(end) },
+        end: { $gt: new Date(start) },
+      },
+      { $set: { status: 'CANCELLED' } }
+    );
 
     return NextResponse.json({ block }, { status: 201 });
   } catch (error) {

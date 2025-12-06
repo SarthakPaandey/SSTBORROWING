@@ -29,8 +29,10 @@ setInterval(() => {
     }
 }, CLEANUP_INTERVAL_MS);
 
-// NOTE: For production with multiple instances, consider Redis or Vercel KV
-// This in-memory solution only works for single-instance deployments
+// NOTE: For production with multiple instances, this in-memory limiter must be
+// replaced with a distributed store (Redis / Vercel KV). We surface a header so
+// downstream systems can detect the mode and add an optional hard block via env.
+const REQUIRE_DISTRIBUTED_RATELIMIT = process.env.REQUIRE_DISTRIBUTED_RATELIMIT === 'true';
 
 export function rateLimit(ip: string, limit: number = 10, windowMs: number = 60000) {
     const now = Date.now();
@@ -51,6 +53,13 @@ export function withRateLimit(handler: (req: NextRequest, ...args: unknown[]) =>
     return async (req: NextRequest, ...args: unknown[]) => {
         const ip = req.headers.get('x-forwarded-for') || 'unknown';
 
+        if (REQUIRE_DISTRIBUTED_RATELIMIT) {
+            return NextResponse.json(
+                { error: 'Rate limiting requires distributed backend in this deployment.' },
+                { status: 503 }
+            );
+        }
+
         if (!rateLimit(ip, limit, windowMs)) {
             return NextResponse.json(
                 { error: 'Too many requests, please try again later.' },
@@ -58,6 +67,8 @@ export function withRateLimit(handler: (req: NextRequest, ...args: unknown[]) =>
             );
         }
 
-        return handler(req, ...args);
+        const res = await handler(req, ...args);
+        res.headers.set('x-ratelimit-mode', 'in-memory-single-node');
+        return res;
     };
 }

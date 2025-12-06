@@ -61,6 +61,7 @@ export const POLICIES = {
   PENALTY_LATE_RETURN: 4,      // 1 point
   PENALTY_DAMAGE: 8,           // 2 points
   PENALTY_CANCELLATION: 1,     // 0.25 points
+  PENALTY_LATE_CANCELLATION: 2, // 0.5 points (late cancellation within cutoff)
   PENALTY_BOOK_LATE_RETURN: 8, // 2 points
   PENALTY_BOOK_NO_PICKUP: 2,   // 0.5 points
 
@@ -273,6 +274,9 @@ export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; r
 /**
  * Check if a group booking has expired
  * Expired if: expiresAt has passed OR booking start time has passed
+ *
+ * Important: Compare in IST to match creation/expiration logic. Always pass
+ * persisted UTC dates; this helper converts both sides before comparison.
  */
 export function isGroupBookingExpired(expiresAt: Date, bookingStart: Date): boolean {
   // Use IST timezone for accurate expiration check

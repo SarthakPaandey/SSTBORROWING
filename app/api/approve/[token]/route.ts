@@ -44,6 +44,12 @@ export async function GET(
       throw new NotFoundError('Booking');
     }
 
+    // Do not allow approval/rejection in the final minute before start
+    const now = new Date();
+    if (new Date(booking.start).getTime() - now.getTime() < 60_000) {
+      throw new ValidationError('Token expired: booking is about to start. Please handle on-site.');
+    }
+
     if (booking.approval !== 'PENDING') {
       throw new ValidationError(`Booking is already ${booking.approval.toLowerCase()}`);
     }

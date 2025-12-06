@@ -113,6 +113,7 @@ export async function PATCH(
             if (!isAdmin) {
                 const { Penalty } = await import('@/models/Penalty');
                 const { POLICIES } = await import('@/lib/policies');
+                const { recalculatePenaltyPoints } = await import('@/lib/groupBookingPenalties');
 
                 // Create penalty record
                 await Penalty.create([{
@@ -122,9 +123,8 @@ export async function PATCH(
                     bookingId: booking.id,
                 }], { session });
 
-                // Update user's total penalty points
-                user.penaltyPoints += POLICIES.RESCHEDULE_PENALTY_POINTS;
-                await user.save({ session });
+                // Recalculate penalties within the same transaction to respect three-strike system
+                await recalculatePenaltyPoints(booking.userId, session);
             }
 
             // Handle approval revalidation if needed

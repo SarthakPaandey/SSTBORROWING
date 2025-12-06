@@ -85,10 +85,9 @@ export async function GET(req: NextRequest) {
                     reason: 'No-show for booking',
                 }], { session });
 
-                // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
-                // This properly tracks suspension levels and resets points after serving suspensions
+                // Recalculate within the transaction for atomic penalty+escalation
+                await recalculatePenaltyPoints(booking.userId, session);
                 await session.commitTransaction();
-                await recalculatePenaltyPoints(booking.userId);
 
                 results.noShows++;
             } catch (error) {
@@ -140,9 +139,9 @@ export async function GET(req: NextRequest) {
                     reason: 'Library book not picked up within 24 hours',
                 }], { session });
 
-                // FIX: Use recalculatePenaltyPoints for consistent three-strike suspension system
+                // Recalculate within the transaction for atomic penalty+escalation
+                await recalculatePenaltyPoints(booking.userId, session);
                 await session.commitTransaction();
-                await recalculatePenaltyPoints(booking.userId);
 
                 results.libraryNoPickups++;
             } catch (error) {

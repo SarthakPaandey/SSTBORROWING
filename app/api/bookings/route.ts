@@ -444,7 +444,11 @@ async function postHandler(req: Request) {
       // Handle equipment and library bookings with atomic reservation
       let enrichedItems: BookingItem[] | undefined;
       let facilityWarning: string | null = null;  // Declared at higher scope for return
-      if ((kind === 'EQUIPMENT' || kind === 'LIBRARY') && items) {
+      if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
+        if (!items || items.length === 0) {
+          throw new ValidationError('Items are required for equipment and library bookings.');
+        }
+
         // FIX EC-19: Prevent duplicate items in booking
         // Check that all itemIds are unique
         const itemIds = items.map(i => i.itemId);

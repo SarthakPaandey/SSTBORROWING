@@ -141,29 +141,17 @@ export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> 
     return;
   }
 
-  // Get organizer
-  const allMemberIds = [groupBooking.organizerId];
+  // Apply penalty only to organizer to avoid unfairly penalizing members
+  const organizerId = groupBooking.organizerId;
 
-  // Get all confirmed members
-  const confirmedMembers = groupBooking.members
-    .filter(m => m.status === 'CONFIRMED')
-    .map(m => m.userId);
+  await Penalty.create({
+    userId: organizerId,
+    bookingId: booking.id,
+    points: POLICIES.PENALTY_NO_SHOW,
+    reason: 'Group booking no-show (organizer responsible)',
+  });
 
-  allMemberIds.push(...confirmedMembers);
-
-  // Apply penalty to all members
-  for (const userId of allMemberIds) {
-    // Create penalty record
-    await Penalty.create({
-      userId,
-      bookingId: booking.id,
-      points: POLICIES.PENALTY_NO_SHOW,
-      reason: 'Group booking no-show',
-    });
-
-    // Recalculate penalty points with new escalating logic
-    await recalculatePenaltyPoints(userId);
-  }
+  await recalculatePenaltyPoints(organizerId);
 }
 
 /**
@@ -181,28 +169,17 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
     return;
   }
 
-  // Get organizer
-  const allMemberIds = [groupBooking.organizerId];
+  // Apply penalty only to organizer to avoid unfairly penalizing members
+  const organizerId = groupBooking.organizerId;
 
-  // Get all confirmed members
-  const confirmedMembers = groupBooking.members
-    .filter(m => m.status === 'CONFIRMED')
-    .map(m => m.userId);
+  await Penalty.create({
+    userId: organizerId,
+    bookingId: booking.id,
+    points: POLICIES.PENALTY_LATE_RETURN,
+    reason: 'Group booking late return (organizer responsible)',
+  });
 
-  allMemberIds.push(...confirmedMembers);
-
-  // Apply penalty to all members
-  for (const userId of allMemberIds) {
-    await Penalty.create({
-      userId,
-      bookingId: booking.id,
-      points: POLICIES.PENALTY_LATE_RETURN,
-      reason: 'Group booking late return',
-    });
-
-    // Recalculate penalty points with new escalating logic
-    await recalculatePenaltyPoints(userId);
-  }
+  await recalculatePenaltyPoints(organizerId);
 }
 
 /**
@@ -253,160 +230,3 @@ export async function expireGroupBookings(): Promise<number> {
   return expiredCount;
 }
 
-      );
-    } else {
-      // Level 0 or 1 -> Suspend and escalate
-      const suspensionDate = new Date(now);
-      suspensionDate.setDate(suspensionDate.getDate() + suspensionDays);
-      user.suspendedUntil = suspensionDate;
-
-      // Increment suspension level
-      user.suspensionLevel = currentLevel + 1;
-
-      // Mark all active penalties as served (this resets the point counter)
-      await Penalty.updateMany(
-        { userId, served: false, waivedBy: null },
-        { served: true, servedAt: now }
-      );
-
-      // Reset penalty points to 0 since all penalties are now served
-      user.penaltyPoints = 0;
-    }
-  } else {
-    // Below threshold, clear suspension if it has expired
-    if (user.suspendedUntil && user.suspendedUntil < now) {
-      user.suspendedUntil = undefined;
-    }
-  }
-
-  await user.save();
-
-  return user.penaltyPoints;
-}
-
-/**
- * Apply no-show penalty to all confirmed members of a group booking
- */
-export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> {
-  const booking = await Booking.findById(bookingId);
-
-  if (!booking || !booking.isGroupBooking) {
-    return;
-  }
-
-  const groupBooking = await GroupBooking.findById(booking.groupBookingId);
-  if (!groupBooking) {
-    return;
-  }
-
-  // Get organizer
-  const allMemberIds = [groupBooking.organizerId];
-
-  // Get all confirmed members
-  const confirmedMembers = groupBooking.members
-    .filter(m => m.status === 'CONFIRMED')
-    .map(m => m.userId);
-
-  allMemberIds.push(...confirmedMembers);
-
-  // Apply penalty to all members
-  for (const userId of allMemberIds) {
-    // Create penalty record
-    await Penalty.create({
-      userId,
-      bookingId: booking.id,
-      points: POLICIES.PENALTY_NO_SHOW,
-      reason: 'Group booking no-show',
-    });
-
-    // Recalculate penalty points with new escalating logic
-    await recalculatePenaltyPoints(userId);
-  }
-}
-
-/**
- * Apply late return penalty to all confirmed members of a group booking
- */
-export async function applyGroupLateReturnPenalty(bookingId: string): Promise<void> {
-  const booking = await Booking.findById(bookingId);
-
-  if (!booking || !booking.isGroupBooking) {
-    return;
-  }
-
-  const groupBooking = await GroupBooking.findById(booking.groupBookingId);
-  if (!groupBooking) {
-    return;
-  }
-
-  // Get organizer
-  const allMemberIds = [groupBooking.organizerId];
-
-  // Get all confirmed members
-  const confirmedMembers = groupBooking.members
-    .filter(m => m.status === 'CONFIRMED')
-    .map(m => m.userId);
-
-  allMemberIds.push(...confirmedMembers);
-
-  // Apply penalty to all members
-  for (const userId of allMemberIds) {
-    await Penalty.create({
-      userId,
-      bookingId: booking.id,
-      points: POLICIES.PENALTY_LATE_RETURN,
-      reason: 'Group booking late return',
-    });
-
-    // Recalculate penalty points with new escalating logic
-    await recalculatePenaltyPoints(userId);
-  }
-}
-
-/**
- * Check and expire group bookings that haven't been confirmed
- * Expires if: expiresAt has passed OR booking start time has passed
- */
-export async function expireGroupBookings(): Promise<number> {
-  // FIX: Use IST timezone for accurate expiration checks
-  const now = getNow();
-
-  // Find all pending group bookings
-  const pendingBookings = await GroupBooking.find({
-    status: 'PENDING_CONFIRMATIONS',
-  });
-
-  let expiredCount = 0;
-
-  for (const gb of pendingBookings) {
-    // Get booking to check start time
-    const booking = await Booking.findById(gb.bookingId);
-    if (!booking) {
-      continue; // Skip if booking not found
-    }
-
-    // Check if expired (either expiresAt passed OR booking start time passed)
-    if (isGroupBookingExpired(gb.expiresAt, booking.start)) {
-      // Check if minimum is met
-      if (gb.confirmedCount >= gb.requiredMinimum) {
-        // Enough confirmations - mark as confirmed
-        gb.status = 'CONFIRMED';
-        await gb.save();
-
-        booking.status = 'CONFIRMED';
-        await booking.save();
-      } else {
-        // Not enough confirmations - cancel
-        gb.status = 'EXPIRED';
-        await gb.save();
-
-        booking.status = 'CANCELLED';
-        await booking.save();
-
-        expiredCount++;
-      }
-    }
-  }
-
-  return expiredCount;
-}

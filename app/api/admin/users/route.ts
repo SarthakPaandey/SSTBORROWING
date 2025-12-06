@@ -95,6 +95,10 @@ export async function POST(req: NextRequest) {
             user.blocked = false;
             user.blockedAt = undefined;
             user.blockedBy = undefined;
+            // Reset suspension state when unblocking
+            user.suspensionLevel = 0;
+            user.suspendedUntil = undefined;
+            user.penaltyPoints = 0;
         }
 
         await user.save();

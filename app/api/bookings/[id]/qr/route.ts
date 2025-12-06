@@ -13,16 +13,19 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let session: mongoose.ClientSession | null = null;
   try {
     const user = await requireAuth();
     await connectDB();
+    session = await mongoose.startSession();
+    await session.startTransaction();
 
     // FIX: Validate ObjectId to prevent MongoDB CastError
     if (!mongoose.Types.ObjectId.isValid(params.id)) {
       throw new ValidationError('Invalid booking ID format');
     }
 
-    const booking = await Booking.findById(params.id);
+    const booking = await Booking.findById(params.id).session(session);
 
     if (!booking) {
       throw new NotFoundError('Booking');
@@ -31,7 +34,7 @@ export async function POST(
     // Check ownership - for group bookings, only organizer can generate QR
     if (booking.isGroupBooking) {
       const { GroupBooking } = await import('@/models/GroupBooking');
-      const groupBooking = await GroupBooking.findById(booking.groupBookingId);
+      const groupBooking = await GroupBooking.findById(booking.groupBookingId).session(session);
 
       if (!groupBooking || groupBooking.organizerId !== user.id) {
         throw new AuthorizationError('Only the organizer can generate QR code for group bookings');
@@ -93,7 +96,7 @@ export async function POST(
         { used: true },
         { expiresAt: { $lt: new Date() } }
       ]
-    });
+    }).session(session);
 
     // Check if already has valid QR for THIS specific booking
     // This prevents confusion when user has multiple bookings
@@ -101,11 +104,15 @@ export async function POST(
       bookingId: params.id,
       used: false,
       expiresAt: { $gt: new Date() }, // Use UTC for DB comparison
-    }).sort({ createdAt: -1 }); // Get most recent if multiple exist
+    }).session(session).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {
       console.log(`Reusing existing valid QR token for booking ${params.id}, expires: ${existingToken.expiresAt}`);
       const qrImage = await generateQRCodeImage(existingToken.token);
+
+      await session.commitTransaction();
+      session.endSession();
+
       return NextResponse.json({
         token: existingToken.token,
         qrImage,
@@ -120,7 +127,7 @@ export async function POST(
     const generatedTodayCount = await QRToken.countDocuments({
       bookingId: params.id,
       createdAt: { $gte: todayStart },
-    });
+    }).session(session);
 
     if (generatedTodayCount >= 2) {
       throw new ConflictError('QR code generation limit reached. Maximum 2 QR codes per day per booking.');
@@ -140,22 +147,25 @@ export async function POST(
     const expiresAt = new Date(now.getTime() + expiryMinutes * 60000);
 
     // Save token to DB - FIX: Include userId (required after EC-69)
-    await QRToken.create({
+    await QRToken.create([{
       bookingId: params.id,
       userId: user.id,
       token,
       expiresAt,
       used: false,
-    });
+    }], { session });
 
     console.log(`Generated new QR token for booking ${params.id}, expires: ${expiresAt.toISOString()}`);
 
     // Update booking
     booking.qrIssued = true;
-    await booking.save();
+    await booking.save({ session });
 
     // Generate QR code image
     const qrImage = await generateQRCodeImage(token);
+
+    await session.commitTransaction();
+    session.endSession();
 
     return NextResponse.json({
       token,
@@ -163,6 +173,13 @@ export async function POST(
       expiresAt,
     });
   } catch (error) {
+    if (session?.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session?.endSession();
+    if ((error as any)?.name === 'MongoError' && (error as any).code === 112) {
+      console.error('QR token transaction error:', error);
+    }
     console.error('QR generation error:', error);
     return handleApiError(error);
   }

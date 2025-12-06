@@ -9,7 +9,7 @@ export const bookingSchema = z.object({
         // FIX Issue #9: Add max limit to prevent absurdly large quantities
         // Prevents integer overflow, database bloat, and potential DoS
         qty: z.number().min(1, "Quantity must be at least 1").max(100, "Quantity cannot exceed 100")
-    })).optional(),
+    })).min(1, "At least one item is required").optional(),
 }).refine((data: { start: string; end: string }) => {
     const start = new Date(data.start);
     const end = new Date(data.end);

@@ -176,33 +176,32 @@ function ProgressBar3D({
 function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] }) {
     const maxCount = Math.max(...data.map(d => d.count), 1);
     const [animated, setAnimated] = useState(false);
-    const chartHeight = 180; // Fixed height in pixels
 
     useEffect(() => {
         setTimeout(() => setAnimated(true), 100);
     }, []);
 
     return (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/5 border border-blue-500/20 p-6 backdrop-blur-xl">
-            {/* Background effects */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/5 border border-blue-500/20 p-4 md:p-6 backdrop-blur-xl">
+            {/* Background effects - hidden on mobile for performance */}
+            <div className="hidden md:block absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="hidden md:block absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
             <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30">
-                        <Activity className="w-5 h-5 text-blue-400" />
+                <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                    <div className="p-2 md:p-2.5 rounded-xl bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30">
+                        <Activity className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-text-main">Weekly Activity</h3>
-                        <p className="text-sm text-text-muted">Bookings over the last 7 days</p>
+                        <h3 className="text-base md:text-lg font-semibold text-text-main">Weekly Activity</h3>
+                        <p className="text-xs md:text-sm text-text-muted">Last 7 days</p>
                     </div>
                 </div>
 
-                {/* 3D Bar Chart with fixed height */}
-                <div className="flex items-end justify-between gap-4 px-2" style={{ height: `${chartHeight}px` }}>
+                {/* 3D Bar Chart - responsive height */}
+                <div className="flex items-end justify-between gap-1 sm:gap-2 md:gap-4 px-0 sm:px-2 h-[140px] md:h-[180px]">
                     {data.map((day, index) => {
-                        const barHeight = Math.max((day.count / maxCount) * chartHeight, 8); // Min 8px
+                        const heightPercent = Math.max((day.count / maxCount) * 100, 5); // Min 5%
                         const isToday = index === data.length - 1;
 
                         return (
@@ -210,9 +209,9 @@ function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] })
                                 {/* Bar container */}
                                 <div className="flex-1 w-full flex items-end justify-center">
                                     <div
-                                        className="relative w-full max-w-[40px] rounded-t-lg overflow-visible transition-all duration-700 ease-out"
+                                        className="relative w-full max-w-[28px] sm:max-w-[36px] md:max-w-[40px] rounded-t-lg overflow-visible transition-all duration-700 ease-out"
                                         style={{
-                                            height: animated ? `${barHeight}px` : '8px',
+                                            height: animated ? `${heightPercent}%` : '5%',
                                             transitionDelay: `${index * 100}ms`,
                                         }}
                                     >
@@ -229,15 +228,15 @@ function WeeklyActivity3D({ data }: { data: { date: string; count: number }[] })
                                             <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
                                         </div>
 
-                                        {/* Value tooltip - always visible */}
-                                        <div className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-xs font-bold transition-all ${animated ? 'opacity-100' : 'opacity-0'} ${day.count > 0 ? 'bg-blue-500/80 text-white' : 'bg-white/10 text-text-muted'}`}>
+                                        {/* Value tooltip - responsive */}
+                                        <div className={`absolute -top-6 md:-top-8 left-1/2 -translate-x-1/2 px-1.5 md:px-2 py-0.5 md:py-1 rounded-md md:rounded-lg text-[10px] md:text-xs font-bold transition-all ${animated ? 'opacity-100' : 'opacity-0'} ${day.count > 0 ? 'bg-blue-500/80 text-white' : 'bg-white/10 text-text-muted'}`}>
                                             {day.count}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Day label */}
-                                <span className={`mt-3 text-xs font-medium transition-colors ${isToday ? 'text-blue-400' : 'text-text-muted group-hover:text-blue-400'}`}>
+                                {/* Day label - responsive */}
+                                <span className={`mt-2 md:mt-3 text-[10px] md:text-xs font-medium transition-colors ${isToday ? 'text-blue-400' : 'text-text-muted group-hover:text-blue-400'}`}>
                                     {day.date}
                                 </span>
                             </div>
@@ -270,10 +269,10 @@ export function DashboardCharts() {
 
     if (loading) {
         return (
-            <div className="grid gap-6 md:grid-cols-2">
-                <div className="col-span-2 h-[320px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
-                <div className="h-[300px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
-                <div className="h-[300px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
+                <div className="col-span-1 md:col-span-2 h-[280px] md:h-[320px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
+                <div className="h-[280px] md:h-[300px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
+                <div className="h-[280px] md:h-[300px] rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 animate-pulse" />
             </div>
         );
     }
@@ -284,24 +283,24 @@ export function DashboardCharts() {
     const totalByStatus = data.statusDistribution.reduce((sum, item) => sum + item.value, 0) || 1;
 
     return (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
             {/* Weekly Activity - Full Width */}
-            <div className="col-span-2">
+            <div className="col-span-1 md:col-span-2">
                 <WeeklyActivity3D data={data.weeklyActivity} />
             </div>
 
             {/* Bookings by Type */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 via-transparent to-cyan-500/5 border border-emerald-500/20 p-6 backdrop-blur-xl">
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 via-transparent to-cyan-500/5 border border-emerald-500/20 p-4 md:p-6 backdrop-blur-xl">
+                <div className="hidden md:block absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
                 <div className="relative">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30">
-                            <BarChart3 className="w-5 h-5 text-emerald-400" />
+                    <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                        <div className="p-2 md:p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/30 to-cyan-500/20 border border-emerald-500/30">
+                            <BarChart3 className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-text-main">Bookings by Type</h3>
-                            <p className="text-sm text-text-muted">Last 30 days</p>
+                            <h3 className="text-base md:text-lg font-semibold text-text-main">Bookings by Type</h3>
+                            <p className="text-xs md:text-sm text-text-muted">Last 30 days</p>
                         </div>
                     </div>
 
@@ -333,17 +332,17 @@ export function DashboardCharts() {
             </div>
 
             {/* Status Distribution */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 border border-purple-500/20 p-6 backdrop-blur-xl">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 border border-purple-500/20 p-4 md:p-6 backdrop-blur-xl">
+                <div className="hidden md:block absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                 <div className="relative">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500/30 to-pink-500/20 border border-purple-500/30">
-                            <TrendingUp className="w-5 h-5 text-purple-400" />
+                    <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                        <div className="p-2 md:p-2.5 rounded-xl bg-gradient-to-br from-purple-500/30 to-pink-500/20 border border-purple-500/30">
+                            <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-text-main">Status Distribution</h3>
-                            <p className="text-sm text-text-muted">Last 30 days</p>
+                            <h3 className="text-base md:text-lg font-semibold text-text-main">Status Distribution</h3>
+                            <p className="text-xs md:text-sm text-text-muted">Last 30 days</p>
                         </div>
                     </div>
 

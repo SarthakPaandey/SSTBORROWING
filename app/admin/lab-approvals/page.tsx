@@ -17,7 +17,7 @@ export default function LabApprovalsPage() {
 
   const fetchPendingApprovals = async () => {
     try {
-      const res = await fetch('/api/admin/lab-approvals?status=PENDING');
+      const res = await fetch('/api/admin/lab-approvals');
       const data = await res.json();
       setBookings(data.bookings || []);
     } catch (error) {
@@ -163,7 +163,7 @@ export default function LabApprovalsPage() {
                             {booking.items.map((item: any, idx: number) => (
                               <div
                                 key={idx}
-                              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm bg-bg-very-dark rounded px-3 py-2"
+                                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm bg-bg-very-dark rounded px-3 py-2"
                               >
                                 <span className="text-text-main font-medium">{item.name}</span>
                                 <span className="text-text-muted">×{item.qty}</span>

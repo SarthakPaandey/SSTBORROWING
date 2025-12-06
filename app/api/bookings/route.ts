@@ -202,20 +202,20 @@ async function postHandler(req: Request) {
       } else if (kind === 'EQUIPMENT') {
         // Duration validation for equipment
         const isSportsEquipment = resource.type === 'SPORTS_EQUIPMENT';
-        
+
         if (isSportsEquipment) {
           // Sports equipment: 15-75 minutes (dynamic based on closing time)
           // Allows shorter durations when booking close to 8 PM closing
           const maxDuration = POLICIES.SPORTS_EQUIPMENT_BORROW_MINUTES; // 75 min
           const minDuration = POLICIES.MIN_BOOKING_DURATION_MINUTES; // 15 min
-          
+
           if (durationMinutes < minDuration) {
             throw new ValidationError(
               `Sports equipment borrow duration must be at least ${minDuration} minutes. ` +
               `Current duration: ${Math.round(durationMinutes)} minutes.`
             );
           }
-          
+
           if (durationMinutes > maxDuration) {
             throw new ValidationError(
               `Sports equipment borrow duration cannot exceed ${maxDuration} minutes. ` +
@@ -225,7 +225,7 @@ async function postHandler(req: Request) {
         } else {
           // Lab equipment: Fixed 24-hour duration
           const expectedDuration = POLICIES.LAB_EQUIPMENT_BORROW_MINUTES; // 1440 min (24h)
-          
+
           if (durationMinutes !== expectedDuration) {
             throw new ValidationError(
               `Lab equipment borrow duration must be exactly ${expectedDuration} minutes (24 hours). ` +
@@ -567,8 +567,28 @@ async function postHandler(req: Request) {
         }
       }
 
-      // Determine if approval required (library books never require approval)
-      const requiresApproval = kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
+      // Determine if approval required:
+      // - Library books never require approval
+      // - Check resource-level rules.requiresApproval
+      // - Check if any individual equipment item requires approval
+      let requiresApproval = false;
+      if (kind !== 'LIBRARY') {
+        // Resource-level check
+        requiresApproval = resource.rules.requiresApproval || false;
+
+        // Individual equipment item check (for EQUIPMENT bookings)
+        if (kind === 'EQUIPMENT' && !requiresApproval && items && items.length > 0) {
+          const itemIds = items.map((i: { itemId: string }) => i.itemId);
+          const equipmentItems = await EquipmentItem.find({
+            _id: { $in: itemIds },
+            requiresApproval: true
+          }).session(session);
+
+          if (equipmentItems.length > 0) {
+            requiresApproval = true;
+          }
+        }
+      }
 
       // Create booking
       const [booking] = await Booking.create([{

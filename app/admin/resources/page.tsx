@@ -42,6 +42,7 @@ export default function ResourcesPage() {
     qtyAvailable: '',
     safety: false,
     restricted: false,
+    requiresApproval: false,
     resourceId: '',
   });
 
@@ -167,6 +168,7 @@ export default function ResourcesPage() {
       qtyAvailable: '',
       safety: false,
       restricted: false,
+      requiresApproval: false,
       resourceId,
     });
     setEquipmentMode('add');
@@ -181,6 +183,7 @@ export default function ResourcesPage() {
       qtyAvailable: item.qtyAvailable.toString(),
       safety: item.safety || false,
       restricted: item.restricted || false,
+      requiresApproval: item.requiresApproval || false,
       resourceId: item.resourceId,
     });
     setEquipmentMode('edit');
@@ -195,6 +198,7 @@ export default function ResourcesPage() {
         qtyAvailable: parseInt(equipmentForm.qtyAvailable),
         safety: equipmentForm.safety,
         restricted: equipmentForm.restricted,
+        requiresApproval: equipmentForm.requiresApproval,
         resourceId: equipmentForm.resourceId,
       };
 
@@ -503,6 +507,7 @@ export default function ResourcesPage() {
                             <div className="flex gap-2 mt-1">
                               {item.safety && <Badge variant="warning">Safety Item</Badge>}
                               {item.restricted && <Badge variant="destructive">Restricted</Badge>}
+                              {item.requiresApproval && <Badge variant="info">Requires Approval</Badge>}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -660,6 +665,16 @@ export default function ResourcesPage() {
               className="rounded"
             />
             <label htmlFor="restricted" className="text-sm text-text-main">Restricted (Requires Training)</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="requiresApprovalEquip"
+              checked={equipmentForm.requiresApproval}
+              onChange={(e) => setEquipmentForm({ ...equipmentForm, requiresApproval: e.target.checked })}
+              className="rounded"
+            />
+            <label htmlFor="requiresApprovalEquip" className="text-sm text-text-main">Requires Admin Approval</label>
           </div>
           <div className="flex gap-3">
             <Button onClick={handleSaveEquipment} variant="gradient" className="flex-1 btn-ripple">

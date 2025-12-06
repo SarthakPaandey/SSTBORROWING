@@ -10,6 +10,7 @@ export interface IEquipmentItem extends Document {
   imageUrl?: string;
   safety: boolean;
   restricted: boolean;
+  requiresApproval: boolean; // Whether this item requires admin approval to book
   sportCategory?: string; // Sport category for SPORTS_EQUIPMENT (e.g., 'BADMINTON', 'BASKETBALL', 'CRICKET', 'GENERAL')
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +29,7 @@ const EquipmentItemSchema = new Schema<IEquipmentItem>(
     qtyReserved: { type: Number, default: 0, min: 0 }, // Currently reserved by active bookings
     safety: { type: Boolean, default: false },
     restricted: { type: Boolean, default: false },
+    requiresApproval: { type: Boolean, default: false }, // Requires admin approval
     sportCategory: { type: String }, // Optional: Only for SPORTS_EQUIPMENT items
   },
   {

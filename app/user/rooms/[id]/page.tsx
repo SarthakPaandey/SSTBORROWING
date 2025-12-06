@@ -10,6 +10,7 @@ import { ArrowLeft, MapPin, Users, Clock, AlertTriangle, DoorOpen, Calendar, Che
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
+import { triggerBookingSuccess } from '@/lib/confetti';
 import TimeRangePicker from '@/components/booking/TimeRangePicker';
 
 interface Params {
@@ -140,6 +141,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
       }
 
       setSuccess(true);
+      triggerBookingSuccess();
       setTimeout(() => router.push('/user/bookings'), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

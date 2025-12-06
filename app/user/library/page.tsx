@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
+import { triggerBookingSuccess } from '@/lib/confetti';
 import { Search, BookOpen, Grid3X3, List } from 'lucide-react';
 
 export default function LibraryPage() {
@@ -162,6 +163,7 @@ export default function LibraryPage() {
       }
 
       setSuccess(true);
+      triggerBookingSuccess();
       setTimeout(() => router.push('/user/bookings'), 2000);
     } catch (err: any) {
       setError(err.message);
@@ -178,9 +180,9 @@ export default function LibraryPage() {
     };
 
     const config = categoryConfig[category];
-    
+
     // Filter books based on search query
-    const filteredBooks = books.filter(book => 
+    const filteredBooks = books.filter(book =>
       book.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -284,12 +286,12 @@ export default function LibraryPage() {
                       <span className="text-white text-xs">✓</span>
                     </div>
                   )}
-                  
+
                   {/* Book cover placeholder */}
                   <div className="w-full aspect-[3/4] rounded-lg bg-gradient-to-br from-bg-dark to-bg-very-dark flex items-center justify-center mb-2">
                     <BookOpen className="h-8 w-8 text-text-muted/50" />
                   </div>
-                  
+
                   <p className="font-medium text-text-main text-sm truncate">{book.name}</p>
                   <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
                     <span className="text-xs text-text-muted">{book.qtyAvailable}/{book.qtyTotal}</span>
@@ -323,11 +325,10 @@ export default function LibraryPage() {
                     <p className="font-medium text-text-main truncate">{book.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <div className="flex-1 max-w-[100px] h-1.5 bg-bg-dark rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all ${
-                            book.qtyAvailable === 0 ? 'bg-destructive' :
-                            book.qtyAvailable < book.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
-                          }`}
+                        <div
+                          className={`h-full rounded-full transition-all ${book.qtyAvailable === 0 ? 'bg-destructive' :
+                              book.qtyAvailable < book.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
+                            }`}
                           style={{ width: `${(book.qtyAvailable / book.qtyTotal) * 100}%` }}
                         />
                       </div>
@@ -415,12 +416,12 @@ export default function LibraryPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating book icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📚</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📖</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>📘</div>
-        
+
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -439,7 +440,7 @@ export default function LibraryPage() {
               </p>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="flex items-center gap-3">
             <div className="px-3 py-2 rounded-xl bg-success/10 border border-success/20">

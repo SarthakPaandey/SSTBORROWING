@@ -201,24 +201,31 @@ export function AnimatedBackground({
         />
       )}
 
-      {/* Stars */}
+      {/* Stars with movement */}
       {showStars && isClient && (
         <div className="absolute inset-0 overflow-hidden">
-          {stars.map((star) => (
-            <div
-              key={star.id}
-              className="absolute rounded-full bg-white"
-              style={{
-                left: star.left,
-                top: star.top,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                animation: `star-twinkle ${star.duration}s ease-in-out infinite`,
-                animationDelay: `${star.delay}s`,
-                opacity: 0.4,
-              }}
-            />
-          ))}
+          {stars.map((star) => {
+            // Some stars drift, some just twinkle for variety
+            const shouldDrift = star.id % 3 !== 0;
+            return (
+              <div
+                key={star.id}
+                className="absolute rounded-full bg-white"
+                style={{
+                  left: star.left,
+                  top: star.top,
+                  width: `${star.size}px`,
+                  height: `${star.size}px`,
+                  animation: shouldDrift
+                    ? `star-drift ${8 + star.duration * 2}s ease-in-out infinite`
+                    : `star-twinkle ${star.duration}s ease-in-out infinite`,
+                  animationDelay: `${star.delay}s`,
+                  opacity: 0.4,
+                  boxShadow: star.size > 1.5 ? '0 0 4px rgba(255,255,255,0.3)' : 'none',
+                }}
+              />
+            );
+          })}
         </div>
       )}
 

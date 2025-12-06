@@ -532,6 +532,60 @@
   }
 }
 
+/* Moving stars - slow drift across screen */
+@keyframes star-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+
+  25% {
+    opacity: 0.8;
+    transform: translate(15px, -10px) scale(1.1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate(25px, 5px) scale(1.2);
+  }
+
+  75% {
+    opacity: 0.6;
+    transform: translate(10px, 15px) scale(1.1);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+}
+
+/* Shooting star diagonal movement */
+@keyframes star-shoot {
+  0% {
+    transform: translate(0, 0) rotate(45deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(300px, 300px) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* Slow upward float for stars */
+@keyframes star-float-up {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
 @keyframes shooting-star {
   0% {
     transform: translateX(0) translateY(0);

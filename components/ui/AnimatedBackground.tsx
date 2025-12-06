@@ -11,17 +11,6 @@ interface Star {
   size: number;
 }
 
-interface ShootingStar {
-  id: number;
-  startX: number;
-  startY: number;
-  angle: number;
-  distance: number;
-  duration: number;
-  delay: number;
-  size: number;
-}
-
 interface AnimatedBackgroundProps {
   variant?: 'default' | 'minimal' | 'intense';
   showStars?: boolean;
@@ -42,20 +31,6 @@ function generateStars(count: number): Star[] {
   }));
 }
 
-// Generate shooting stars with random positions and angles
-function generateShootingStars(count: number): ShootingStar[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    startX: Math.random() * 80, // Start in first 80% of width
-    startY: Math.random() * 40, // Start in top 40% of height
-    angle: 30 + Math.random() * 30, // Angle between 30-60 degrees
-    distance: 150 + Math.random() * 200, // Travel distance 150-350px
-    duration: 0.8 + Math.random() * 0.7, // Duration 0.8-1.5s
-    delay: i * 3 + Math.random() * 5, // Stagger appearances
-    size: 1 + Math.random() * 1.5, // Size 1-2.5px
-  }));
-}
-
 export function AnimatedBackground({
   variant = 'default',
   showStars = true,
@@ -64,7 +39,6 @@ export function AnimatedBackground({
   enableSpotlight = true,
 }: AnimatedBackgroundProps) {
   const [stars] = useState(() => generateStars(variant === 'intense' ? 80 : variant === 'minimal' ? 20 : 40));
-  const [shootingStars] = useState(() => generateShootingStars(variant === 'intense' ? 8 : variant === 'minimal' ? 3 : 5));
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const spotlightRef = useRef<HTMLDivElement>(null);
@@ -248,68 +222,6 @@ export function AnimatedBackground({
         </div>
       )}
 
-      {/* Shooting Stars */}
-      {showStars && isClient && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {shootingStars.map((star) => (
-            <div
-              key={`shooting-${star.id}`}
-              className="absolute"
-              style={{
-                left: `${star.startX}%`,
-                top: `${star.startY}%`,
-                animation: `shooting-star-${star.id % 3} ${star.duration}s linear infinite`,
-                animationDelay: `${star.delay}s`,
-              }}
-            >
-              {/* Star head */}
-              <div
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: `${star.size}px`,
-                  height: `${star.size}px`,
-                  boxShadow: `0 0 ${star.size * 3}px ${star.size}px rgba(255, 255, 255, 0.8), 
-                              0 0 ${star.size * 6}px ${star.size * 2}px rgba(100, 180, 255, 0.5)`,
-                }}
-              />
-              {/* Star trail */}
-              <div
-                className="absolute"
-                style={{
-                  width: `${star.distance * 0.4}px`,
-                  height: `${star.size * 0.5}px`,
-                  background: `linear-gradient(90deg, rgba(255, 255, 255, 0.8) 0%, rgba(100, 180, 255, 0.4) 40%, transparent 100%)`,
-                  transform: `translateX(-100%) translateY(${star.size * 0.25}px)`,
-                  borderRadius: '50%',
-                }}
-              />
-            </div>
-          ))}
-          {/* CSS for shooting star animations - using inline style tag */}
-          <style dangerouslySetInnerHTML={{
-            __html: `
-              @keyframes shooting-star-0 {
-                0% { transform: translateX(0) translateY(0); opacity: 0; }
-                5% { opacity: 1; }
-                70% { opacity: 1; }
-                100% { transform: translateX(250px) translateY(250px); opacity: 0; }
-              }
-              @keyframes shooting-star-1 {
-                0% { transform: translateX(0) translateY(0); opacity: 0; }
-                5% { opacity: 1; }
-                70% { opacity: 1; }
-                100% { transform: translateX(300px) translateY(200px); opacity: 0; }
-              }
-              @keyframes shooting-star-2 {
-                0% { transform: translateX(0) translateY(0); opacity: 0; }
-                5% { opacity: 1; }
-                70% { opacity: 1; }
-                100% { transform: translateX(200px) translateY(280px); opacity: 0; }
-              }
-            `
-          }} />
-        </div>
-      )}
 
       {/* Mouse spotlight */}
       {enableSpotlight && isClient && (

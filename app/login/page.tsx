@@ -350,13 +350,6 @@ function LoginContent() {
           </CardContent>
         </div>
       </Card>
-
-      {/* Footer */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
-        <p className="text-xs text-text-muted/50">
-          SST Borrowing System
-        </p>
-      </div>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Sparkles, Shield, ArrowLeft, User, Lock, LogIn } from 'lucide-react';
 
 // Floating particles component
 const FloatingParticle = ({ delay, size, left, duration }: { delay: number; size: number; left: string; duration: number }) => (
-  <div 
+  <div
     className="absolute rounded-full bg-accent-blue/30 animate-float"
     style={{
       width: size,
@@ -67,12 +67,12 @@ function LoginContent() {
           body: JSON.stringify({ accessKey }),
           signal: abortController.signal,
         });
-        
+
         // Don't update state if request was cancelled
         if (isCancelled) return;
-        
+
         const data = await res.json();
-        
+
         if (data.valid) {
           setGuardAccessValid(true);
           setIsGuardLogin(true);
@@ -118,7 +118,7 @@ function LoginContent() {
     setLoading(true);
 
     const accessKey = searchParams.get('gk');
-    
+
     const result = await signIn('guard-credentials', {
       username,
       password,
@@ -143,9 +143,9 @@ function LoginContent() {
         <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-accent-blue/20 blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-accent-purple-1/20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-gradient-to-r from-accent-blue/10 to-accent-purple-1/10 blur-3xl animate-spin-slow" style={{ animationDuration: '20s' }} />
-        
+
         {/* Grid pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
@@ -171,14 +171,14 @@ function LoginContent() {
       <Card className={`relative w-full max-w-md transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
         {/* Animated border glow */}
         <div className="absolute -inset-[1px] bg-gradient-to-r from-accent-blue via-accent-purple-1 to-accent-blue rounded-2xl opacity-20 blur-sm animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
-        
+
         {/* Show loading spinner while validating guard key */}
         {validatingKey && (
           <div className="absolute inset-0 z-50 bg-bg-dark/80 backdrop-blur-sm rounded-2xl flex items-center justify-center">
             <div className="animate-spin h-8 w-8 border-2 border-accent-blue border-t-transparent rounded-full" />
           </div>
         )}
-        
+
         <div className="relative bg-bg-dark rounded-2xl overflow-hidden">
           <CardHeader className="text-center space-y-6 pt-8">
             {/* Logo with animation */}
@@ -195,7 +195,7 @@ function LoginContent() {
                 <Sparkles className="absolute -top-2 -right-2 h-5 w-5 text-accent-blue animate-pulse" />
               </div>
             </div>
-            
+
             {/* Title with gradient */}
             <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <CardTitle className="text-3xl font-bold">
@@ -263,14 +263,10 @@ function LoginContent() {
                 </div>
 
                 {/* Domain info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/20 text-center transition-all hover:bg-accent-blue/10 hover:border-accent-blue/30">
+                <div className="flex justify-center">
+                  <div className="p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/20 text-center transition-all hover:bg-accent-blue/10 hover:border-accent-blue/30 w-full max-w-xs">
                     <p className="text-sm font-medium text-accent-blue">🎓 Students</p>
                     <p className="text-xs text-text-muted mt-1">@sst.scaler.com</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-accent-purple-1/5 border border-accent-purple-1/20 text-center transition-all hover:bg-accent-purple-1/10 hover:border-accent-purple-1/30">
-                    <p className="text-sm font-medium text-accent-purple-1">🛠️ Admins</p>
-                    <p className="text-xs text-text-muted mt-1">@scaler.com (via admin link)</p>
                   </div>
                 </div>
 
@@ -335,11 +331,11 @@ function LoginContent() {
                 </div>
 
                 {/* Login button */}
-                <Button 
-                  type="submit" 
-                  disabled={loading} 
+                <Button
+                  type="submit"
+                  disabled={loading}
                   loading={loading}
-                  variant="gradient" 
+                  variant="gradient"
                   className="w-full btn-ripple"
                   size="lg"
                 >

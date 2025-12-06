@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
@@ -30,12 +31,18 @@ export async function GET(req: NextRequest) {
       .sort({ checkedInAt: -1 })
       .lean();
 
-    // Enrich with resource and user names
-    const resourceIds = bookings.map((b) => b.resourceId);
-    const userIds = bookings.map((b) => b.userId);
+    // Enrich with resource and user names (skip invalid ObjectIds to avoid CastErrors)
+    const resourceIds = [...new Set(bookings.map((b) => b.resourceId).filter(Boolean))];
+    const validResourceIds = resourceIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const resources = validResourceIds.length
+      ? await Resource.find({ _id: { $in: validResourceIds } }).lean()
+      : [];
 
-    const resources = await Resource.find({ _id: { $in: resourceIds } }).lean();
-    const users = await User.find({ _id: { $in: userIds } }).lean();
+    const userIds = [...new Set(bookings.map((b) => b.userId).filter(Boolean))];
+    const validUserIds = userIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const users = validUserIds.length
+      ? await User.find({ _id: { $in: validUserIds } }).lean()
+      : [];
 
     const resourceMap = new Map(resources.map((r) => [r._id.toString(), r]));
     const userMap = new Map(users.map((u) => [u._id.toString(), u]));

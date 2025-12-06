@@ -108,7 +108,7 @@ export default async function AdminDashboard() {
               <span className="text-text-muted">{greeting.text}, Admin</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              Admin Dashboard <span className="text-gradient text-2xl leading-none align-text-bottom opacity-90" aria-hidden>👑</span>
+              Admin Dashboard
             </h1>
             <p className="text-text-muted text-lg">
               System overview and management controls

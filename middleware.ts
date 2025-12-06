@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
   // All should be accessible without NextAuth session
   if (
     path === '/login' ||
+    path === '/admin/login' ||
     path === '/blocked' ||
     path.startsWith('/api/auth') ||
     path.startsWith('/api/approve') ||
@@ -22,9 +23,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect all routes except login
-  if (!token && path !== '/') {
-    console.log('[Middleware] No token, redirecting to /login');
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!token) {
+    if (path.startsWith('/admin')) {
+      console.log('[Middleware] No token, redirecting admin access to /admin/login');
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    if (path !== '/') {
+      console.log('[Middleware] No token, redirecting to /login');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   // Role-based route protection

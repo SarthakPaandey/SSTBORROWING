@@ -212,7 +212,7 @@ function LoginContent() {
                 ) : (
                   <>
                     <User className="h-4 w-4 text-accent-blue" />
-                    Student & Admin Portal
+                    Student Portal
                   </>
                 )}
               </CardDescription>
@@ -269,8 +269,8 @@ function LoginContent() {
                     <p className="text-xs text-text-muted mt-1">@sst.scaler.com</p>
                   </div>
                   <div className="p-3 rounded-xl bg-accent-purple-1/5 border border-accent-purple-1/20 text-center transition-all hover:bg-accent-purple-1/10 hover:border-accent-purple-1/30">
-                    <p className="text-sm font-medium text-accent-purple-1">👑 Admins</p>
-                    <p className="text-xs text-text-muted mt-1">@scaler.com</p>
+                    <p className="text-sm font-medium text-accent-purple-1">🛠️ Admins</p>
+                    <p className="text-xs text-text-muted mt-1">@scaler.com (via admin link)</p>
                   </div>
                 </div>
 

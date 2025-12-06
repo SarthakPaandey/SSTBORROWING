@@ -219,9 +219,9 @@ export function Navbar() {
                 <User className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="font-medium text-foreground truncate max-w-[120px]">{session.user.name}</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                 <span className="text-sm leading-none opacity-90" aria-hidden>
-                  {role === 'ADMIN' ? '👑' : role === 'GUARD' ? '🛡️' : '🎓'}
+                  {role === 'ADMIN' ? '🛠️' : role === 'GUARD' ? '🛡️' : '🎓'}
                 </span>
                 <span>
                   {role === 'ADMIN' ? 'Admin' : role === 'GUARD' ? 'Guard' : 'Student'}
@@ -325,7 +325,7 @@ export function Navbar() {
                   <p className="text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <span className="text-sm leading-none opacity-90" aria-hidden>
-                        {role === 'ADMIN' ? '👑' : role === 'GUARD' ? '🛡️' : '🎓'}
+                        {role === 'ADMIN' ? '🛠️' : role === 'GUARD' ? '🛡️' : '🎓'}
                       </span>
                       <span>{role === 'ADMIN' ? 'Administrator' : role === 'GUARD' ? 'Security Guard' : 'Student'}</span>
                     </span>

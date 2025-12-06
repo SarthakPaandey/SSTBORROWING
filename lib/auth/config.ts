@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { cookies } from 'next/headers';
 
 /**
  * Timing-safe string comparison that doesn't leak length information.
@@ -93,9 +94,18 @@ export const authOptions: AuthOptions = {
         const email = user.email!;
         const studentDomain = process.env.ALLOWED_STUDENT_DOMAIN || 'sst.scaler.com';
         const adminDomain = process.env.ALLOWED_ADMIN_DOMAIN || 'scaler.com';
+        const isStudentDomain = email.endsWith(`@${studentDomain}`);
+        const isAdminDomain = email.endsWith(`@${adminDomain}`);
 
-        if (!email.endsWith(`@${studentDomain}`) && !email.endsWith(`@${adminDomain}`)) {
+        if (!isStudentDomain && !isAdminDomain) {
           return false; // Reject sign-in
+        }
+
+        const adminLinkVerified = cookies().get('admin-login')?.value === 'true';
+
+        if (isAdminDomain && !adminLinkVerified) {
+          console.warn('[Auth] Admin login denied: missing admin access link proof');
+          return '/admin/login?error=admin_link_required';
         }
 
         await connectDB();
@@ -103,8 +113,7 @@ export const authOptions: AuthOptions = {
         let dbUser = await User.findOne({ email });
 
         if (!dbUser) {
-          // Create new user with role based on domain
-          const role = email.endsWith(`@${adminDomain}`) ? 'ADMIN' : 'STUDENT';
+          const role = isAdminDomain ? 'ADMIN' : 'STUDENT';
 
           dbUser = await User.create({
             name: user.name || email.split('@')[0],
@@ -113,6 +122,11 @@ export const authOptions: AuthOptions = {
             image: user.image,
             penaltyPoints: 0,
           });
+        }
+
+        if (dbUser.role === 'ADMIN' && !adminLinkVerified) {
+          console.warn('[Auth] Existing admin blocked: missing admin access link proof');
+          return '/admin/login?error=admin_link_required';
         }
 
         // Check if user is blocked

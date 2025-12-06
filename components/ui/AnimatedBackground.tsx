@@ -38,7 +38,7 @@ export function AnimatedBackground({
   showParticles = true,
   enableSpotlight = true,
 }: AnimatedBackgroundProps) {
-  const [stars] = useState(() => generateStars(variant === 'intense' ? 80 : variant === 'minimal' ? 20 : 40));
+  const [stars] = useState(() => generateStars(variant === 'intense' ? 120 : variant === 'minimal' ? 40 : 80));
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isClient, setIsClient] = useState(false);
   const spotlightRef = useRef<HTMLDivElement>(null);
@@ -217,7 +217,7 @@ export function AnimatedBackground({
                   width: `${star.size}px`,
                   height: `${star.size}px`,
                   animation: shouldDrift
-                    ? `star-drift ${8 + star.duration * 2}s ease-in-out infinite`
+                    ? `star-drift ${4 + star.duration}s ease-in-out infinite`
                     : `star-twinkle ${star.duration}s ease-in-out infinite`,
                   animationDelay: `${star.delay}s`,
                   opacity: 0.4,

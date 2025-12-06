@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
-    // Fetch bookings that require approval
+    // Fetch bookings that are still awaiting admin approval
+    // (aligns with dashboard pending count which uses approval status)
     const query: BookingQuery = {
-      requiresApproval: true,
       approval: 'PENDING',
     };
 

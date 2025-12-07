@@ -4,6 +4,11 @@ import { GroupBooking } from '@/models/GroupBooking';
 
 type Session = mongoose.ClientSession | null | undefined;
 
+type ParticipationFilterOptions = {
+  excludeGroupBookingId?: string;
+  requireConfirmedMembership?: boolean;
+};
+
 const ACTIVE_GROUP_STATUSES = ['PENDING_CONFIRMATIONS', 'CONFIRMED'] as const;
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CHECKED_IN'] as const;
 
@@ -16,10 +21,14 @@ const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CHECKED_IN'] as const;
  */
 export async function getGroupParticipantBookings(
   userId: string,
-  session?: Session
+  session?: Session,
+  options: ParticipationFilterOptions = {}
 ) {
   const groupQuery = GroupBooking.find({
-    'members.userId': userId,
+    ...(options.excludeGroupBookingId ? { _id: { $ne: options.excludeGroupBookingId } } : {}),
+    ...(options.requireConfirmedMembership
+      ? { members: { $elemMatch: { userId, status: 'CONFIRMED' } } }
+      : { 'members.userId': userId }),
     status: { $in: ACTIVE_GROUP_STATUSES },
   });
 
@@ -52,9 +61,10 @@ export async function getGroupParticipantBookings(
  */
 export async function countActiveGroupParticipations(
   userId: string,
-  session?: Session
+  session?: Session,
+  options: ParticipationFilterOptions = {}
 ): Promise<number> {
-  const bookings = await getGroupParticipantBookings(userId, session);
+  const bookings = await getGroupParticipantBookings(userId, session, options);
   if (!bookings.length) {
     return 0;
   }

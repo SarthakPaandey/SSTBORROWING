@@ -18,6 +18,7 @@ export async function POST(
     await connectDB();
     session = await mongoose.startSession();
     await session.startTransaction();
+    // Keep reads/writes within one transaction so concurrent requests can't mint duplicate tokens
 
     // FIX: Validate ObjectId to prevent MongoDB CastError
     if (!mongoose.Types.ObjectId.isValid(params.id)) {

@@ -19,6 +19,7 @@ import { isGroupBookingExpired } from './policies';
 // Rate limiting: only run expiration tasks once per minute
 let lastRunTimestamp = 0;
 const MIN_INTERVAL_MS = 60 * 1000; // 1 minute
+// Note: in serverless, this resets per instance, but still throttles bursts per worker
 
 /**
  * Trigger lazy expiration tasks in the background.

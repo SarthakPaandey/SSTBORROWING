@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const groupBookings = await GroupBooking.find({
       'members.userId': user.id,
       status: { $in: ['PENDING_CONFIRMATIONS', 'CONFIRMED'] },
-    }).sort({ createdAt: -1 });
+  }).sort({ createdAt: -1 }); // ignore expired/cancelled invites to keep list focused
 
     // Enrich with booking and resource details
     const enriched = await Promise.all(

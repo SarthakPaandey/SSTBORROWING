@@ -366,6 +366,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // 9. Determine if approval is required for the new time
+    // Keep resource-level rules consistent so reschedules don't bypass approvals
     const requiresApproval = booking.kind === 'LIBRARY' ? false : (resource.rules.requiresApproval || false);
 
     return {

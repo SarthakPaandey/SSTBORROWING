@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     // Start transaction for atomicity
     await session.startTransaction();
 
+    // Shared return helper handles inventory restore, penalties, and audit fields
     const { booking, penaltyApplied } = await processReturn({
       bookingId,
       condition,

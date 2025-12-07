@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
       if (to) query.start.$lte = new Date(to);
     }
 
+  // Keep response payload small for dashboards by limiting recent results
     const bookings = await Booking.find(query)
       .sort({ start: -1 })
       .limit(100);

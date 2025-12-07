@@ -37,6 +37,7 @@ export function generateQRToken(bookingId: string, userId: string, expiresInMinu
   };
 
   const data = JSON.stringify(payload);
+  // Sign payload so booking/user IDs can't be tampered with in transit
   const signature = crypto
     .createHmac('sha256', QR_SECRET)
     .update(data)

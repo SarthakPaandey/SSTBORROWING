@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     // Start transaction for atomicity
     await session.startTransaction();
 
+    // Reuse shared return helper to keep scanner and guard workflows consistent
     const { booking, penaltyApplied } = await processReturn({
       bookingId,
       condition,

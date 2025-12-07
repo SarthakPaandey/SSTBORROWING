@@ -55,6 +55,7 @@ export async function processReturn({
 
   // Dynamic Return Deadline Logic with 15-min grace
   const now = new Date();
+  // Preserve the intended borrow window even if pickup happened late
   let adjustedEndTime = new Date(booking.end).getTime();
   if (booking.checkedInAt) {
     const pickupTime = new Date(booking.checkedInAt).getTime();
@@ -64,7 +65,7 @@ export async function processReturn({
       adjustedEndTime += pickupDelay;
     }
   }
-  adjustedEndTime += 15 * 60 * 1000;
+  adjustedEndTime += 15 * 60 * 1000; // universal grace buffer after pickup window
 
   const isLate = now.getTime() > adjustedEndTime;
   const isDamaged = condition === 'damaged';

@@ -3,7 +3,8 @@ import { connectDB } from '@/lib/db';
 import { GroupBooking } from '@/models/GroupBooking';
 import { Booking } from '@/models/Booking';
 import { requireAuth } from '@/lib/auth/guards';
-import { isGroupBookingExpired } from '@/lib/policies';
+import { isGroupBookingExpired, POLICIES } from '@/lib/policies';
+import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError } from '@/lib/errors';
 import mongoose from 'mongoose';
 
@@ -81,6 +82,33 @@ export async function PATCH(
 
     // Update member status
     if (response === 'ACCEPT') {
+      // FIX: Check if accepting would exceed active booking limit
+      // This prevents users from bypassing MAX_TOTAL_ACTIVE_BOOKINGS via group invitations
+      const activePersonal = await Booking.countDocuments({
+        userId: user.id,
+        kind: { $in: ['FACILITY', 'ROOM'] },
+        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+        end: { $gt: new Date() },
+      }).session(session);
+
+      const activeGroup = await countActiveGroupParticipations(
+        user.id,
+        session,
+        {
+          excludeGroupBookingId: params.id, // don't count the invitation being responded to
+          requireConfirmedMembership: true, // only count groups the user already confirmed
+        }
+      );
+      const activeTotal = activePersonal + activeGroup;
+
+      if (activeTotal >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+        throw new ValidationError(
+          `You already have ${activeTotal} active facility/room bookings. ` +
+          `Maximum allowed is ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS}. ` +
+          `Please cancel an existing booking before accepting this invitation.`
+        );
+      }
+
       // FIX EC-1: Atomic update guarded on pending status to block post-rejection confirmations
       const updatedGroupBooking = await GroupBooking.findOneAndUpdate(
         {

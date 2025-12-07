@@ -25,6 +25,7 @@ export async function recalculatePenaltyPoints(
   const now = new Date();
 
   // Calculate total points from non-waived AND non-served penalties
+  // Keep aggregation inside the caller's transaction when provided to avoid stale totals
   const aggregateQuery = Penalty.aggregate([
     {
       $match: {

@@ -185,7 +185,7 @@ export default function AdminSettingsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Settings className="w-8 h-8 text-accent-purple-1" />
@@ -196,19 +196,22 @@ export default function AdminSettingsPage() {
                     </p>
                 </div>
 
-                {hasChanges && (
-                    <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
+                    {hasChanges && (
                         <Badge variant="warning">{pendingChanges.size} unsaved change(s)</Badge>
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-accent-blue hover:bg-accent-blue/90"
-                        >
-                            <Save className="w-4 h-4 mr-2" />
-                            {saving ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                    </div>
-                )}
+                    )}
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving || !hasChanges}
+                        className={hasChanges
+                            ? "bg-accent-blue hover:bg-accent-blue/90"
+                            : "bg-gray-600 cursor-not-allowed opacity-60"
+                        }
+                    >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes'}
+                    </Button>
+                </div>
             </div>
 
             {/* Policy Categories */}

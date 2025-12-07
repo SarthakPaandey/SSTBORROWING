@@ -114,12 +114,19 @@ export async function POST(
 
             // Check inventory availability for extended time
             if (booking.items && booking.items.length > 0) {
-                const itemsToCheck = booking.items.map(item => ({
-                    itemId: item.itemId,
-                    qty: item.qty,
-                    totalQty: item.qty, // Already have this much borrowed
-                    name: item.name
-                }));
+                // FIX: Fetch actual qtyTotal from EquipmentItem, not the borrowed qty
+                const { EquipmentItem } = await import('@/models/EquipmentItem');
+                const itemsToCheck = await Promise.all(
+                    booking.items.map(async (item) => {
+                        const equipmentItem = await EquipmentItem.findById(item.itemId).session(session);
+                        return {
+                            itemId: item.itemId,
+                            qty: item.qty,
+                            totalQty: equipmentItem?.qtyTotal || item.qty,
+                            name: item.name
+                        };
+                    })
+                );
 
                 const availabilityCheck = await checkBookingAvailability(
                     itemsToCheck,

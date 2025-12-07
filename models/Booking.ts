@@ -157,7 +157,7 @@ const BookingSchema = new Schema<IBooking>(
 );
 
 BookingSchema.index({ userId: 1, status: 1 });
-BookingSchema.index({ resourceId: 1, start: 1, end: 1 });
+// NOTE: Removed redundant { resourceId: 1, start: 1, end: 1 } index - covered by unique partial index below
 BookingSchema.index({ status: 1, start: 1 });
 BookingSchema.index({ approval: 1 });
 // FIX EC-67: Index on items.itemId for faster equipment availability queries

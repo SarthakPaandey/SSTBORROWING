@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
-import { EquipmentItem } from '@/models/EquipmentItem';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { QRToken } from '@/models/QRToken';

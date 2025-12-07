@@ -42,8 +42,12 @@ export async function processReturn({
     throw new ConflictError('Equipment already returned');
   }
 
-  // Restore equipment quantities to shelf
-  if (booking.items) {
+  // FIX: Restore qtyAvailable on return
+  // The QR validation (qr/validate/route.ts) decrements qtyAvailable on check-in,
+  // so we must increment it back when the item is returned.
+  // Time-based overlap checks (lib/inventory.ts) are still used for booking validation,
+  // but qtyAvailable tracks physical inventory on the shelf.
+  if (booking.items && booking.items.length > 0) {
     for (const item of booking.items) {
       await EquipmentItem.findByIdAndUpdate(
         item.itemId,

@@ -40,7 +40,15 @@ export async function PATCH(
       }
 
       // Check if can cancel
-      if (!['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(booking.status)) {
+      // CHECKED_IN bookings can only be "canceled" (early checkout) for rooms/facilities
+      // Equipment and Library must be returned via the return flow
+      if (booking.status === 'CHECKED_IN') {
+        if (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') {
+          throw new ValidationError(
+            `Cannot cancel checked-in ${booking.kind.toLowerCase()} bookings. Please return the items instead.`
+          );
+        }
+      } else if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
         throw new ValidationError('Cannot cancel booking in current state');
       }
 

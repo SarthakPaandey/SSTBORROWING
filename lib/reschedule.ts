@@ -77,18 +77,28 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // NEW: 1b. Monthly reschedule limit
+    // FIX: Count total reschedule ACTIONS, not unique bookings with history
     const reschedMonthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const reschedMonthEnd = new Date(reschedMonthStart);
     reschedMonthEnd.setMonth(reschedMonthEnd.getMonth() + 1);
 
-    const monthlyRescheduleCount = await Booking.countDocuments({
-        userId: user.id,
-        rescheduleHistory: {
-            $elemMatch: {
-                rescheduledAt: { $gte: reschedMonthStart, $lt: reschedMonthEnd }
+    const rescheduleAggregation = await Booking.aggregate([
+        { $match: { userId: user.id } },
+        { $unwind: '$rescheduleHistory' },
+        {
+            $match: {
+                'rescheduleHistory.rescheduledAt': {
+                    $gte: reschedMonthStart,
+                    $lt: reschedMonthEnd
+                }
             }
-        }
-    }).session(session);
+        },
+        { $count: 'total' }
+    ]).session(session);
+
+    const monthlyRescheduleCount = rescheduleAggregation.length > 0
+        ? rescheduleAggregation[0].total
+        : 0;
 
     if (monthlyRescheduleCount >= POLICIES.MAX_RESCHEDULE_PER_MONTH) {
         return {

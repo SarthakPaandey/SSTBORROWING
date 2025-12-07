@@ -160,7 +160,16 @@ export const POLICIES = {
 export function canUserBook(user: {
   penaltyPoints: number;
   suspendedUntil?: Date;
+  blocked?: boolean;  // FIX: Add blocked field to properly reject permanently blocked users
 }): { allowed: boolean; reason?: string } {
+  // FIX: Check if user is permanently blocked first (takes precedence over suspension)
+  if (user.blocked) {
+    return {
+      allowed: false,
+      reason: 'Your account has been permanently blocked. You cannot make new bookings.',
+    };
+  }
+
   // Compare using UTC to match stored DB timestamps
   if (user.suspendedUntil && new Date() < new Date(user.suspendedUntil)) {
     return {

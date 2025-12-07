@@ -13,8 +13,8 @@
 
 import { connectDB } from './db';
 import { Booking } from '@/models/Booking';
-import { GroupBooking } from '@/models/GroupBooking';
-import { isGroupBookingExpired } from './policies';
+// FIX: Import shared expireGroupBookings instead of duplicating logic
+import { expireGroupBookings } from './groupBookingPenalties';
 
 // Rate limiting: only run expiration tasks once per minute
 let lastRunTimestamp = 0;
@@ -62,53 +62,8 @@ async function runExpirationTasks(): Promise<void> {
     }
 }
 
-/**
- * Expire group bookings that have passed their deadline.
- * Confirms if minimum members met, cancels otherwise.
- */
-async function expireGroupBookings(): Promise<number> {
-    const pendingGroupBookings = await GroupBooking.find({
-        status: 'PENDING_CONFIRMATIONS',
-    });
-
-    let expiredCount = 0;
-
-    for (const gb of pendingGroupBookings) {
-        try {
-            const booking = await Booking.findById(gb.bookingId);
-            if (!booking) continue;
-
-            if (isGroupBookingExpired(gb.expiresAt, booking.start)) {
-                if (gb.confirmedCount >= gb.requiredMinimum) {
-                    // Enough confirmations - confirm the booking
-                    gb.status = 'CONFIRMED';
-                    await gb.save();
-
-                    booking.status = 'CONFIRMED';
-                    await booking.save();
-                } else {
-                    // Not enough confirmations - cancel
-                    gb.status = 'EXPIRED';
-                    await gb.save();
-
-                    booking.status = 'CANCELLED';
-                    await booking.save();
-
-                    expiredCount++;
-                }
-            }
-        } catch (error) {
-            console.error(`[LazyExpiration] Failed to process group booking ${gb._id}:`, error);
-            // Continue with other bookings
-        }
-    }
-
-    if (expiredCount > 0) {
-        console.log(`[LazyExpiration] Expired ${expiredCount} group bookings`);
-    }
-
-    return expiredCount;
-}
+// NOTE: expireGroupBookings is now imported from groupBookingPenalties.ts
+// to avoid code duplication and ensure consistent behavior
 
 /**
  * Auto-complete facility and room bookings that have ended.

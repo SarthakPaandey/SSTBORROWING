@@ -6,7 +6,7 @@ import { Block } from '@/models/Block';
 import { POLICIES, isWithinAdvanceWindow, hasConsecutiveBookings, calculateTotalHours, canUserBook } from './policies';
 import { checkBookingAvailability } from './inventory';
 import { ValidationError, ConflictError } from './errors';
-import { getStartOfDay, getTodayStart, toIST } from './timezone';
+import { getStartOfDay, toIST } from './timezone';
 import mongoose from 'mongoose';
 
 export interface RescheduleParams {

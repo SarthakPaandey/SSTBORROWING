@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
       throw new ValidationError('Booking ID required');
     }
 
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      throw new ValidationError('Invalid booking ID format');
+    }
+
     // Start transaction for atomicity
     await session.startTransaction();
 

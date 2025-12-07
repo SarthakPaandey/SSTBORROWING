@@ -184,6 +184,35 @@ async function postHandler(req: Request) {
         throw new NotFoundError('Resource');
       }
 
+      // Check resource-specific operating hours (if set)
+      if (resource.operatingHours?.useCustom) {
+        const dayOfWeek = startIST.getDay(); // 0 = Sunday, 6 = Saturday
+        const daySchedule = resource.operatingHours.schedule[dayOfWeek];
+
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Check if resource is closed on this day
+        if (!daySchedule.open) {
+          throw new ValidationError(`${resource.name} is closed on ${dayNames[dayOfWeek]}s`);
+        }
+
+        // Check if booking is within resource's operating hours
+        if (startHour < daySchedule.startHour) {
+          throw new ValidationError(
+            `${resource.name} opens at ${daySchedule.startHour}:00 on ${dayNames[dayOfWeek]}s. ` +
+            `Your booking starts at ${startHour}:00.`
+          );
+        }
+
+        // End hour check (endHour in schedule means closing time, e.g. 20 = 8 PM)
+        if (endHour > daySchedule.endHour || (endHour === daySchedule.endHour && endMinutes > 0)) {
+          throw new ValidationError(
+            `${resource.name} closes at ${daySchedule.endHour}:00 on ${dayNames[dayOfWeek]}s. ` +
+            `Your booking ends at ${endHour}:${String(endMinutes).padStart(2, '0')}.`
+          );
+        }
+      }
+
       // Map ResourceType to BookingKind
       let kind: 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
       if (resource.type === 'LAB_EQUIPMENT' || resource.type === 'SPORTS_EQUIPMENT') {

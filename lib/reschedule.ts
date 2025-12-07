@@ -124,6 +124,43 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         };
     }
 
+    // 3b. Check resource-specific operating hours (if set)
+    if (resource.operatingHours?.useCustom) {
+        const newStartIST = toIST(newStart);
+        const newEndIST = toIST(newEnd);
+        const dayOfWeek = newStartIST.getDay(); // 0 = Sunday, 6 = Saturday
+        const daySchedule = resource.operatingHours.schedule[dayOfWeek];
+
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Check if resource is closed on this day
+        if (!daySchedule.open) {
+            return {
+                allowed: false,
+                reason: `${resource.name} is closed on ${dayNames[dayOfWeek]}s`,
+            };
+        }
+
+        // Check if booking is within resource's operating hours
+        const startHour = newStartIST.getHours();
+        const endHour = newEndIST.getHours();
+        const endMinutes = newEndIST.getMinutes();
+
+        if (startHour < daySchedule.startHour) {
+            return {
+                allowed: false,
+                reason: `${resource.name} opens at ${daySchedule.startHour}:00 on ${dayNames[dayOfWeek]}s. Your booking starts at ${startHour}:00.`,
+            };
+        }
+
+        if (endHour > daySchedule.endHour || (endHour === daySchedule.endHour && endMinutes > 0)) {
+            return {
+                allowed: false,
+                reason: `${resource.name} closes at ${daySchedule.endHour}:00 on ${dayNames[dayOfWeek]}s. Your booking ends at ${endHour}:${String(endMinutes).padStart(2, '0')}.`,
+            };
+        }
+    }
+
     // 4. Validate duration based on resource type
     const duration = (newEnd.getTime() - newStart.getTime()) / (1000 * 60); // minutes
 

@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       if (to) query.start.$lte = new Date(to);
     }
 
-  // Keep response payload small for dashboards by limiting recent results
+    // Keep response payload small for dashboards by limiting recent results
     const bookings = await Booking.find(query)
       .sort({ start: -1 })
       .limit(100);
@@ -259,11 +259,37 @@ async function postHandler(req: Request) {
         throw new ValidationError('This resource is only available to students');
       }
 
-      // Check total active bookings limit (use UTC for DB comparison)
-      // Updated: Only count FACILITY and ROOM bookings as "active slots"
-      // Equipment and Library have their own separate quantity limits and should not
-      // block users from booking facilities/rooms while holding items
+      // Check per-type active booking limits (facilities, rooms separately)
+      // Then check total active bookings limit
+      // Equipment and Library have their own separate quantity limits
 
+      if (kind === 'FACILITY') {
+        const activeFacilities = await Booking.countDocuments({
+          userId: user.id,
+          kind: 'FACILITY',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          end: { $gt: new Date() },
+        }).session(session);
+
+        if (activeFacilities >= POLICIES.MAX_ACTIVE_FACILITIES) {
+          throw new ValidationError(`You can only have ${POLICIES.MAX_ACTIVE_FACILITIES} active facility bookings at a time. Please wait for one to complete or cancel it.`);
+        }
+      }
+
+      if (kind === 'ROOM') {
+        const activeRooms = await Booking.countDocuments({
+          userId: user.id,
+          kind: 'ROOM',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          end: { $gt: new Date() },
+        }).session(session);
+
+        if (activeRooms >= POLICIES.MAX_ACTIVE_ROOMS) {
+          throw new ValidationError(`You can only have ${POLICIES.MAX_ACTIVE_ROOMS} active room booking at a time. Please wait for it to complete or cancel it.`);
+        }
+      }
+
+      // Check total active bookings limit (facilities + rooms combined)
       const personalActiveBookings = await Booking.countDocuments({
         userId: user.id,
         kind: { $in: ['FACILITY', 'ROOM'] },

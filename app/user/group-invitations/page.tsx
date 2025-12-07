@@ -164,10 +164,10 @@ export default function GroupInvitationsPage() {
         ) : (
           invitations.pending.map((inv, index) => {
             const timeInfo = getTimeRemaining(inv.expiresAt);
-            
+
             return (
-              <Card 
-                key={inv._id} 
+              <Card
+                key={inv._id}
                 className={`
                   border-warning/30 bg-gradient-to-r from-warning/5 to-transparent
                   animate-fade-in-left
@@ -189,8 +189,8 @@ export default function GroupInvitationsPage() {
                         </CardDescription>
                       </div>
                     </div>
-                    <Badge 
-                      variant={timeInfo.urgent ? 'destructive' : 'warning'} 
+                    <Badge
+                      variant={timeInfo.urgent ? 'destructive' : 'warning'}
                       pulse={timeInfo.urgent}
                       icon="⏰"
                     >
@@ -234,7 +234,7 @@ export default function GroupInvitationsPage() {
                     <ul className="text-xs text-text-muted space-y-1.5">
                       <li className="flex items-start gap-2">
                         <span className="text-warning">⚠️</span>
-                        All confirmed members share penalty points for no-shows
+                        Cancel early if the group can't make it to avoid blocking the slot
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-success">✅</span>
@@ -298,8 +298,8 @@ export default function GroupInvitationsPage() {
           </Card>
         ) : (
           invitations.confirmed.map((inv, index) => (
-            <Card 
-              key={inv._id} 
+            <Card
+              key={inv._id}
               className="border-success/30 bg-gradient-to-r from-success/5 to-transparent animate-fade-in-left"
               style={{ animationDelay: `${index * 0.1}s` }}
             >

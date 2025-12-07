@@ -157,10 +157,11 @@ export default async function PenaltyGuidePage() {
   ];
 
   const penaltyRules = [
-    { label: 'No-show (facility/room/equipment)', points: POLICIES.PENALTY_NO_SHOW },
+    { label: 'No-show (equipment/library)', points: POLICIES.PENALTY_NO_SHOW },
     { label: 'Late return', points: POLICIES.PENALTY_LATE_RETURN },
     { label: 'Damage or lost item', points: POLICIES.PENALTY_DAMAGE },
-    { label: 'Late cancellation', points: POLICIES.PENALTY_CANCELLATION },
+    { label: 'Early cancellation (>24h before)', points: POLICIES.PENALTY_CANCELLATION },
+    { label: 'Late cancellation (<24h before)', points: POLICIES.PENALTY_LATE_CANCELLATION },
     { label: 'Library: late return', points: POLICIES.PENALTY_BOOK_LATE_RETURN },
     { label: 'Library: no pickup', points: POLICIES.PENALTY_BOOK_NO_PICKUP },
     { label: 'Reschedule fee', points: POLICIES.RESCHEDULE_PENALTY_POINTS },

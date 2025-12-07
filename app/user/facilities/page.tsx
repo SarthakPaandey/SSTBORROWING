@@ -53,12 +53,12 @@ export default async function FacilitiesPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating facility icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">⚽</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🏀</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🏸</div>
-        
+
         <div className="relative flex items-center gap-4">
           <div className="relative">
             {/* Animated glow ring */}
@@ -101,7 +101,7 @@ export default async function FacilitiesPage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {facilities.map((facility, index) => {
             const config = getFacilityConfig(facility.name);
-            
+
             return (
               <Link
                 key={facility._id.toString()}
@@ -109,7 +109,7 @@ export default async function FacilitiesPage() {
                 className="block animate-fade-in-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <Card 
+                <Card
                   className={`
                     cursor-pointer h-full overflow-hidden
                     bg-gradient-to-br ${config.gradient}
@@ -129,7 +129,7 @@ export default async function FacilitiesPage() {
                         Available
                       </Badge>
                     </div>
-                    
+
                     <div className="mt-4">
                       <CardTitle className="text-xl group-hover:text-accent-blue transition-colors flex items-center gap-2">
                         {facility.name}
@@ -143,7 +143,7 @@ export default async function FacilitiesPage() {
                       )}
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent>
                     <div className="flex flex-wrap gap-3 text-sm">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5">
@@ -157,7 +157,7 @@ export default async function FacilitiesPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Hover hint */}
                     <div className="mt-4 pt-3 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <p className="text-xs text-accent-blue flex items-center gap-1">
@@ -186,7 +186,7 @@ export default async function FacilitiesPage() {
             <li>• Cancel at least 2 hours before start</li>
           </ul>
         </div>
-        
+
         <div className="p-4 rounded-xl bg-gradient-to-br from-accent-purple-1/10 to-accent-purple-1/5 border border-accent-purple-1/20">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">👥</span>
@@ -194,7 +194,7 @@ export default async function FacilitiesPage() {
           </div>
           <ul className="text-sm text-text-muted space-y-1">
             <li>• Invite up to 10 friends</li>
-            <li>• Share penalties for no-shows</li>
+            <li>• Cancel early if group can't attend</li>
             <li>• Organizer generates QR code</li>
           </ul>
         </div>

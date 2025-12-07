@@ -29,7 +29,7 @@ export const POLICIES = {
   WORKING_HOURS_END: 20,  // 8 PM IST
 
   // Cancellation limits
-  LATE_CANCELLATION_HOURS: 2,
+  LATE_CANCELLATION_HOURS: 24,  // Cancel within 24h of start = late cancellation
 
   // Advance booking window
   ADVANCE_BOOKING_DAYS: 7,
@@ -60,8 +60,8 @@ export const POLICIES = {
   PENALTY_NO_SHOW: 4,          // 1 point
   PENALTY_LATE_RETURN: 4,      // 1 point
   PENALTY_DAMAGE: 8,           // 2 points
-  PENALTY_CANCELLATION: 1,     // 0.25 points
-  PENALTY_LATE_CANCELLATION: 2, // 0.5 points (late cancellation within cutoff)
+  PENALTY_CANCELLATION: 0,     // No penalty for early cancellation (encourages responsible behavior)
+  PENALTY_LATE_CANCELLATION: 2, // 0.5 points (late cancellation within 24h of start)
   PENALTY_BOOK_LATE_RETURN: 8, // 2 points
   PENALTY_BOOK_NO_PICKUP: 2,   // 0.5 points
 

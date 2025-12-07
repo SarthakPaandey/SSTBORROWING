@@ -128,9 +128,13 @@ export async function recalculatePenaltyPoints(
 }
 
 /**
+ * @deprecated UNUSED - Facility/room no-shows cannot be verified (no check-in mechanism).
+ * Keeping for reference in case physical check-in is implemented in the future.
+ * 
  * Apply no-show penalty to all confirmed members of a group booking
  */
 export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> {
+  console.warn('applyGroupNoShowPenalty is deprecated - facility no-shows cannot be verified');
   const booking = await Booking.findById(bookingId);
 
   if (!booking || !booking.isGroupBooking) {
@@ -156,9 +160,13 @@ export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> 
 }
 
 /**
+ * @deprecated UNUSED - Facility/room late returns cannot be verified (no check-in mechanism).
+ * Keeping for reference in case physical check-out is implemented in the future.
+ * 
  * Apply late return penalty to all confirmed members of a group booking
  */
 export async function applyGroupLateReturnPenalty(bookingId: string): Promise<void> {
+  console.warn('applyGroupLateReturnPenalty is deprecated - facility late returns cannot be verified');
   const booking = await Booking.findById(bookingId);
 
   if (!booking || !booking.isGroupBooking) {

@@ -268,7 +268,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
                     Team sports require at least 6 participants. Invite 5 friends below - bookings must be made 30 minutes in advance.
-                    Friends can confirm until 15 minutes before start. All members share penalties for no-shows.
+                    Friends can confirm until 15 minutes before start. Cancel early if your group can't make it.
                   </p>
                 </div>
               </div>

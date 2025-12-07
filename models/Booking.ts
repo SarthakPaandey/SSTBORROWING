@@ -39,6 +39,7 @@ export interface IBooking extends Document {
   approvalEmailSentAt?: Date; // When approval email was sent
   approvalEmailError?: string; // Error message if email send failed
   rescheduleCount: number; // Number of times this booking has been rescheduled
+  extensionCount: number;  // Number of times this equipment booking has been extended
   rescheduleHistory?: {
     oldStart: Date;
     oldEnd: Date;
@@ -123,6 +124,12 @@ const BookingSchema = new Schema<IBooking>(
       type: Number,
       default: 0,
       required: true,
+      min: 0
+    },
+    // Extension tracking (for equipment/library)
+    extensionCount: {
+      type: Number,
+      default: 0,
       min: 0
     },
     rescheduleHistory: [{

@@ -44,6 +44,10 @@ export const POLICIES = {
   LAB_EQUIPMENT_BORROW_MINUTES: 1440, // 24 hours (1 day) for lab equipment
   LIBRARY_BOOK_BORROW_MINUTES: 20160, // 14 days for library books
 
+  // Equipment extension rules
+  MAX_EQUIPMENT_EXTENSION_MINUTES: 60, // Max 60 mins extension per booking
+  MAX_EXTENSIONS_PER_BOOKING: 1,       // Only 1 extension allowed per booking
+
   // Auto-cancel timings
   NO_SHOW_GRACE_MINUTES: 15,
 

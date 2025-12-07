@@ -11,7 +11,7 @@ import { rescheduleSchema } from '@/lib/validations';
 import { validateReschedule } from '@/lib/reschedule';
 import { handleApiError, ValidationError, AuthenticationError, NotFoundError } from '@/lib/errors';
 import { withTransaction } from '@/lib/transaction';
-import { sendEmail, generateApprovalEmailHTML } from '@/lib/email';
+import { sendEmail, generateApprovalEmailHTML, getApprovalEmailRecipients } from '@/lib/email';
 import { formatDateTime } from '@/lib/utils';
 import mongoose from 'mongoose';
 
@@ -185,9 +185,8 @@ export async function PATCH(
             const { booking, resource, user, newStart, newEnd } = transactionResult;
 
             try {
-                // Get all admin users
-                const admins = await User.find({ role: 'ADMIN' });
-                const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+                // Get email recipients based on resource type routing configuration
+                const adminEmails = await getApprovalEmailRecipients(resource.type);
 
                 if (adminEmails.length > 0) {
                     // Generate new approval and rejection tokens

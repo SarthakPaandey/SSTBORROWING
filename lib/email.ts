@@ -130,6 +130,69 @@ export function generateApprovalEmailHTML(
 }
 
 
+import { EmailRouting, getEmailRoutingCategory } from '@/models/EmailRouting';
+import { User } from '@/models/User';
 
+/**
+ * Get email recipients for approval notifications based on resource type.
+ * 
+ * Priority:
+ * 1. Category-specific routing rule (if enabled)
+ * 2. DEFAULT routing rule (if enabled)
+ * 3. All admin emails (ultimate fallback)
+ * 
+ * @param resourceType - The resource type (LAB_EQUIPMENT, SPORTS_EQUIPMENT, FACILITY, ROOM, LIBRARY)
+ * @returns Array of email addresses to send approval notifications to
+ */
+export async function getApprovalEmailRecipients(resourceType: string): Promise<string[]> {
+  try {
+    // Get the routing category for this resource type
+    const category = getEmailRoutingCategory(resourceType);
 
+    // Try category-specific routing first
+    const categoryRule = await EmailRouting.findOne({
+      category,
+      enabled: true
+    });
+
+    if (categoryRule && categoryRule.emails.length > 0) {
+      console.log(`Using ${category} routing: ${categoryRule.emails.join(', ')}`);
+      return categoryRule.emails;
+    }
+
+    // Try DEFAULT routing as fallback (only if we didn't already check DEFAULT)
+    if (category !== 'DEFAULT') {
+      const defaultRule = await EmailRouting.findOne({
+        category: 'DEFAULT',
+        enabled: true
+      });
+
+      if (defaultRule && defaultRule.emails.length > 0) {
+        console.log(`Using DEFAULT routing: ${defaultRule.emails.join(', ')}`);
+        return defaultRule.emails;
+      }
+    }
+
+    // Ultimate fallback: all admin emails
+    const admins = await User.find({ role: 'ADMIN' });
+    const adminEmails = admins
+      .map(admin => admin.email)
+      .filter((email): email is string => Boolean(email));
+
+    console.log(`Using all admin emails fallback: ${adminEmails.join(', ')}`);
+    return adminEmails;
+  } catch (error) {
+    console.error('Error fetching email recipients, falling back to all admins:', error);
+
+    // On error, fall back to all admins
+    try {
+      const admins = await User.find({ role: 'ADMIN' });
+      return admins
+        .map(admin => admin.email)
+        .filter((email): email is string => Boolean(email));
+    } catch {
+      return [];
+    }
+  }
+}
 

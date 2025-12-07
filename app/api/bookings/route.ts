@@ -14,7 +14,7 @@ import {
   isWithinAdvanceWindow,
   hasConsecutiveBookings,
 } from '@/lib/policies';
-import { sendEmail, generateApprovalEmailHTML } from '@/lib/email';
+import { sendEmail, generateApprovalEmailHTML, getApprovalEmailRecipients } from '@/lib/email';
 import { formatDateTime } from '@/lib/utils';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
@@ -694,9 +694,8 @@ async function postHandler(req: Request) {
       const { booking, resource, user, startDate, endDate } = transactionResult;
 
       try {
-        // Get all admin users
-        const admins = await User.find({ role: 'ADMIN' });
-        const adminEmails = admins.map(admin => admin.email).filter(Boolean);
+        // Get email recipients based on resource type routing configuration
+        const adminEmails = await getApprovalEmailRecipients(resource.type);
 
         if (adminEmails.length > 0) {
           // Generate approval and rejection tokens

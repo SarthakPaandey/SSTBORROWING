@@ -13,7 +13,7 @@ export const POLICIES = {
   MAX_FACILITY_BOOKINGS_PER_DAY: 3,   // Max 3 facility bookings per day
   MAX_ROOM_BOOKINGS_PER_DAY: 2,       // Max 2 room bookings per day
   MAX_EQUIPMENT_BOOKINGS_PER_DAY: 5,  // Max 5 equipment borrows per day
-  MAX_LIBRARY_BOOKINGS_PER_DAY: 2,    // Max 2 library book borrows per day
+  MAX_LIBRARY_BOOKINGS_PER_DAY: 1,    // Max 1 library borrow per day (matches MAX_BOOKS_PER_STUDENT)
   MAX_TOTAL_ACTIVE_BOOKINGS: 3, // Max 3 active bookings across all types
 
   // Monthly limits (hours)

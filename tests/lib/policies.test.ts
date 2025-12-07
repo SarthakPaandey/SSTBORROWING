@@ -10,14 +10,14 @@ describe('Policies', () => {
     });
 
     it('should block user with penalty points at threshold', () => {
-      const user = { penaltyPoints: POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION };
+      const user = { penaltyPoints: POLICIES.PENALTY_THRESHOLD_LEVEL_0 };
       const result = canUserBook(user);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('penalty points');
     });
 
     it('should block user with penalty points above threshold', () => {
-      const user = { penaltyPoints: POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION + 1 };
+      const user = { penaltyPoints: POLICIES.PENALTY_THRESHOLD_LEVEL_0 + 1 };
       const result = canUserBook(user);
       expect(result.allowed).toBe(false);
     });
@@ -45,7 +45,7 @@ describe('Policies', () => {
       const suspensionDate = calculateSuspensionDate();
       const expectedDate = new Date();
       expectedDate.setDate(expectedDate.getDate() + POLICIES.SUSPENSION_DAYS);
-      
+
       // Allow 1 second difference for execution time
       const diff = Math.abs(suspensionDate.getTime() - expectedDate.getTime());
       expect(diff).toBeLessThan(1000);

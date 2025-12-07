@@ -75,18 +75,16 @@ export const POLICIES = {
   SUSPENSION_DURATION_LEVEL_0: 7,  // 7 days for first suspension
   SUSPENSION_DURATION_LEVEL_1: 10, // 10 days for second suspension
 
-  PENALTY_THRESHOLD_FOR_SUSPENSION: 20,
+  // Legacy alias kept for calculateSuspensionDate()
   SUSPENSION_DAYS: 7,
 
   // Special rules
   SHARED_TURF_GROUP_ID: 'TURF-1', // Football & Cricket share this
   LAB_EQUIPMENT_REQUIRES_APPROVAL: true,
-  LAB_EQUIPMENT_STUDENTS_ONLY: true,
 
   // Library rules
   MAX_BOOKS_PER_STUDENT: 1, // Only 1 book at a time
   LIBRARY_BOOK_PICKUP_WINDOW_HOURS: 24, // Must pick up within 24 hours
-  LIBRARY_STUDENTS_ONLY: true,
 
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
@@ -107,10 +105,10 @@ export function canUserBook(user: {
     };
   }
 
-  if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION) {
+  if (user.penaltyPoints >= POLICIES.PENALTY_THRESHOLD_LEVEL_0) {
     return {
       allowed: false,
-      reason: `You have ${user.penaltyPoints} penalty points. Maximum allowed is ${POLICIES.PENALTY_THRESHOLD_FOR_SUSPENSION - 1}.`,
+      reason: `You have ${user.penaltyPoints} penalty points. Maximum allowed is ${POLICIES.PENALTY_THRESHOLD_LEVEL_0 - 1}.`,
     };
   }
 

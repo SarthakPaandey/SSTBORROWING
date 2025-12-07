@@ -16,15 +16,15 @@ describe('Approval Token Security Fix Verification', () => {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     };
 
-    const urlAction = 'reject'; // Attacker tries to change action
-    const tokenAction = token.action; // Token is for approval
+    const urlAction: string = 'reject'; // Attacker tries to change action
+    const tokenAction: string = token.action; // Token is for approval
 
     // After fix: This should now throw ValidationError
     // Before fix: This would succeed (security vulnerability)
     const actionMatches = urlAction === tokenAction;
-    
+
     expect(actionMatches).toBe(false);
-    
+
     // The fix adds this check:
     // if (action !== approvalToken.action) {
     //   throw new ValidationError('Token action mismatch');

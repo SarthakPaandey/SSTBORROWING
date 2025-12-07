@@ -14,12 +14,12 @@ interface ModalProps {
   variant?: 'default' | 'success' | 'warning' | 'danger';
 }
 
-export function Modal({ 
-  isOpen, 
-  onClose, 
-  title, 
+export function Modal({
+  isOpen,
+  onClose,
+  title,
   titleEmoji,
-  children, 
+  children,
   size = 'md',
   variant = 'default'
 }: ModalProps) {
@@ -97,14 +97,17 @@ export function Modal({
           handleClose();
         }}
       />
-      
+
       {/* Modal container */}
       <div
         className={cn(
-          'relative z-50 w-full rounded-2xl bg-bg-dark border shadow-2xl max-h-[90vh] flex flex-col',
+          'relative z-50 w-full rounded-2xl bg-bg-dark border shadow-2xl flex flex-col',
           'transition-all duration-300 ease-out',
-          isVisible 
-            ? 'opacity-100 scale-100 translate-y-0' 
+          // Improved mobile sizing with safe areas
+          'max-h-[90vh] md:max-h-[85vh]',
+          'safe-area-bottom',
+          isVisible
+            ? 'opacity-100 scale-100 translate-y-0'
             : 'opacity-0 scale-95 translate-y-4',
           variantStyles[variant],
           {
@@ -117,9 +120,13 @@ export function Modal({
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile swipe indicator */}
+        <div className="md:hidden flex justify-center pt-2">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
         {/* Animated gradient border effect */}
         <div className="absolute -inset-[1px] bg-gradient-to-r from-accent-blue/20 via-accent-purple-1/20 to-accent-blue/20 rounded-2xl opacity-50 blur-sm -z-10 animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
-        
+
         {/* Header */}
         {title && (
           <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-card-border/50">
@@ -145,9 +152,9 @@ export function Modal({
             </button>
           </div>
         )}
-        
+
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar no-overscroll">
           {children}
         </div>
       </div>
@@ -191,7 +198,7 @@ export function ConfirmModal({
     <Modal isOpen={isOpen} onClose={onClose} title={title} titleEmoji={config.emoji} size="sm" variant={variant}>
       <div className="space-y-6">
         <p className="text-text-muted">{message}</p>
-        
+
         <div className="flex gap-3">
           <button
             onClick={onClose}

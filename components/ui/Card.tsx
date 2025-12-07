@@ -2,7 +2,7 @@ import { HTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'glow' | 'gradient-border' | 'interactive' | 'shine' | 'aurora' | 'frosted';
+  variant?: 'default' | 'glow' | 'gradient-border' | 'interactive' | 'shine' | 'aurora' | 'frosted' | 'tilt' | 'glare';
   hoverEffect?: boolean;
   animated?: boolean;
 }
@@ -32,6 +32,10 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           'gradient-border': variant === 'aurora',
           // Frosted - strong glass effect
           'card-frosted': variant === 'frosted',
+          // Tilt - 3D perspective hover effect
+          'card-3d-tilt cursor-pointer': variant === 'tilt',
+          // Glare - enhanced shine glare effect
+          'card-glare cursor-pointer hover:shadow-card-glow': variant === 'glare',
         },
         // Optional hover effect
         hoverEffect && 'card-scale-hover cursor-pointer',

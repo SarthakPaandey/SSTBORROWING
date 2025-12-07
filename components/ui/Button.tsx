@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'gradient' | 'success' | 'glow' | 'aurora';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'gradient' | 'success' | 'glow' | 'aurora' | 'magnetic' | 'sparkle';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   loading?: boolean;
   animated?: boolean;
@@ -40,7 +40,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'bg-bg-dark text-text-main hover:bg-bg-surface-overlay hover:text-accent-blue':
               variant === 'secondary',
             // Ghost - Minimal
-            'hover:bg-bg-surface-overlay hover:text-text-main': 
+            'hover:bg-bg-surface-overlay hover:text-text-main':
               variant === 'ghost',
             // Gradient - Purple with shimmer effect
             'bg-gradient-purple text-white shadow-glow-purple hover:shadow-glow-purple-lg hover:-translate-y-1 hover:scale-[1.02] btn-shiny':
@@ -51,6 +51,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             // Aurora - Gradient border with animation
             'bg-bg-dark text-text-main border-2 border-transparent hover:border-accent-blue/50 hover:shadow-[0_0_30px_rgba(13,140,232,0.2),0_0_60px_rgba(122,60,255,0.1)]':
               variant === 'aurora',
+            // Magnetic - Scale and follow cursor feeling 
+            'btn-magnetic bg-accent-blue text-white shadow-lg shadow-accent-blue/40 hover:shadow-[0_0_30px_rgba(13,140,232,0.5)] active:scale-95':
+              variant === 'magnetic',
+            // Sparkle - Loading with sparkle effect
+            'bg-gradient-to-r from-accent-purple-1 to-accent-blue text-white shadow-lg shadow-accent-purple-1/30 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(122,60,255,0.4)]':
+              variant === 'sparkle',
           },
           // Size styles
           {
@@ -70,23 +76,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {/* Loading spinner */}
         {loading && (
           <span className="absolute inset-0 flex items-center justify-center bg-inherit">
-            <svg 
-              className="animate-spin h-5 w-5" 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
+            <svg
+              className="animate-spin h-5 w-5"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
               viewBox="0 0 24 24"
             >
-              <circle 
-                className="opacity-25" 
-                cx="12" 
-                cy="12" 
-                r="10" 
-                stroke="currentColor" 
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
                 strokeWidth="4"
               />
-              <path 
-                className="opacity-75" 
-                fill="currentColor" 
+              <path
+                className="opacity-75"
+                fill="currentColor"
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>

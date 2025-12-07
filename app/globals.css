@@ -2117,3 +2117,513 @@
 [data-sonner-toast] {
   animation: fadeInRight 0.3s ease-out !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎭 ADVANCED MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 3D Card Tilt Effect */
+@keyframes tilt-in {
+  0% {
+    transform: perspective(1000px) rotateX(10deg) rotateY(-10deg);
+    opacity: 0;
+  }
+  100% {
+    transform: perspective(1000px) rotateX(0) rotateY(0);
+    opacity: 1;
+  }
+}
+
+.card-3d-tilt {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
+}
+
+.card-3d-tilt:hover {
+  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-8px);
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(13, 140, 232, 0.15),
+    20px 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced glare effect for cards */
+.card-glare {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glare::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 80%
+  );
+  transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.card-glare:hover::before {
+  left: 150%;
+}
+
+/* Magnetic Button Effect (enhanced with JS) */
+.btn-magnetic {
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-magnetic:hover {
+  transform: scale(1.05);
+}
+
+.btn-magnetic:active {
+  transform: scale(0.98);
+}
+
+/* Sparkle Loading Effect */
+@keyframes sparkle-fade {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+.loading-sparkle {
+  position: relative;
+}
+
+.loading-sparkle::after {
+  content: '✨';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2em;
+  animation: sparkle-fade 1.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   💬 TOOLTIP COMPONENT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes tooltip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tooltip-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+}
+
+.tooltip-content {
+  animation: tooltip-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 26, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(13, 140, 232, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.tooltip-arrow {
+  fill: rgba(15, 23, 42, 0.98);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📊 ANIMATED COUNTER STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes count-up-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-count-up {
+  display: inline-block;
+  animation: count-up-pop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-number {
+  font-variant-numeric: tabular-nums;
+  transition: all 0.3s ease;
+}
+
+.stat-number.counting {
+  color: var(--accent-blue);
+  text-shadow: 0 0 20px rgba(13, 140, 232, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌊 PARALLAX & FLOATING EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes parallax-float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-5px) translateX(2px);
+  }
+  50% {
+    transform: translateY(-10px) translateX(0);
+  }
+  75% {
+    transform: translateY(-5px) translateX(-2px);
+  }
+}
+
+.parallax-layer {
+  transition: transform 0.1s ease-out;
+}
+
+.parallax-slow {
+  animation: parallax-float 8s ease-in-out infinite;
+}
+
+.parallax-medium {
+  animation: parallax-float 6s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.parallax-fast {
+  animation: parallax-float 4s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📱 ENHANCED MOBILE EXPERIENCE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Minimum 44px touch targets for accessibility */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Mobile-optimized buttons */
+@media (max-width: 768px) {
+  .btn-mobile-full {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  /* Larger touch targets for interactive elements */
+  button, 
+  [role="button"],
+  .clickable {
+    min-height: 44px;
+  }
+
+  /* Improve nav spacing */
+  .nav-mobile-item {
+    padding: 14px 16px;
+    margin: 4px 0;
+  }
+
+  /* Better modal on mobile */
+  .modal-mobile {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    border-radius: 16px;
+  }
+
+  /* Swipe indicator for modals */
+  .modal-swipe-indicator {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    margin: 8px auto 0;
+  }
+
+  /* Cards stack better on mobile */
+  .card-mobile-compact {
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  /* Improve form inputs on mobile */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevents iOS zoom */
+  }
+}
+
+/* Safe area support for notched devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Prevent overscroll/bounce on mobile */
+.no-overscroll {
+  overscroll-behavior: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⚡ PERFORMANCE OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* GPU-accelerated animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Reduce paint areas */
+.contain-paint {
+  contain: paint;
+}
+
+.contain-layout {
+  contain: layout;
+}
+
+.contain-strict {
+  contain: strict;
+}
+
+/* Optimized blur (lower quality for performance) */
+.blur-optimized {
+  filter: blur(16px);
+  -webkit-filter: blur(16px);
+  transform: translateZ(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ♿ ACCESSIBILITY: REDUCED MOTION SUPPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable complex animations */
+  .animate-float,
+  .animate-bounce-subtle,
+  .animate-pulse-glow,
+  .animate-shimmer,
+  .animate-wiggle,
+  .animate-aurora,
+  .animate-aurora-drift,
+  .animate-orb-float,
+  .animate-mesh-morph,
+  .parallax-slow,
+  .parallax-medium,
+  .parallax-fast {
+    animation: none !important;
+  }
+
+  /* Disable transforms */
+  .card-3d-tilt:hover,
+  .card-scale-hover:hover,
+  .card-hover-glow:hover,
+  .tilt-card:hover {
+    transform: none !important;
+  }
+
+  /* Keep hover states visible but instant */
+  .card-glass:hover,
+  .btn-gradient:hover,
+  .pill-cta:hover {
+    transition: none !important;
+  }
+
+  /* Simplify animated backgrounds */
+  .aurora-orb,
+  .mesh-blob,
+  .particle {
+    animation: none !important;
+    opacity: 0.2;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🖱️ ENHANCED FOCUS STATES FOR KEYBOARD NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Focus-visible for keyboard users only */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Remove outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus ring animation */
+.focus-ring-animated:focus-visible {
+  outline: none;
+  box-shadow: 
+    0 0 0 2px var(--bg-dark),
+    0 0 0 4px var(--accent-blue),
+    0 0 20px rgba(13, 140, 232, 0.3);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  padding: 12px 24px;
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  z-index: 10000;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ✨ INPUT FLOATING LABEL ANIMATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.input-floating-wrapper {
+  position: relative;
+}
+
+.input-floating-label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  padding: 0 4px;
+}
+
+.input-floating:focus ~ .input-floating-label,
+.input-floating:not(:placeholder-shown) ~ .input-floating-label {
+  top: 0;
+  font-size: 0.75rem;
+  color: var(--accent-blue);
+  background: var(--bg-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📍 PROGRESS BAR ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.progress-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan), var(--accent-blue));
+  background-size: 200% 100%;
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: progress-shimmer 2s linear infinite;
+}
+
+.progress-indeterminate {
+  width: 30%;
+  animation: 
+    progress-shimmer 2s linear infinite,
+    progress-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔔 BADGE ANIMATIONS  
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes badge-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.badge-animated {
+  animation: badge-bounce 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.badge-notification {
+  animation: badge-bounce 0.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: 2s;
+}

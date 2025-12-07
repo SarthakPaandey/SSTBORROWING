@@ -5,6 +5,8 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError } from '@/lib/errors';
+import { triggerLazyExpiration } from '@/lib/lazyExpiration';
+import { isGroupBookingExpired } from '@/lib/policies';
 
 // Dynamic route since we rely on auth headers/cookies
 export const runtime = 'nodejs';
@@ -13,6 +15,9 @@ export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
+    // Trigger background expiration tasks (non-blocking, rate-limited)
+    triggerLazyExpiration();
+
     const user = await requireAuth(['STUDENT']);
     await connectDB();
 

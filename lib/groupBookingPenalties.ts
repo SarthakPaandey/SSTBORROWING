@@ -187,9 +187,6 @@ export async function applyGroupLateReturnPenalty(bookingId: string): Promise<vo
  * Expires if: expiresAt has passed OR booking start time has passed
  */
 export async function expireGroupBookings(): Promise<number> {
-  // FIX: Use IST timezone for accurate expiration checks
-  const now = getNow();
-
   // Find all pending group bookings
   const pendingBookings = await GroupBooking.find({
     status: 'PENDING_CONFIRMATIONS',

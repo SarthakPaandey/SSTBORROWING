@@ -27,9 +27,13 @@ import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
 import { canBorrowSportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
 import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFacilities } from '@/lib/sportEquipmentKits';
 import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
+import { triggerLazyExpiration } from '@/lib/lazyExpiration';
 
 export async function GET(req: NextRequest) {
   try {
+    // Trigger background expiration tasks (non-blocking, rate-limited)
+    triggerLazyExpiration();
+
     const user = await requireAuth();
     await connectDB();
 

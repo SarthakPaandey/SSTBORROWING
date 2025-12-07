@@ -6,7 +6,6 @@ import { requireAuth } from '@/lib/auth/guards';
 import { generateQRToken, generateQRCodeImage } from '@/lib/qr';
 import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
-import { getNow, getTodayStart } from '@/lib/timezone';
 import mongoose from 'mongoose';
 
 export async function POST(
@@ -121,12 +120,13 @@ export async function POST(
     }
 
 
-    // Check QR generation limit (2 per day) - using IST timezone for accurate day boundaries
-    const todayStart = getTodayStart();
+    // Check QR generation limit (2 per UTC day) - avoid IST-shifted dates in DB queries
+    const todayUtcStart = new Date();
+    todayUtcStart.setUTCHours(0, 0, 0, 0);
 
     const generatedTodayCount = await QRToken.countDocuments({
       bookingId: params.id,
-      createdAt: { $gte: todayStart },
+      createdAt: { $gte: todayUtcStart },
     }).session(session);
 
     if (generatedTodayCount >= 2) {

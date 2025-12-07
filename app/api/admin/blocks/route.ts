@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     await Booking.updateMany(
       {
         resourceId,
-        status: { $in: ['CONFIRMED', 'PENDING'] },
+        status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
         start: { $lt: new Date(end) },
         end: { $gt: new Date(start) },
       },

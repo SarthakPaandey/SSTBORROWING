@@ -83,8 +83,11 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
 
     const monthlyRescheduleCount = await Booking.countDocuments({
         userId: user.id,
-        rescheduleCount: { $gt: 0 }, // Has been rescheduled at least once
-        'rescheduleHistory.rescheduledAt': { $gte: reschedMonthStart, $lt: reschedMonthEnd }, // Rescheduled this month
+        rescheduleHistory: {
+            $elemMatch: {
+                rescheduledAt: { $gte: reschedMonthStart, $lt: reschedMonthEnd }
+            }
+        }
     }).session(session);
 
     if (monthlyRescheduleCount >= POLICIES.MAX_RESCHEDULE_PER_MONTH) {

@@ -62,7 +62,13 @@ export function verifyQRToken(token: string): { valid: boolean; payload?: QRPayl
       .update(data)
       .digest('hex');
 
-    if (signature !== expectedSignature) {
+    const providedSigBuf = Buffer.from(signature, 'hex');
+    const expectedSigBuf = Buffer.from(expectedSignature, 'hex');
+
+    if (
+      providedSigBuf.length !== expectedSigBuf.length ||
+      !crypto.timingSafeEqual(providedSigBuf, expectedSigBuf)
+    ) {
       return { valid: false, error: 'Invalid signature' };
     }
 

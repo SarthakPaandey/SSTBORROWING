@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Clock } from 'lucide-react';
+import Link from 'next/link';
 
 type ModalMode = 'add' | 'edit' | null;
 
@@ -361,10 +362,20 @@ export default function ResourcesPage() {
                           <p className="text-xs text-yellow-500 mt-1">Requires Approval</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
                           {resource.status}
                         </Badge>
+                        <Link href={`/admin/resources/${resource._id}/hours`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-accent-blue hover:text-accent-blue"
+                            title="Edit Operating Hours"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Button
                           onClick={() => openEditResource(resource)}
                           variant="ghost"
@@ -423,10 +434,20 @@ export default function ResourcesPage() {
                           <p className="text-xs text-yellow-500 mt-1">Requires Approval</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Badge variant={resource.status === 'ACTIVE' ? 'success' : 'secondary'}>
                           {resource.status}
                         </Badge>
+                        <Link href={`/admin/resources/${resource._id}/hours`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-accent-blue hover:text-accent-blue"
+                            title="Edit Operating Hours"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Button
                           onClick={() => openEditResource(resource)}
                           variant="ghost"

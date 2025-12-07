@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { formatDateTime, parseStudentEmail } from '@/lib/utils';
-import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { XCircle, CheckCircle, AlertTriangle, Trash2, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 type FilterStatus = 'all' | 'active' | 'completed' | 'cancelled';
@@ -18,6 +18,12 @@ export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('active');
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCancelModal, setBulkCancelModal] = useState(false);
+  const [bulkReason, setBulkReason] = useState('');
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   // Override modal state
   const [overrideModal, setOverrideModal] = useState<{
@@ -31,6 +37,11 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // Clear selection when filter changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filter]);
 
   const fetchBookings = async () => {
     const res = await fetch('/api/bookings');
@@ -63,16 +74,60 @@ export default function AdminBookingsPage() {
       } else {
         toast.error(data.error || 'Failed to override booking');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to override booking');
     } finally {
       setProcessing(false);
     }
   };
 
+  const handleBulkCancel = async () => {
+    if (selectedIds.size === 0) return;
+
+    setBulkProcessing(true);
+    try {
+      const res = await fetch('/api/admin/bookings/bulk-cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingIds: Array.from(selectedIds),
+          reason: bulkReason || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message);
+        fetchBookings();
+        setSelectedIds(new Set());
+        setBulkCancelModal(false);
+        setBulkReason('');
+      } else {
+        toast.error(data.error || 'Failed to cancel bookings');
+      }
+    } catch {
+      toast.error('Failed to cancel bookings');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   const openOverrideModal = (booking: any, action: 'force_cancel' | 'force_complete') => {
     setOverrideModal({ open: true, booking, action });
     setOverrideReason('');
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const getStatusBadge = (status: string, kind?: string) => {
@@ -108,6 +163,19 @@ export default function AdminBookingsPage() {
     return true;
   });
 
+  const selectableBookings = filteredBookings.filter(b =>
+    ['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(b.status)
+  );
+
+  const selectAll = () => {
+    const ids = selectableBookings.map(b => b._id);
+    setSelectedIds(new Set(ids));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
   if (loading) {
     return (
       <LoadingState
@@ -120,10 +188,34 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">All Bookings</h1>
-        <p className="text-gray-600">View and manage all system bookings</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">All Bookings</h1>
+          <p className="text-gray-600">View and manage all system bookings</p>
+        </div>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-16 z-40 bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/30 rounded-lg p-4 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-3">
+            <CheckSquare className="w-5 h-5 text-red-500" />
+            <span className="font-medium text-text-main">
+              {selectedIds.size} booking{selectedIds.size > 1 ? 's' : ''} selected
+            </span>
+            <Button size="sm" variant="ghost" onClick={deselectAll}>
+              Clear
+            </Button>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={() => setBulkCancelModal(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Cancel Selected
+          </Button>
+        </div>
+      )}
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterStatus)}>
         <TabsList>
@@ -142,9 +234,20 @@ export default function AdminBookingsPage() {
         <TabsContent value={filter} className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>
-                {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)} Bookings
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)} Bookings
+                </CardTitle>
+                {selectableBookings.length > 0 && (filter === 'all' || filter === 'active') && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={selectedIds.size === selectableBookings.length ? deselectAll : selectAll}
+                  >
+                    {selectedIds.size === selectableBookings.length ? 'Deselect All' : 'Select All Active'}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -156,12 +259,30 @@ export default function AdminBookingsPage() {
                       ? parseStudentEmail(booking.userEmail)
                       : null;
                     const canOverride = ['PENDING', 'CONFIRMED', 'CHECKED_IN'].includes(booking.status);
+                    const isSelected = selectedIds.has(booking._id);
 
                     return (
                       <div
                         key={booking._id}
-                        className="flex items-start justify-between rounded-lg border border-card-border bg-card p-4 hover:border-accent-blue/30 transition-colors"
+                        className={`flex items-start gap-3 rounded-lg border p-4 transition-colors ${isSelected
+                            ? 'border-red-500/50 bg-red-500/5'
+                            : 'border-card-border bg-card hover:border-accent-blue/30'
+                          }`}
                       >
+                        {/* Checkbox for active bookings */}
+                        {canOverride && (
+                          <button
+                            onClick={() => toggleSelection(booking._id)}
+                            className="mt-1 text-text-muted hover:text-text-main transition-colors"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-5 h-5 text-red-500" />
+                            ) : (
+                              <Square className="w-5 h-5" />
+                            )}
+                          </button>
+                        )}
+
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-text-main">{booking.resourceName}</p>
@@ -206,7 +327,7 @@ export default function AdminBookingsPage() {
                               onClick={() => openOverrideModal(booking, 'force_cancel')}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Force Cancel
+                              Cancel
                             </Button>
                             {booking.status === 'CHECKED_IN' && (
                               <Button
@@ -216,7 +337,7 @@ export default function AdminBookingsPage() {
                                 onClick={() => openOverrideModal(booking, 'force_complete')}
                               >
                                 <CheckCircle className="w-4 h-4 mr-1" />
-                                Force Complete
+                                Complete
                               </Button>
                             )}
                           </div>
@@ -285,7 +406,58 @@ export default function AdminBookingsPage() {
               onClick={handleOverride}
               disabled={processing}
             >
-              {processing ? 'Processing...' : 'Confirm Override'}
+              {processing ? 'Processing...' : 'Confirm'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Cancel Modal */}
+      <Modal
+        isOpen={bulkCancelModal}
+        onClose={() => {
+          setBulkCancelModal(false);
+          setBulkReason('');
+        }}
+        title="Bulk Cancel Bookings"
+        variant="danger"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-500">
+                Cancel {selectedIds.size} Booking{selectedIds.size > 1 ? 's' : ''}
+              </p>
+              <p className="text-xs text-text-muted mt-1">
+                This will cancel all selected bookings without applying penalties. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Reason (optional)</label>
+            <Input
+              placeholder="e.g., Facility maintenance, Event conflict..."
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => setBulkCancelModal(false)}
+              disabled={bulkProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkCancel}
+              disabled={bulkProcessing}
+            >
+              {bulkProcessing ? 'Cancelling...' : `Cancel ${selectedIds.size} Booking${selectedIds.size > 1 ? 's' : ''}`}
             </Button>
           </div>
         </div>

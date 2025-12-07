@@ -28,6 +28,7 @@ const navIcons: Record<string, string> = {
   '/admin/group-bookings': '👨‍👩‍👧‍👦',
   '/admin/blocks': '🚫',
   '/admin/penalties': '⚠️',
+  '/admin/settings': '⚙️',
   '/guard/scanner': '📷',
   '/guard/returns': '↩️',
   '/guard/library-returns': '📕',
@@ -93,6 +94,7 @@ export function Navbar() {
         { href: '/admin/group-bookings', label: 'Group Bookings' },
         { href: '/admin/blocks', label: 'Blocks' },
         { href: '/admin/penalties', label: 'Penalties' },
+        { href: '/admin/settings', label: 'Settings' },
       ];
     }
 

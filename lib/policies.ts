@@ -1,6 +1,63 @@
 // System-wide booking policies and rules
 import { getNow, toIST } from './timezone';
 
+// Cache for runtime policy values (refreshed from DB)
+let policyCache: Map<string, number> | null = null;
+let policyCacheExpiry: number = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get a policy value with DB override support.
+ * Checks the database for runtime-configured values, falls back to hardcoded defaults.
+ * Uses an in-memory cache to avoid repeated DB queries.
+ * 
+ * Note: For server-side use only. Call refreshPolicyCache() at startup or
+ * use getPolicyValue() which auto-refreshes stale cache.
+ */
+export async function getPolicyValue(key: keyof typeof POLICIES): Promise<number> {
+  const now = Date.now();
+
+  // Refresh cache if expired or not initialized
+  if (!policyCache || now > policyCacheExpiry) {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { SystemConfig } = await import('@/models/SystemConfig');
+      const { connectDB } = await import('./db');
+      await connectDB();
+
+      const configs = await SystemConfig.find({}).lean();
+      policyCache = new Map(configs.map((c: any) => [c.key, c.value]));
+      policyCacheExpiry = now + CACHE_TTL_MS;
+    } catch (error) {
+      console.error('[Policies] Failed to refresh cache:', error);
+      // On error, continue with defaults but don't cache permanently
+      if (!policyCache) {
+        policyCache = new Map();
+      }
+      policyCacheExpiry = now + 30000; // Retry in 30 seconds
+    }
+  }
+
+  // Return cached value or fall back to default
+  return policyCache?.get(key) ?? (POLICIES[key] as number);
+}
+
+/**
+ * Synchronous version using cached values only.
+ * Use this when you can't await, but be aware it may return stale values.
+ */
+export function getPolicyValueSync(key: keyof typeof POLICIES): number {
+  return policyCache?.get(key) ?? (POLICIES[key] as number);
+}
+
+/**
+ * Force refresh the policy cache (call this after admin updates policies)
+ */
+export async function refreshPolicyCache(): Promise<void> {
+  policyCacheExpiry = 0; // Force refresh on next access
+  await getPolicyValue('MAX_FACILITY_BOOKINGS_PER_DAY'); // Trigger refresh
+}
+
 export const POLICIES = {
   // Booking limits
   MAX_ACTIVE_FACILITIES: 2,

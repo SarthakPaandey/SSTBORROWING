@@ -49,6 +49,10 @@ export interface IBooking extends Document {
     rescheduledBy: string; // User ID who performed reschedule
     reason?: string;
   }[];
+  // Admin override fields for force actions
+  overrideBy?: string; // Admin ID who performed override
+  overrideAt?: Date; // When override was performed
+  overrideReason?: string; // Reason for admin intervention
   createdAt: Date;
   updatedAt: Date;
 }
@@ -140,7 +144,11 @@ const BookingSchema = new Schema<IBooking>(
       rescheduledAt: { type: Date, required: true },
       rescheduledBy: { type: String, required: true },
       reason: { type: String }
-    }]
+    }],
+    // Admin override fields
+    overrideBy: { type: String, ref: 'User' },
+    overrideAt: { type: Date },
+    overrideReason: { type: String }
   },
   {
     timestamps: true,

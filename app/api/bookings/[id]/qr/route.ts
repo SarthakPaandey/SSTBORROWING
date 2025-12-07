@@ -107,7 +107,6 @@ export async function POST(
     }).session(session).sort({ createdAt: -1 }); // Get most recent if multiple exist
 
     if (existingToken) {
-      console.log(`Reusing existing valid QR token for booking ${params.id}, expires: ${existingToken.expiresAt}`);
       const qrImage = await generateQRCodeImage(existingToken.token);
 
       await session.commitTransaction();
@@ -155,8 +154,6 @@ export async function POST(
       expiresAt,
       used: false,
     }], { session });
-
-    console.log(`Generated new QR token for booking ${params.id}, expires: ${expiresAt.toISOString()}`);
 
     // Update booking
     booking.qrIssued = true;

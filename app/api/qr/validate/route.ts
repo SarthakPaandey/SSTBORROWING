@@ -34,8 +34,6 @@ export async function POST(req: NextRequest) {
       throw new ValidationError(verification.error || 'Invalid token');
     }
 
-    console.log(`QR validation started for booking: ${verification.payload.bid}, user: ${verification.payload.uid}`);
-
     // Start transaction for atomicity
     await session.startTransaction();
 
@@ -153,8 +151,6 @@ export async function POST(req: NextRequest) {
 
     // Commit transaction
     await session.commitTransaction();
-
-    console.log(`QR validation successful. BookingId: ${booking._id}, UserId: ${booking.userId}, Status: ${booking.status}`);
 
     // Get resource name for display
     const resourceName = resource?.name || 'Unknown Resource';

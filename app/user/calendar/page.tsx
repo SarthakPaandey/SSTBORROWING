@@ -65,11 +65,9 @@ export default function CalendarPage() {
 
       const meParam = showAllBookings ? '' : '&me=true';
       const url = `/api/bookings?from=${start.toISOString()}&to=${end.toISOString()}${meParam}`;
-      console.log('[Calendar] Fetching bookings:', { showAllBookings, url });
 
       const res = await fetch(url);
       const data = await res.json();
-      console.log('[Calendar] Received bookings:', data.bookings?.length || 0);
       setBookings(data.bookings || []);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
@@ -173,12 +171,12 @@ export default function CalendarPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating calendar icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">📅</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>📆</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>🗓️</div>
-        
+
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -216,7 +214,7 @@ export default function CalendarPage() {
           <Filter className="h-4 w-4" />
           Filters:
         </span>
-        
+
         {/* Show All Toggle */}
         <Button
           variant={showAllBookings ? 'default' : 'outline'}
@@ -328,7 +326,7 @@ export default function CalendarPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Resource Header */}
             <div className="flex items-start gap-4 p-4 bg-gradient-to-br from-bg-dark to-transparent rounded-xl border border-card-border">
               <div className="p-3 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-purple-1/20 border border-accent-blue/20">
@@ -502,7 +500,7 @@ export default function CalendarPage() {
                 <div className="p-2 rounded-lg bg-bg-dark group-hover:scale-110 transition-transform">
                   <span className="text-2xl">{getKindEmoji(booking.kind)}</span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-text-main truncate">{booking.resourceName}</p>
@@ -534,7 +532,7 @@ export default function CalendarPage() {
                     </p>
                   )}
                 </div>
-                
+
                 {/* Arrow indicator */}
                 <div className="text-text-muted group-hover:text-accent-blue group-hover:translate-x-1 transition-all">
                   →
@@ -584,8 +582,8 @@ export default function CalendarPage() {
             icon: CheckCircle2,
           },
         ].map((stat, index) => (
-          <Card 
-            key={stat.label} 
+          <Card
+            key={stat.label}
             className={`bg-gradient-to-br ${stat.gradient} border-card-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up`}
             style={{ animationDelay: `${index * 100}ms` }}
           >

@@ -29,6 +29,7 @@ export async function GET() {
                 value: stored?.value ?? defaultValue,
                 defaultValue,
                 description: meta.description,
+                helpText: meta.helpText,
                 category: meta.category,
                 min: meta.min,
                 max: meta.max,

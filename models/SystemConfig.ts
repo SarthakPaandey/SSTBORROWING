@@ -60,31 +60,36 @@ export const SystemConfig: Model<ISystemConfig> =
 export const EDITABLE_POLICIES = {
     // Booking Limits
     MAX_FACILITY_BOOKINGS_PER_DAY: {
-        description: 'Max facility bookings per day',
+        description: 'Facility bookings per day',
+        helpText: 'Maximum number of facility bookings (gym, turf, courts) a single student can make in one day. Prevents hoarding of popular venues.',
         category: 'limits' as const,
         min: 1,
         max: 10,
     },
     MAX_ROOM_BOOKINGS_PER_DAY: {
-        description: 'Max room bookings per day',
+        description: 'Room bookings per day',
+        helpText: 'Maximum number of room bookings (study rooms, conference rooms) a single student can make in one day.',
         category: 'limits' as const,
         min: 1,
         max: 10,
     },
     MAX_EQUIPMENT_BOOKINGS_PER_DAY: {
-        description: 'Max equipment borrows per day',
+        description: 'Equipment borrows per day',
+        helpText: 'Maximum number of equipment items a student can borrow in one day. Includes sports gear and lab equipment.',
         category: 'limits' as const,
         min: 1,
         max: 20,
     },
     MAX_TOTAL_ACTIVE_BOOKINGS: {
-        description: 'Max active bookings at once',
+        description: 'Total active bookings limit',
+        helpText: 'Maximum number of pending or confirmed bookings a student can have at any time across all resource types.',
         category: 'limits' as const,
         min: 1,
         max: 10,
     },
     ADVANCE_BOOKING_DAYS: {
-        description: 'How many days in advance users can book',
+        description: 'Advance booking window',
+        helpText: 'How many days into the future students can book. Example: 7 means students can book up to 1 week ahead.',
         category: 'limits' as const,
         min: 1,
         max: 30,
@@ -92,25 +97,29 @@ export const EDITABLE_POLICIES = {
 
     // Duration Limits
     MIN_BOOKING_DURATION_MINUTES: {
-        description: 'Minimum booking duration (minutes)',
+        description: 'Minimum booking duration',
+        helpText: 'Shortest allowed booking duration in minutes. Prevents micro-bookings that waste slots. Example: 15 = minimum 15-minute booking.',
         category: 'durations' as const,
         min: 5,
         max: 60,
     },
     MAX_BOOKING_DURATION_MINUTES: {
-        description: 'Maximum booking duration (minutes)',
+        description: 'Maximum booking duration',
+        helpText: 'Longest allowed booking duration in minutes. Ensures fair access to resources. Example: 120 = maximum 2-hour booking.',
         category: 'durations' as const,
         min: 30,
         max: 480,
     },
     WORKING_HOURS_START: {
-        description: 'Working hours start (hour, 24h format)',
+        description: 'Opening time',
+        helpText: 'When the booking system opens for the day (24-hour format). Example: 8 = 8:00 AM. Students cannot book before this time.',
         category: 'durations' as const,
         min: 0,
         max: 23,
     },
     WORKING_HOURS_END: {
-        description: 'Working hours end (hour, 24h format)',
+        description: 'Closing time',
+        helpText: 'When the booking system closes for the day (24-hour format). Example: 20 = 8:00 PM. Students cannot book after this time.',
         category: 'durations' as const,
         min: 1,
         max: 24,
@@ -118,19 +127,22 @@ export const EDITABLE_POLICIES = {
 
     // Penalty Settings
     PENALTY_THRESHOLD_LEVEL_0: {
-        description: 'First suspension threshold (points)',
+        description: 'First suspension threshold',
+        helpText: 'Penalty points needed to trigger first suspension. When a student reaches this many points, they get suspended. Higher = more lenient.',
         category: 'penalties' as const,
         min: 5,
         max: 50,
     },
     SUSPENSION_DURATION_LEVEL_0: {
-        description: 'First suspension duration (days)',
+        description: 'First suspension length',
+        helpText: 'How many days a student is suspended after their first penalty threshold breach. Example: 7 = student blocked for 1 week.',
         category: 'penalties' as const,
         min: 1,
         max: 30,
     },
     NO_SHOW_GRACE_MINUTES: {
-        description: 'Grace period before no-show (minutes)',
+        description: 'No-show grace period',
+        helpText: 'Minutes after booking start time before marking as no-show. Example: 15 = student has 15 mins to check in before getting penalized.',
         category: 'penalties' as const,
         min: 5,
         max: 60,
@@ -138,13 +150,15 @@ export const EDITABLE_POLICIES = {
 
     // General Settings
     MAX_RESCHEDULE_PER_BOOKING: {
-        description: 'Max reschedules per booking',
+        description: 'Reschedules per booking',
+        helpText: 'How many times a single booking can be rescheduled. Set to 0 to disable rescheduling completely.',
         category: 'general' as const,
         min: 0,
         max: 5,
     },
     MAX_RESCHEDULE_PER_MONTH: {
-        description: 'Max reschedules per month',
+        description: 'Monthly reschedule limit',
+        helpText: 'Total reschedules allowed per student per month across all their bookings. Prevents abuse of reschedule feature.',
         category: 'general' as const,
         min: 0,
         max: 20,

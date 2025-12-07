@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save } from 'lucide-react';
+import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PolicyConfig {
@@ -14,6 +14,7 @@ interface PolicyConfig {
     value: number;
     defaultValue: number;
     description: string;
+    helpText?: string;
     category: string;
     min: number;
     max: number;
@@ -238,8 +239,8 @@ export default function AdminSettingsPage() {
                                         key={policy.key}
                                         className="flex items-center justify-between p-4 rounded-lg border border-card-border bg-bg-dark hover:border-accent-blue/30 transition-colors"
                                     >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-medium text-text-main">
                                                     {policy.description}
                                                 </span>
@@ -254,8 +255,14 @@ export default function AdminSettingsPage() {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-text-muted mt-1">
-                                                Key: {policy.key} • Default: {policy.defaultValue} • Range: {policy.min}-{policy.max}
+                                            {policy.helpText && (
+                                                <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
+                                                    <HelpCircle className="w-3.5 h-3.5 inline-block mr-1.5 opacity-60" />
+                                                    {policy.helpText}
+                                                </p>
+                                            )}
+                                            <p className="text-xs text-text-muted/70 mt-1">
+                                                Default: {policy.defaultValue} • Range: {policy.min}-{policy.max}
                                             </p>
                                         </div>
 

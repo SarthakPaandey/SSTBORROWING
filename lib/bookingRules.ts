@@ -7,10 +7,10 @@ import { getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 export type BookingCategory = BookingKind;
 
 export const CATEGORY_DAILY_LIMITS: Record<BookingCategory, number> = {
-  FACILITY: POLICIES.MAX_BOOKINGS_PER_DAY,
-  ROOM: POLICIES.MAX_BOOKINGS_PER_DAY,
-  EQUIPMENT: POLICIES.MAX_BOOKINGS_PER_DAY,
-  LIBRARY: POLICIES.MAX_BOOKINGS_PER_DAY,
+  FACILITY: POLICIES.MAX_FACILITY_BOOKINGS_PER_DAY,
+  ROOM: POLICIES.MAX_ROOM_BOOKINGS_PER_DAY,
+  EQUIPMENT: POLICIES.MAX_EQUIPMENT_BOOKINGS_PER_DAY,
+  LIBRARY: POLICIES.MAX_LIBRARY_BOOKINGS_PER_DAY,
 };
 
 /**
@@ -56,11 +56,11 @@ export async function canUserCreateBookingWithCaps(options: {
       participantBookings.length === 0
         ? 0
         : participantBookings.filter(
-            (b) => {
-              const startIST = toIST(new Date(b.start));
-              return startIST >= dayStart && startIST < dayEnd;
-            }
-          ).length;
+          (b) => {
+            const startIST = toIST(new Date(b.start));
+            return startIST >= dayStart && startIST < dayEnd;
+          }
+        ).length;
 
     const dailyTotal = dailyCount + dailyGroupCount;
 
@@ -95,11 +95,11 @@ export async function canUserCreateBookingWithCaps(options: {
     participantBookings.length === 0
       ? []
       : participantBookings.filter(
-          (b) => {
-            const startIST = toIST(new Date(b.start));
-            return startIST >= monthStart && startIST < monthEnd;
-          }
-        );
+        (b) => {
+          const startIST = toIST(new Date(b.start));
+          return startIST >= monthStart && startIST < monthEnd;
+        }
+      );
 
   if (kind === 'FACILITY') {
     const totalHours = [...monthlyBookings, ...monthlyGroupBookings].reduce((total, b) => {

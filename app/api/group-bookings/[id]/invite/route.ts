@@ -116,20 +116,21 @@ export async function POST(
       throw new ConflictError(`${email} has a conflicting booking at this time`);
     }
 
-    // Check daily limit (using IST timezone)
+    // Check daily limit for facilities (using IST timezone)
     const today = getTodayStart();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayBookings = await Booking.countDocuments({
       userId: newMember.id,
+      kind: 'FACILITY', // Group bookings are FACILITY type
       status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
       start: { $gte: today, $lt: tomorrow },
     }).session(session);
 
-    // Only check daily limit if it's enabled (value > 0)
-    if (POLICIES.MAX_BOOKINGS_PER_DAY > 0 && todayBookings >= POLICIES.MAX_BOOKINGS_PER_DAY) {
-      throw new ConflictError(`${email} has reached their daily booking limit`);
+    // Check per-type daily limit for facilities
+    if (todayBookings >= POLICIES.MAX_FACILITY_BOOKINGS_PER_DAY) {
+      throw new ConflictError(`${email} has reached their daily facility booking limit`);
     }
 
     // Add new member to group

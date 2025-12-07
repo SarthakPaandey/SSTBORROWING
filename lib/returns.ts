@@ -65,7 +65,7 @@ export async function processReturn({
       adjustedEndTime += pickupDelay;
     }
   }
-  adjustedEndTime += 15 * 60 * 1000; // universal grace buffer after pickup window
+  adjustedEndTime += POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000; // universal grace buffer after pickup window
 
   const isLate = now.getTime() > adjustedEndTime;
   const isDamaged = condition === 'damaged';

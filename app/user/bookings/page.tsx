@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/Toaster";
 import { SkeletonBookingList } from '@/components/ui/Skeleton';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
+import { POLICIES } from '@/lib/policies';
 import { QrCode, Clock, Calendar, ArrowRight, RefreshCw, X, Sparkles, Package, AlertCircle, Plus } from 'lucide-react';
 import { EnrichedBooking, BookingItem } from '@/types/booking';
 
@@ -310,7 +311,7 @@ export default function BookingsPage() {
     if (status === 'CONFIRMED' || status === 'PENDING') {
       if (kind === 'EQUIPMENT' || kind === 'LIBRARY') {
         if (start) {
-          const graceEndTime = new Date(start.getTime() + 15 * 60 * 1000); // 15 min grace
+          const graceEndTime = new Date(start.getTime() + POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000);
           if (now > graceEndTime) {
             return <Badge variant="destructive">Late - Cannot Pickup</Badge>;
           }
@@ -359,14 +360,14 @@ export default function BookingsPage() {
   // FIX: Use IST time for accurate upcoming/past booking filtering
   // Include bookings within 15-minute grace period after start time
   const now = getISTNow();
-  const QR_GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+  const GRACE_PERIOD_MS = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
 
   const upcomingBookings = bookings.filter((b) => {
     if (!['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status)) {
       return false;
     }
-    // Keep in "upcoming" if start time + 15 min grace period hasn't passed yet
-    const graceEnd = new Date(new Date(b.start).getTime() + QR_GRACE_PERIOD_MS);
+    // Keep in "upcoming" if start time + grace period hasn't passed yet
+    const graceEnd = new Date(new Date(b.start).getTime() + GRACE_PERIOD_MS);
     return graceEnd >= now;
   });
 
@@ -374,7 +375,7 @@ export default function BookingsPage() {
     if (!['CONFIRMED', 'PENDING', 'CHECKED_IN'].includes(b.status)) {
       return true; // Cancelled, completed, no-show go to past
     }
-    const graceEnd = new Date(new Date(b.start).getTime() + QR_GRACE_PERIOD_MS);
+    const graceEnd = new Date(new Date(b.start).getTime() + GRACE_PERIOD_MS);
     return graceEnd < now;
   });
 

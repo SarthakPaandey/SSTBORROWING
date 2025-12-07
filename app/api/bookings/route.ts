@@ -319,10 +319,9 @@ async function postHandler(req: Request) {
 
       // Check library book limits
       if (kind === 'LIBRARY') {
-        // Check if user already has an active book borrowing (use UTC for DB comparison)
         // FIX: Only count as active if CHECKED_IN or within pickup window
-        const GRACE_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
-        const graceCutoff = new Date(new Date().getTime() - GRACE_PERIOD_MS);
+        const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const graceCutoff = new Date(new Date().getTime() - gracePeriodMs);
 
         const activeBookBorrowings = await Booking.countDocuments({
           userId: user.id,

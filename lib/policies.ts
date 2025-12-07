@@ -52,7 +52,7 @@ export const POLICIES = {
   // Reschedule policies
   MAX_RESCHEDULE_PER_BOOKING: 1,           // Only 1 reschedule per booking
   MAX_RESCHEDULE_PER_MONTH: 3,             // Max 3 reschedules per month
-  RESCHEDULE_PENALTY_POINTS: 3,            // 3 penalty points per reschedule
+  RESCHEDULE_PENALTY_POINTS: 0,            // No penalty for reschedule (keeps slot filled, better than cancel)
   RESCHEDULE_BLOCK_WINDOW_HOURS: 2,        // Cannot reschedule within 2 hours
 
   // FIX EC-36: Penalties (integers to avoid float precision drift)

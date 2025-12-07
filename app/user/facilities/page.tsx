@@ -183,7 +183,7 @@ export default async function FacilitiesPage() {
           <ul className="text-sm text-text-muted space-y-1">
             <li>• Book up to 7 days in advance</li>
             <li>• Generate QR code 15 min before slot</li>
-            <li>• Cancel at least 2 hours before start</li>
+            <li>• Cancel at least 24 hours before start</li>
           </ul>
         </div>
 

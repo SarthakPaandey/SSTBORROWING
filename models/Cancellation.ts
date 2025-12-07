@@ -7,7 +7,7 @@ export interface ICancellation extends Document {
   resourceName: string;
   bookingStart: Date;
   cancelledAt: Date;
-  wasLate: boolean; // Cancelled within 2 hours of start
+  wasLate: boolean; // Cancelled within 24 hours of start
   penaltyApplied: number;
   createdAt: Date;
 }

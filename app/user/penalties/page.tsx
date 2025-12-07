@@ -331,7 +331,7 @@ export default async function PenaltyGuidePage() {
             <ul className="space-y-2 text-sm text-text-muted">
               <li>• Hold up to 3 active bookings in total (within per-type limits).</li>
               <li>• Book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance.</li>
-              <li>• Reschedule once per booking; each reschedule costs {formatUserPoints(POLICIES.RESCHEDULE_PENALTY_POINTS)}.</li>
+              <li>• Reschedule once per booking (free, no penalty).</li>
               <li>• Borrow up to {POLICIES.MAX_BOOKS_PER_STUDENT} library book at a time.</li>
               <li>• Keep facility usage under {POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hrs/month and rooms under {POLICIES.MAX_ROOM_HOURS_PER_MONTH} hrs/month.</li>
             </ul>

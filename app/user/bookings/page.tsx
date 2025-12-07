@@ -765,16 +765,16 @@ export default function BookingsPage() {
               </div>
             )}
 
-            {/* Penalty Policy Warning */}
-            <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">
-              <p className="text-sm font-medium text-warning mb-2">
-                ⚠️ Rescheduling Policies:
+            {/* Penalty Policy Info */}
+            <div className="p-3 bg-accent-blue/10 rounded-lg border border-accent-blue/30">
+              <p className="text-sm font-medium text-accent-blue mb-2">
+                📋 Rescheduling Policies:
               </p>
-              <ul className="text-xs text-warning space-y-1 list-disc list-inside">
+              <ul className="text-xs text-accent-blue space-y-1 list-disc list-inside">
                 <li>You can only reschedule this booking <strong>1 time</strong></li>
-                <li><strong>3 penalty points</strong> will be added to your account</li>
                 <li>Maximum <strong>3 reschedules allowed per month</strong></li>
                 <li>Cannot reschedule within <strong>2 hours</strong> of start time</li>
+                <li><strong>No penalty</strong> for rescheduling (better than cancelling!)</li>
               </ul>
             </div>
 
@@ -787,7 +787,7 @@ export default function BookingsPage() {
                 className="mt-1"
               />
               <span className="text-sm text-text-main">
-                I understand that <strong>3 penalty points</strong> will be added to my account and this booking can only be rescheduled once.
+                I understand this booking can only be rescheduled <strong>once</strong>.
               </span>
             </label>
 

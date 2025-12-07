@@ -52,7 +52,7 @@ export async function PATCH(
         throw new ValidationError('Cannot cancel past bookings');
       }
 
-      // Check if cancellation is late (within 2 hours of start) - using UTC
+      // Check if cancellation is late (within 24 hours of start) - using UTC
       const now = new Date();
       const hoursUntilStart =
         (new Date(booking.start).getTime() - now.getTime()) / (1000 * 60 * 60);

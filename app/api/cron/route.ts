@@ -6,7 +6,7 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { QRToken } from '@/models/QRToken';
 import { POLICIES } from '@/lib/policies';
-import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
+import { recalculatePenaltyPoints, expireGroupBookings } from '@/lib/groupBookingPenalties';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 import { getDaysAgo } from '@/lib/timezone';
 import { acquireCronLock, releaseCronLock } from '@/lib/cron-lock';
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
             qrTokensDeleted: 0,
             libraryNoPickups: 0,
             overdueCompleted: 0,
+            expiredGroupBookings: 0,
         };
 
         // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
@@ -183,6 +184,10 @@ export async function GET(req: NextRequest) {
             createdAt: { $lt: oneDayAgo }
         });
         results.qrTokensDeleted = deleteResult.deletedCount || 0;
+
+        // 6. Expire stale group bookings
+        // FIX: This was imported but never called - now properly integrated
+        results.expiredGroupBookings = await expireGroupBookings();
 
         return NextResponse.json({ success: true, results });
     } catch (error) {

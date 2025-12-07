@@ -317,17 +317,18 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // 8. Check user policy limits (excluding current booking)
-    // Daily limit (per-type)
-    const today = getTodayStart();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Daily limit (per-type) - FIX: Check TARGET day, not today
+    // When rescheduling to a future date, we need to check that day's booking count
+    const targetDayStart = getStartOfDay(toIST(newStart));
+    const targetDayEnd = new Date(targetDayStart);
+    targetDayEnd.setDate(targetDayEnd.getDate() + 1);
 
-    const todayBookingsCount = await Booking.countDocuments({
+    const targetDayBookingsCount = await Booking.countDocuments({
         userId: user.id,
         _id: { $ne: booking._id }, // Exclude current booking
         kind: booking.kind, // Only count same type
         status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $gte: today, $lt: tomorrow },
+        start: { $gte: targetDayStart, $lt: targetDayEnd },
     }).session(session);
 
     // Get per-type daily limit
@@ -339,7 +340,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     };
     const dailyLimit = dailyLimitMap[booking.kind] || 0;
 
-    if (dailyLimit > 0 && todayBookingsCount >= dailyLimit) {
+    if (dailyLimit > 0 && targetDayBookingsCount >= dailyLimit) {
         return {
             allowed: false,
             reason: `You can only make ${dailyLimit} ${booking.kind.toLowerCase()} bookings per day`,

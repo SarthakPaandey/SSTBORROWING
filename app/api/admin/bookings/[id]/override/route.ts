@@ -49,6 +49,8 @@ export async function POST(
 
         if (action === 'force_cancel') {
             // Force cancel without penalty
+            // NOTE: No inventory restoration needed - the inventory system uses time-based
+            // overlap calculations. Cancelled bookings are automatically excluded.
             booking.status = 'CANCELLED';
             booking.overrideBy = admin.id;
             booking.overrideAt = now;

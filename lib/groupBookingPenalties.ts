@@ -127,69 +127,9 @@ export async function recalculatePenaltyPoints(
   return user.penaltyPoints;
 }
 
-/**
- * @deprecated UNUSED - Facility/room no-shows cannot be verified (no check-in mechanism).
- * Keeping for reference in case physical check-in is implemented in the future.
- * 
- * Apply no-show penalty to all confirmed members of a group booking
- */
-export async function applyGroupNoShowPenalty(bookingId: string): Promise<void> {
-  console.warn('applyGroupNoShowPenalty is deprecated - facility no-shows cannot be verified');
-  const booking = await Booking.findById(bookingId);
-
-  if (!booking || !booking.isGroupBooking) {
-    return;
-  }
-
-  const groupBooking = await GroupBooking.findById(booking.groupBookingId);
-  if (!groupBooking) {
-    return;
-  }
-
-  // Apply penalty only to organizer to avoid unfairly penalizing members
-  const organizerId = groupBooking.organizerId;
-
-  await Penalty.create({
-    userId: organizerId,
-    bookingId: booking.id,
-    points: POLICIES.PENALTY_NO_SHOW,
-    reason: 'Group booking no-show (organizer responsible)',
-  });
-
-  await recalculatePenaltyPoints(organizerId);
-}
-
-/**
- * @deprecated UNUSED - Facility/room late returns cannot be verified (no check-in mechanism).
- * Keeping for reference in case physical check-out is implemented in the future.
- * 
- * Apply late return penalty to all confirmed members of a group booking
- */
-export async function applyGroupLateReturnPenalty(bookingId: string): Promise<void> {
-  console.warn('applyGroupLateReturnPenalty is deprecated - facility late returns cannot be verified');
-  const booking = await Booking.findById(bookingId);
-
-  if (!booking || !booking.isGroupBooking) {
-    return;
-  }
-
-  const groupBooking = await GroupBooking.findById(booking.groupBookingId);
-  if (!groupBooking) {
-    return;
-  }
-
-  // Apply penalty only to organizer to avoid unfairly penalizing members
-  const organizerId = groupBooking.organizerId;
-
-  await Penalty.create({
-    userId: organizerId,
-    bookingId: booking.id,
-    points: POLICIES.PENALTY_LATE_RETURN,
-    reason: 'Group booking late return (organizer responsible)',
-  });
-
-  await recalculatePenaltyPoints(organizerId);
-}
+// NOTE: applyGroupNoShowPenalty and applyGroupLateReturnPenalty were removed.
+// Facility/room no-shows and late returns cannot be verified without physical check-in.
+// If physical check-in is implemented in the future, these can be re-added.
 
 /**
  * Check and expire group bookings that haven't been confirmed

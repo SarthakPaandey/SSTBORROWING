@@ -65,16 +65,10 @@ export async function PATCH(
         ? 0
         : (isLateCancellation ? POLICIES.PENALTY_LATE_CANCELLATION : POLICIES.PENALTY_CANCELLATION);
 
-      // FIX EC-5: If booking was CHECKED_IN, restore inventory
-      if (booking.status === 'CHECKED_IN' && booking.items && booking.items.length > 0) {
-        for (const item of booking.items) {
-          const equipmentItem = await EquipmentItem.findById(item.itemId).session(session);
-          if (equipmentItem) {
-            equipmentItem.qtyAvailable += item.qty;
-            await equipmentItem.save({ session });
-          }
-        }
-      }
+      // NOTE: No inventory restoration needed here.
+      // The inventory system uses time-based overlap calculations in lib/inventory.ts,
+      // NOT qtyAvailable. When a booking is cancelled, it's excluded from overlap checks
+      // automatically by status filtering (only PENDING/CONFIRMED/CHECKED_IN count).
 
       // Create penalty record for audit trail (only for user-initiated cancellations)
       if (penaltyPoints > 0) {

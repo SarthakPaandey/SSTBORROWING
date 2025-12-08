@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut, User, Menu, X, Bell, Sparkles } from 'lucide-react';
+import { LogOut, User, Menu, X, Bell, Sparkles, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -43,6 +43,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminMoreOpen, setAdminMoreOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
@@ -89,20 +90,16 @@ export function Navbar() {
     }
 
     if (role === 'ADMIN') {
+      // Primary links always visible
       return [
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/resources', label: 'Resources' },
         { href: '/admin/library', label: 'Library' },
         { href: '/admin/lab-approvals', label: 'Approvals' },
         { href: '/admin/bookings', label: 'Bookings' },
-        { href: '/admin/group-bookings', label: 'Group Bookings' },
+        { href: '/admin/group-bookings', label: 'Groups' },
         { href: '/admin/blocks', label: 'Blocks' },
         { href: '/admin/penalties', label: 'Penalties' },
-        { href: '/admin/settings', label: 'Settings' },
-        { href: '/admin/email-routing', label: 'Email Routing' },
-        { href: '/admin/audit-logs', label: 'Audit Logs' },
-        { href: '/admin/bulk-operations', label: 'Bulk Ops' },
-        { href: '/admin/analytics', label: 'Analytics' },
       ];
     }
 
@@ -121,6 +118,15 @@ export function Navbar() {
   };
 
   const navLinks = getNavLinks();
+
+  // Secondary admin links shown in "More" dropdown
+  const adminMoreLinks = role === 'ADMIN' ? [
+    { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/admin/email-routing', label: 'Email Routing', icon: '📧' },
+    { href: '/admin/audit-logs', label: 'Audit Logs', icon: '📋' },
+    { href: '/admin/bulk-operations', label: 'Bulk Operations', icon: '⚡' },
+    { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
+  ] : [];
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -197,6 +203,52 @@ export function Navbar() {
                   )}
                 </Link>
               ))}
+
+              {/* Admin More Dropdown */}
+              {adminMoreLinks.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setAdminMoreOpen(!adminMoreOpen)}
+                    onBlur={() => setTimeout(() => setAdminMoreOpen(false), 150)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-2 lg:px-3 py-1.5 text-xs lg:text-sm font-medium',
+                      'transition-all duration-300 group',
+                      adminMoreOpen || adminMoreLinks.some(l => pathname === l.href)
+                        ? 'bg-primary/15 text-primary border border-primary/30'
+                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                    )}
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                    <span>More</span>
+                    <ChevronDown className={cn(
+                      'w-3 h-3 transition-transform duration-200',
+                      adminMoreOpen && 'rotate-180'
+                    )} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {adminMoreOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-48 rounded-lg bg-card border border-border shadow-xl z-50 py-2 animate-fade-in">
+                      {adminMoreLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={cn(
+                            'flex items-center gap-2 px-4 py-2 text-sm transition-colors',
+                            pathname === link.href
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                          )}
+                          onClick={() => setAdminMoreOpen(false)}
+                        >
+                          <span>{link.icon}</span>
+                          <span>{link.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -308,6 +360,36 @@ export function Navbar() {
                 )}
               </Link>
             ))}
+
+            {/* Admin More Links in Mobile */}
+            {adminMoreLinks.length > 0 && (
+              <>
+                <div className="py-2 px-4">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Admin Tools</span>
+                </div>
+                {adminMoreLinks.map((link, index) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium',
+                      'transition-all duration-300 animate-fade-in-left',
+                      pathname === link.href
+                        ? 'bg-primary/15 text-primary border border-primary/30'
+                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:translate-x-2'
+                    )}
+                    style={{ animationDelay: `${(navLinks.length + index) * 50}ms` }}
+                  >
+                    <span className="text-xl">{link.icon}</span>
+                    <span>{link.label}</span>
+                    {pathname === link.href && (
+                      <Sparkles className="h-4 w-4 ml-auto text-primary animate-pulse" />
+                    )}
+                  </Link>
+                ))}
+              </>
+            )}
 
             {/* Mobile Notification for Admins */}
             {role === 'ADMIN' && pendingApprovalsCount > 0 && (

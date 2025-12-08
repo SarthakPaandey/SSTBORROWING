@@ -318,17 +318,17 @@ export default function AdminSettingsPage() {
                         <div className="relative">
                             <button
                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-card-border bg-bg-dark hover:border-accent-purple-1/50 transition-colors min-w-[200px]"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-card-border bg-bg-dark hover:border-accent-purple-1/50 transition-colors text-sm"
                             >
-                                <span className="text-lg">{selectedDurationOption?.emoji}</span>
-                                <span className="flex-1 text-left text-text-main">
+                                <span>{selectedDurationOption?.emoji}</span>
+                                <span className="text-text-main">
                                     {selectedDurationOption?.label}
                                 </span>
-                                <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-3.5 h-3.5 text-text-muted transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
 
                             {dropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-full min-w-[220px] rounded-lg border border-card-border bg-bg-dark shadow-xl z-50">
+                                <div className="absolute right-0 mt-1.5 min-w-[180px] rounded-lg border border-card-border bg-bg-dark shadow-xl z-50">
                                     {DURATION_OPTIONS.map(option => (
                                         <button
                                             key={option.value}
@@ -336,10 +336,10 @@ export default function AdminSettingsPage() {
                                                 setSelectedDurationCategory(option.value);
                                                 setDropdownOpen(false);
                                             }}
-                                            className={`flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-accent-purple-1/10 transition-colors first:rounded-t-lg last:rounded-b-lg ${option.value === selectedDurationCategory ? 'bg-accent-purple-1/20 text-accent-purple-1' : 'text-text-main'
+                                            className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-accent-purple-1/10 transition-colors first:rounded-t-lg last:rounded-b-lg ${option.value === selectedDurationCategory ? 'bg-accent-purple-1/20 text-accent-purple-1' : 'text-text-main'
                                                 }`}
                                         >
-                                            <span className="text-xl">{option.emoji}</span>
+                                            <span>{option.emoji}</span>
                                             <span>{option.label}</span>
                                         </button>
                                     ))}

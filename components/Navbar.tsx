@@ -161,41 +161,43 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link, index) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 lg:px-4 py-2 text-sm font-medium',
-                  'transition-all duration-300 relative overflow-hidden group',
-                  pathname === link.href
-                    ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm shadow-primary/20'
-                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:scale-105'
-                )}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {/* Animated background on hover */}
-                <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
+          {/* Desktop Navigation - Scrollable for many links */}
+          <div className="hidden md:flex items-center overflow-x-auto scrollbar-hide max-w-[calc(100vw-400px)]">
+            <div className="flex items-center space-x-1">
+              {navLinks.map((link, index) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-lg px-2 lg:px-3 py-1.5 text-xs lg:text-sm font-medium whitespace-nowrap',
+                    'transition-all duration-300 relative overflow-hidden group flex-shrink-0',
+                    pathname === link.href
+                      ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm shadow-primary/20'
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:scale-105'
+                  )}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Animated background on hover */}
+                  <span className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
 
-                {/* Icon */}
-                <span className={cn(
-                  'text-base leading-none opacity-90 transition-transform duration-300',
-                  pathname === link.href ? 'animate-bounce-subtle' : 'group-hover:scale-110'
-                )}>
-                  {navIcons[link.href] || '📌'}
-                </span>
+                  {/* Icon */}
+                  <span className={cn(
+                    'text-base leading-none opacity-90 transition-transform duration-300',
+                    pathname === link.href ? 'animate-bounce-subtle' : 'group-hover:scale-110'
+                  )}>
+                    {navIcons[link.href] || '📌'}
+                  </span>
 
-                {/* Label */}
-                <span className="relative">{link.label}</span>
+                  {/* Label */}
+                  <span className="relative">{link.label}</span>
 
-                {/* Active indicator dot */}
-                {pathname === link.href && (
-                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-pulse" />
-                )}
-              </Link>
-            ))}
+                  {/* Active indicator dot */}
+                  {pathname === link.href && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-pulse" />
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* Desktop User Info & Logout */}

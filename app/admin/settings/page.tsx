@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save, HelpCircle } from 'lucide-react';
+import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save, HelpCircle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PolicyConfig {
@@ -25,9 +25,23 @@ interface PolicyConfig {
 interface GroupedPolicies {
     limits: PolicyConfig[];
     durations: PolicyConfig[];
+    durations_facility: PolicyConfig[];
+    durations_room: PolicyConfig[];
+    durations_sports: PolicyConfig[];
+    durations_lab: PolicyConfig[];
     penalties: PolicyConfig[];
     general: PolicyConfig[];
 }
+
+type DurationCategory = 'durations' | 'durations_facility' | 'durations_room' | 'durations_sports' | 'durations_lab';
+
+const DURATION_OPTIONS: { value: DurationCategory; label: string; emoji: string }[] = [
+    { value: 'durations', label: 'All Resources (Global)', emoji: '🌐' },
+    { value: 'durations_facility', label: 'Facilities', emoji: '🏟️' },
+    { value: 'durations_room', label: 'Rooms', emoji: '🚪' },
+    { value: 'durations_sports', label: 'Sports Equipment', emoji: '⚽' },
+    { value: 'durations_lab', label: 'Lab Equipment', emoji: '🔬' },
+];
 
 const categoryIcons: Record<string, React.ReactNode> = {
     limits: <Sliders className="w-5 h-5" />,
@@ -55,6 +69,8 @@ export default function AdminSettingsPage() {
     const [loading, setLoading] = useState(true);
     const [pendingChanges, setPendingChanges] = useState<Map<string, number>>(new Map());
     const [saving, setSaving] = useState(false);
+    const [selectedDurationCategory, setSelectedDurationCategory] = useState<DurationCategory>('durations');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
     useEffect(() => {
         fetchConfig();
@@ -162,6 +178,69 @@ export default function AdminSettingsPage() {
         }
     };
 
+    const renderPolicyItem = (policy: PolicyConfig) => {
+        const currentValue = pendingChanges.get(policy.key) ?? policy.value;
+        const isModified = pendingChanges.has(policy.key);
+        const isCustom = policy.isCustom || isModified;
+
+        return (
+            <div
+                key={policy.key}
+                className="flex items-center justify-between p-4 rounded-lg border border-card-border bg-bg-dark hover:border-accent-blue/30 transition-colors"
+            >
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-text-main">
+                            {policy.description}
+                        </span>
+                        {isCustom && (
+                            <Badge variant="info" className="text-xs">
+                                Custom
+                            </Badge>
+                        )}
+                        {isModified && (
+                            <Badge variant="warning" className="text-xs">
+                                Modified
+                            </Badge>
+                        )}
+                    </div>
+                    {policy.helpText && (
+                        <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
+                            <HelpCircle className="w-3.5 h-3.5 inline-block mr-1.5 opacity-60" />
+                            {policy.helpText}
+                        </p>
+                    )}
+                    <p className="text-xs text-text-muted/70 mt-1">
+                        Default: {policy.defaultValue} • Range: {policy.min}-{policy.max}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Input
+                        type="number"
+                        value={currentValue}
+                        onChange={(e) => handleValueChange(policy.key, parseInt(e.target.value) || 0)}
+                        min={policy.min}
+                        max={policy.max}
+                        className="w-24 text-center"
+                    />
+
+                    {isCustom && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-text-muted hover:text-text-main"
+                            onClick={() => handleReset(policy.key)}
+                            title="Reset to default"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <LoadingState
@@ -181,6 +260,11 @@ export default function AdminSettingsPage() {
     }
 
     const hasChanges = pendingChanges.size > 0;
+    const selectedDurationOption = DURATION_OPTIONS.find(o => o.value === selectedDurationCategory);
+    const currentDurationPolicies = grouped[selectedDurationCategory] || [];
+
+    // Categories to render (excluding per-type duration categories which are handled separately)
+    const mainCategories: (keyof GroupedPolicies)[] = ['limits', 'penalties', 'general'];
 
     return (
         <div className="space-y-6">
@@ -214,8 +298,71 @@ export default function AdminSettingsPage() {
                 </div>
             </div>
 
-            {/* Policy Categories */}
-            {(Object.keys(grouped) as (keyof GroupedPolicies)[]).map(category => (
+            {/* Duration Settings Card with Dropdown */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-accent-purple-1/10">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <span>Duration Settings</span>
+                                <p className="text-sm font-normal text-text-muted mt-0.5">
+                                    Configure timing and working hours per resource type
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Resource Type Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-card-border bg-bg-dark hover:border-accent-purple-1/50 transition-colors min-w-[200px]"
+                            >
+                                <span className="text-lg">{selectedDurationOption?.emoji}</span>
+                                <span className="flex-1 text-left text-text-main">
+                                    {selectedDurationOption?.label}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {dropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-full min-w-[220px] rounded-lg border border-card-border bg-bg-dark shadow-xl z-50">
+                                    {DURATION_OPTIONS.map(option => (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => {
+                                                setSelectedDurationCategory(option.value);
+                                                setDropdownOpen(false);
+                                            }}
+                                            className={`flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-accent-purple-1/10 transition-colors first:rounded-t-lg last:rounded-b-lg ${option.value === selectedDurationCategory ? 'bg-accent-purple-1/20 text-accent-purple-1' : 'text-text-main'
+                                                }`}
+                                        >
+                                            <span className="text-xl">{option.emoji}</span>
+                                            <span>{option.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {currentDurationPolicies.length === 0 ? (
+                            <p className="text-center text-text-muted py-8">
+                                No duration settings configured for this resource type yet.
+                            </p>
+                        ) : (
+                            currentDurationPolicies.map(renderPolicyItem)
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Other Policy Categories */}
+            {mainCategories.map(category => (
                 <Card key={category}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
@@ -232,68 +379,7 @@ export default function AdminSettingsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {grouped[category].map(policy => {
-                                const currentValue = pendingChanges.get(policy.key) ?? policy.value;
-                                const isModified = pendingChanges.has(policy.key);
-                                const isCustom = policy.isCustom || isModified;
-
-                                return (
-                                    <div
-                                        key={policy.key}
-                                        className="flex items-center justify-between p-4 rounded-lg border border-card-border bg-bg-dark hover:border-accent-blue/30 transition-colors"
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="font-medium text-text-main">
-                                                    {policy.description}
-                                                </span>
-                                                {isCustom && (
-                                                    <Badge variant="info" className="text-xs">
-                                                        Custom
-                                                    </Badge>
-                                                )}
-                                                {isModified && (
-                                                    <Badge variant="warning" className="text-xs">
-                                                        Modified
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            {policy.helpText && (
-                                                <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
-                                                    <HelpCircle className="w-3.5 h-3.5 inline-block mr-1.5 opacity-60" />
-                                                    {policy.helpText}
-                                                </p>
-                                            )}
-                                            <p className="text-xs text-text-muted/70 mt-1">
-                                                Default: {policy.defaultValue} • Range: {policy.min}-{policy.max}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <Input
-                                                type="number"
-                                                value={currentValue}
-                                                onChange={(e) => handleValueChange(policy.key, parseInt(e.target.value) || 0)}
-                                                min={policy.min}
-                                                max={policy.max}
-                                                className="w-24 text-center"
-                                            />
-
-                                            {isCustom && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="text-text-muted hover:text-text-main"
-                                                    onClick={() => handleReset(policy.key)}
-                                                    title="Reset to default"
-                                                >
-                                                    <RotateCcw className="w-4 h-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {grouped[category].map(renderPolicyItem)}
                         </div>
                     </CardContent>
                 </Card>
@@ -316,3 +402,4 @@ export default function AdminSettingsPage() {
         </div>
     );
 }
+

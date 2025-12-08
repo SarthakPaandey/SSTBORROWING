@@ -43,6 +43,10 @@ export async function GET() {
         const grouped = {
             limits: policies.filter(p => p.category === 'limits'),
             durations: policies.filter(p => p.category === 'durations'),
+            durations_facility: policies.filter(p => p.category === 'durations_facility'),
+            durations_room: policies.filter(p => p.category === 'durations_room'),
+            durations_sports: policies.filter(p => p.category === 'durations_sports'),
+            durations_lab: policies.filter(p => p.category === 'durations_lab'),
             penalties: policies.filter(p => p.category === 'penalties'),
             general: policies.filter(p => p.category === 'general'),
         };

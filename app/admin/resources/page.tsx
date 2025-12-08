@@ -28,7 +28,6 @@ export default function ResourcesPage() {
     location: '',
     capacity: '',
     requiresApproval: false,
-    slotMinutes: '',
     studentsOnly: false,
     status: 'ACTIVE',
   });
@@ -87,7 +86,6 @@ export default function ResourcesPage() {
       location: '',
       capacity: '',
       requiresApproval: false,
-      slotMinutes: '',
       studentsOnly: false,
       status: 'ACTIVE',
     });
@@ -103,7 +101,6 @@ export default function ResourcesPage() {
       location: resource.location || '',
       capacity: resource.capacity?.toString() || '',
       requiresApproval: resource.rules?.requiresApproval || false,
-      slotMinutes: resource.rules?.slotMinutes?.toString() || '',
       studentsOnly: resource.rules?.studentsOnly || false,
       status: resource.status,
     });
@@ -120,7 +117,6 @@ export default function ResourcesPage() {
         capacity: resourceForm.capacity ? parseInt(resourceForm.capacity) : undefined,
         rules: {
           requiresApproval: resourceForm.requiresApproval,
-          slotMinutes: resourceForm.slotMinutes ? parseInt(resourceForm.slotMinutes) : undefined,
           studentsOnly: resourceForm.studentsOnly,
         },
         status: resourceForm.status,
@@ -639,15 +635,6 @@ export default function ResourcesPage() {
               value={resourceForm.capacity}
               onChange={(e) => setResourceForm({ ...resourceForm, capacity: e.target.value })}
               placeholder="Maximum people"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-1">Slot Duration (minutes)</label>
-            <Input
-              type="number"
-              value={resourceForm.slotMinutes}
-              onChange={(e) => setResourceForm({ ...resourceForm, slotMinutes: e.target.value })}
-              placeholder="e.g., 60"
             />
           </div>
           <div className="flex items-center gap-2">

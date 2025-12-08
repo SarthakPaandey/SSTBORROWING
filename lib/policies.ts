@@ -82,11 +82,35 @@ export const POLICIES = {
   MIN_GAP_BETWEEN_BOOKINGS_MINUTES: 0, // Gap removed to allow back-to-back bookings
   MAX_CONSECUTIVE_SLOTS: 2, // Can't book more than 2 consecutive slots for same resource type
 
-  // Dynamic slot booking constraints
+  // Dynamic slot booking constraints (global defaults)
   MIN_BOOKING_DURATION_MINUTES: 15, // Minimum 15 minutes per booking
   MAX_BOOKING_DURATION_MINUTES: 120, // Maximum 2 hours per booking
   WORKING_HOURS_START: 8, // 8 AM IST
   WORKING_HOURS_END: 20,  // 8 PM IST
+
+  // Per-type duration defaults: Facilities
+  MIN_DURATION_FACILITY: 15,
+  MAX_DURATION_FACILITY: 120,
+  HOURS_START_FACILITY: 8,
+  HOURS_END_FACILITY: 20,
+
+  // Per-type duration defaults: Rooms
+  MIN_DURATION_ROOM: 15,
+  MAX_DURATION_ROOM: 120,
+  HOURS_START_ROOM: 8,
+  HOURS_END_ROOM: 20,
+
+  // Per-type duration defaults: Sports Equipment
+  MIN_DURATION_SPORTS: 15,
+  MAX_DURATION_SPORTS: 75,
+  HOURS_START_SPORTS: 8,
+  HOURS_END_SPORTS: 20,
+
+  // Per-type duration defaults: Lab Equipment
+  MIN_DURATION_LAB: 1440,    // 24 hours
+  MAX_DURATION_LAB: 1440,    // 24 hours (fixed)
+  HOURS_START_LAB: 8,
+  HOURS_END_LAB: 20,
 
   // Cancellation limits
   LATE_CANCELLATION_HOURS: 24,  // Cancel within 24h of start = late cancellation
@@ -94,7 +118,7 @@ export const POLICIES = {
   // Advance booking window
   ADVANCE_BOOKING_DAYS: 7,
 
-  // Slot durations (minutes)
+  // Slot durations (minutes) - legacy, kept for compatibility
   FACILITY_SLOT_MINUTES: 60,
   ROOM_SLOT_MINUTES: 60,
   SPORTS_EQUIPMENT_BORROW_MINUTES: 75, // 75 minutes for sports equipment

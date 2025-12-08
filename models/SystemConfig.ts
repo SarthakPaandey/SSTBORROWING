@@ -14,7 +14,7 @@ export interface ISystemConfig extends Document {
     key: string;
     value: number;
     description?: string;
-    category: 'limits' | 'durations' | 'penalties' | 'general';
+    category: 'limits' | 'durations' | 'durations_facility' | 'durations_room' | 'durations_sports' | 'durations_lab' | 'penalties' | 'general';
     updatedBy: string;
     updatedAt: Date;
     createdAt: Date;
@@ -35,7 +35,7 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
         description: { type: String },
         category: {
             type: String,
-            enum: ['limits', 'durations', 'penalties', 'general'],
+            enum: ['limits', 'durations', 'durations_facility', 'durations_room', 'durations_sports', 'durations_lab', 'penalties', 'general'],
             default: 'general',
         },
         updatedBy: {
@@ -125,6 +125,126 @@ export const EDITABLE_POLICIES = {
         max: 24,
     },
 
+    // ========== Per-Type Duration Settings: Facilities ==========
+    MIN_DURATION_FACILITY: {
+        description: 'Minimum duration',
+        helpText: 'Minimum booking duration for facilities in minutes.',
+        category: 'durations_facility' as const,
+        min: 5,
+        max: 120,
+    },
+    MAX_DURATION_FACILITY: {
+        description: 'Maximum duration',
+        helpText: 'Maximum booking duration for facilities in minutes.',
+        category: 'durations_facility' as const,
+        min: 15,
+        max: 480,
+    },
+    HOURS_START_FACILITY: {
+        description: 'Opening time',
+        helpText: 'When facilities open (24-hour format).',
+        category: 'durations_facility' as const,
+        min: 0,
+        max: 23,
+    },
+    HOURS_END_FACILITY: {
+        description: 'Closing time',
+        helpText: 'When facilities close (24-hour format).',
+        category: 'durations_facility' as const,
+        min: 1,
+        max: 24,
+    },
+
+    // ========== Per-Type Duration Settings: Rooms ==========
+    MIN_DURATION_ROOM: {
+        description: 'Minimum duration',
+        helpText: 'Minimum booking duration for rooms in minutes.',
+        category: 'durations_room' as const,
+        min: 5,
+        max: 120,
+    },
+    MAX_DURATION_ROOM: {
+        description: 'Maximum duration',
+        helpText: 'Maximum booking duration for rooms in minutes.',
+        category: 'durations_room' as const,
+        min: 15,
+        max: 480,
+    },
+    HOURS_START_ROOM: {
+        description: 'Opening time',
+        helpText: 'When rooms open (24-hour format).',
+        category: 'durations_room' as const,
+        min: 0,
+        max: 23,
+    },
+    HOURS_END_ROOM: {
+        description: 'Closing time',
+        helpText: 'When rooms close (24-hour format).',
+        category: 'durations_room' as const,
+        min: 1,
+        max: 24,
+    },
+
+    // ========== Per-Type Duration Settings: Sports Equipment ==========
+    MIN_DURATION_SPORTS: {
+        description: 'Minimum duration',
+        helpText: 'Minimum borrow duration for sports equipment in minutes.',
+        category: 'durations_sports' as const,
+        min: 5,
+        max: 60,
+    },
+    MAX_DURATION_SPORTS: {
+        description: 'Maximum duration',
+        helpText: 'Maximum borrow duration for sports equipment in minutes.',
+        category: 'durations_sports' as const,
+        min: 15,
+        max: 180,
+    },
+    HOURS_START_SPORTS: {
+        description: 'Opening time',
+        helpText: 'When sports equipment can be borrowed (24-hour format).',
+        category: 'durations_sports' as const,
+        min: 0,
+        max: 23,
+    },
+    HOURS_END_SPORTS: {
+        description: 'Closing time',
+        helpText: 'When sports equipment must be returned by (24-hour format).',
+        category: 'durations_sports' as const,
+        min: 1,
+        max: 24,
+    },
+
+    // ========== Per-Type Duration Settings: Lab Equipment ==========
+    MIN_DURATION_LAB: {
+        description: 'Minimum duration',
+        helpText: 'Minimum borrow duration for lab equipment in minutes.',
+        category: 'durations_lab' as const,
+        min: 60,
+        max: 1440,
+    },
+    MAX_DURATION_LAB: {
+        description: 'Maximum duration',
+        helpText: 'Maximum borrow duration for lab equipment in minutes.',
+        category: 'durations_lab' as const,
+        min: 60,
+        max: 10080,
+    },
+    HOURS_START_LAB: {
+        description: 'Opening time',
+        helpText: 'When lab equipment can be borrowed (24-hour format).',
+        category: 'durations_lab' as const,
+        min: 0,
+        max: 23,
+    },
+    HOURS_END_LAB: {
+        description: 'Closing time',
+        helpText: 'When lab equipment must be returned by (24-hour format).',
+        category: 'durations_lab' as const,
+        min: 1,
+        max: 24,
+    },
+
     // Penalty Settings
     PENALTY_THRESHOLD_LEVEL_0: {
         description: 'First suspension threshold',
@@ -166,3 +286,4 @@ export const EDITABLE_POLICIES = {
 } as const;
 
 export type EditablePolicyKey = keyof typeof EDITABLE_POLICIES;
+

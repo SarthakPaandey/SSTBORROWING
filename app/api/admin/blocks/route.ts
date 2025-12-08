@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Block } from '@/models/Block';
 import { Booking } from '@/models/Booking';
+import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError } from '@/lib/errors';
 import { BlockQuery } from '@/types/api';
+import { logAuditEvent, getActorFromSession } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,6 +41,9 @@ export async function POST(req: NextRequest) {
       throw new ValidationError('Missing required fields');
     }
 
+    // Get resource name for audit log
+    const resource = await Resource.findById(resourceId);
+
     const block = await Block.create({
       resourceId,
       start: new Date(start),
@@ -49,7 +54,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Cancel overlapping active bookings for the blocked resource
-    await Booking.updateMany(
+    const cancelResult = await Booking.updateMany(
       {
         resourceId,
         status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] }, // also cancel pickups already in progress
@@ -59,8 +64,28 @@ export async function POST(req: NextRequest) {
       { $set: { status: 'CANCELLED' } }
     );
 
+    // Log audit event
+    await logAuditEvent({
+      action: 'CREATE_BLOCK',
+      actor: getActorFromSession(admin),
+      target: {
+        type: 'BLOCK',
+        id: block._id.toString(),
+        name: resource?.name || 'Unknown Resource',
+      },
+      details: {
+        resourceId,
+        reason,
+        blockType: type,
+        start: block.start,
+        end: block.end,
+        cancelledBookings: cancelResult.modifiedCount,
+      },
+    });
+
     return NextResponse.json({ block }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
   }
 }
+

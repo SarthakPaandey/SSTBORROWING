@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
+import { Resource } from '@/models/Resource';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+import { logAuditEvent, getActorFromSession } from '@/lib/audit';
 import mongoose from 'mongoose';
 
 // Dynamic route since we read auth via cookies/headers
@@ -43,6 +45,10 @@ export async function POST(
       throw new ValidationError('Booking does not require approval');
     }
 
+    // Get resource name for audit log
+    const resource = await Resource.findById(booking.resourceId);
+    const previousStatus = booking.approval;
+
     if (action === 'approve') {
       booking.approval = 'APPROVED';
       booking.status = 'CONFIRMED';
@@ -60,8 +66,27 @@ export async function POST(
 
     await booking.save();
 
+    // Log audit event
+    await logAuditEvent({
+      action: action === 'approve' ? 'APPROVE_BOOKING' : 'REJECT_BOOKING',
+      actor: getActorFromSession(admin),
+      target: {
+        type: 'BOOKING',
+        id: params.id,
+        name: resource?.name || 'Unknown Resource',
+      },
+      details: {
+        previousStatus,
+        newStatus: booking.approval,
+        bookingStart: booking.start,
+        bookingEnd: booking.end,
+        userId: booking.userId,
+      },
+    });
+
     return NextResponse.json({ booking });
   } catch (error) {
     return handleApiError(error);
   }
 }
+

@@ -30,6 +30,9 @@ const navIcons: Record<string, string> = {
   '/admin/penalties': '⚠️',
   '/admin/settings': '⚙️',
   '/admin/email-routing': '📧',
+  '/admin/audit-logs': '📋',
+  '/admin/bulk-operations': '⚡',
+  '/admin/analytics': '📊',
   '/guard/scanner': '📷',
   '/guard/returns': '↩️',
   '/guard/library-returns': '📕',
@@ -97,6 +100,9 @@ export function Navbar() {
         { href: '/admin/penalties', label: 'Penalties' },
         { href: '/admin/settings', label: 'Settings' },
         { href: '/admin/email-routing', label: 'Email Routing' },
+        { href: '/admin/audit-logs', label: 'Audit Logs' },
+        { href: '/admin/bulk-operations', label: 'Bulk Ops' },
+        { href: '/admin/analytics', label: 'Analytics' },
       ];
     }
 

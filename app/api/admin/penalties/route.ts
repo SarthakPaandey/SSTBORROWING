@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
 import { PenaltyQuery } from '@/types/api';
 import { recalculatePenaltyPoints } from '@/lib/groupBookingPenalties';
+import { logAuditEvent, getActorFromSession } from '@/lib/audit';
 import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
@@ -102,6 +103,9 @@ export async function POST(req: NextRequest) {
         totalPenaltyPoints: totalPoints
       }, { status: 201 });
     } else if (action === 'waive') {
+      // Count penalties being waived
+      const penaltiesToWaive = await Penalty.countDocuments({ userId, waivedBy: null });
+
       // Waive all penalties for user
       await Penalty.updateMany(
         { userId, waivedBy: null },
@@ -112,6 +116,22 @@ export async function POST(req: NextRequest) {
       // FIX Issue #8: Recalculate penalty points from actual records
       // This ensures the count is accurate and not hardcoded to 0
       const totalPoints = await recalculatePenaltyPoints(userId);
+
+      // Log audit event
+      await logAuditEvent({
+        action: 'WAIVE_PENALTY',
+        actor: getActorFromSession(admin),
+        target: {
+          type: 'USER',
+          id: userId,
+          name: user.name || user.email,
+        },
+        details: {
+          penaltiesWaived: penaltiesToWaive,
+          reason: reason,
+          newTotalPoints: totalPoints,
+        },
+      });
 
       return NextResponse.json({
         success: true,
@@ -124,3 +144,4 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+

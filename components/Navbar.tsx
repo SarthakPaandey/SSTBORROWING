@@ -29,6 +29,7 @@ const navIcons: Record<string, string> = {
   '/admin/blocks': '🚫',
   '/admin/penalties': '⚠️',
   '/admin/settings': '⚙️',
+  '/admin/email-routing': '📧',
   '/guard/scanner': '📷',
   '/guard/returns': '↩️',
   '/guard/library-returns': '📕',
@@ -95,6 +96,7 @@ export function Navbar() {
         { href: '/admin/blocks', label: 'Blocks' },
         { href: '/admin/penalties', label: 'Penalties' },
         { href: '/admin/settings', label: 'Settings' },
+        { href: '/admin/email-routing', label: 'Email Routing' },
       ];
     }
 

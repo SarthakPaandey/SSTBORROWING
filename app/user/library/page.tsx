@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,20 +31,20 @@ export default function LibraryPage() {
   const [success, setSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const bookThought = useMemo(() => {
-    const quotes = [
-      { text: 'A room without books is like a body without a soul.', author: 'Cicero' },
-      { text: 'So many books, so little time.', author: 'Frank Zappa' },
-      { text: 'Books are a uniquely portable magic.', author: 'Stephen King' },
-      { text: 'A reader lives a thousand lives before he dies.', author: 'George R. R. Martin' },
-      { text: 'Reading is essential for those who seek to rise above the ordinary.', author: 'Jim Rohn' },
-    ];
-    return quotes[Math.floor(Math.random() * quotes.length)];
-  }, []);
+  const libraryEnabled = false; // Temporarily disable library module for v0 launch
+  // Keep the loading quote deterministic to avoid SSR/CSR hydration mismatches
+  const bookThought = useMemo(
+    () => ({ text: 'A room without books is like a body without a soul.', author: 'Cicero' }),
+    []
+  );
 
   useEffect(() => {
+    if (!libraryEnabled) {
+      setResourcesLoading(false);
+      return;
+    }
     fetchResources();
-  }, []);
+  }, [libraryEnabled]);
 
   // Reset time if it becomes invalid when date changes
   useEffect(() => {
@@ -79,28 +80,58 @@ export default function LibraryPage() {
 
   const fetchResources = async () => {
     setResourcesLoading(true);
+
+    const handleUnauthorized = () => {
+      setError('Your session has expired or you do not have access. Please log in again.');
+      signOut({ callbackUrl: '/login' });
+    };
+
+    const parseResponse = async (res: Response, label: string) => {
+      if (res.status === 401 || res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        console.warn(`${label} request unauthorized`, body?.error || body);
+        handleUnauthorized();
+        return null;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to fetch ${label}`);
+      }
+      return res.json();
+    };
+
     try {
-      const res = await fetch('/api/resources?type=LIBRARY');
-      const data = await res.json();
-      setLibraryResources(data.resources);
+      const data = await parseResponse(
+        await fetch('/api/resources?type=LIBRARY', { credentials: 'include' }),
+        'library resources'
+      );
+      if (!data) return;
+
+      const resources = Array.isArray(data.resources) ? data.resources : [];
+      setLibraryResources(resources);
 
       // Fetch books for each category
-      for (const resource of data.resources) {
-        const itemsRes = await fetch(`/api/admin/equipment?resourceId=${resource._id}`);
-        const itemsData = await itemsRes.json();
+      for (const resource of resources) {
+        const itemsData = await parseResponse(
+          await fetch(`/api/admin/equipment?resourceId=${resource._id}`, { credentials: 'include' }),
+          `${resource.name} books`
+        );
+        if (!itemsData) return;
+        const items = Array.isArray(itemsData.items) ? itemsData.items : [];
 
         // FIX EC-30: Use exact matching instead of includes() to avoid fragile matching
         // e.g., "Science Fiction Library" would incorrectly match "Fiction"
         if (resource.name === 'Non-Fiction Library') {
-          setNonFictionBooks(itemsData.items || []);
+          setNonFictionBooks(items);
         } else if (resource.name === 'Fiction Library') {
-          setFictionBooks(itemsData.items || []);
+          setFictionBooks(items);
         } else if (resource.name === 'Textbooks Library') {
-          setTextbooks(itemsData.items || []);
+          setTextbooks(items);
         }
       }
     } catch (err) {
       console.error('Failed to fetch library resources:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load library resources.');
     } finally {
       setResourcesLoading(false);
     }
@@ -408,6 +439,32 @@ export default function LibraryPage() {
   // Total counts
   const totalBooks = fictionBooks.length + nonFictionBooks.length + textbooks.length;
   const totalAvailable = [...fictionBooks, ...nonFictionBooks, ...textbooks].filter(b => b.qtyAvailable > 0).length;
+  const fictionResource = libraryResources.find(r => r.name === 'Fiction Library');
+  const nonFictionResource = libraryResources.find(r => r.name === 'Non-Fiction Library');
+  const textbooksResource = libraryResources.find(r => r.name === 'Textbooks Library');
+
+  if (!libraryEnabled) {
+    return (
+      <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            📚 Library (coming in v1)
+          </CardTitle>
+          <CardDescription>
+            The library module is disabled for the v0 launch. You can still borrow facilities, rooms, and equipment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-text-muted">
+            We&apos;ll re-enable library borrowing when v1 goes live.
+          </p>
+          <Button onClick={() => router.push('/user/dashboard')}>
+            Back to dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -488,10 +545,10 @@ export default function LibraryPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {libraryResources.find(r => r.name === 'Fiction Library') ? (
+                {fictionResource ? (
                   renderBookList(
                     fictionBooks,
-                    libraryResources.find(r => r.name === 'Fiction Library')._id,
+                    fictionResource._id,
                     'fiction'
                   )
                 ) : (
@@ -515,10 +572,10 @@ export default function LibraryPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {libraryResources.find(r => r.name === 'Non-Fiction Library') ? (
+                {nonFictionResource ? (
                   renderBookList(
                     nonFictionBooks,
-                    libraryResources.find(r => r.name === 'Non-Fiction Library')._id,
+                    nonFictionResource._id,
                     'non-fiction'
                   )
                 ) : (
@@ -542,10 +599,10 @@ export default function LibraryPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {libraryResources.find(r => r.name === 'Textbooks Library') ? (
+                {textbooksResource ? (
                   renderBookList(
                     textbooks,
-                    libraryResources.find(r => r.name === 'Textbooks Library')._id,
+                    textbooksResource._id,
                     'textbooks'
                   )
                 ) : (

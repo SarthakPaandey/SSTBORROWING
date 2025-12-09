@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -124,22 +125,54 @@ export default function EquipmentPage() {
   }, [date, startTime]);
 
   const fetchResources = async () => {
+    const handleUnauthorized = () => {
+      setError('Your session has expired or you do not have access. Please log in again.');
+      // Force sign-out to clear any stale/invalid session and redirect to login
+      signOut({ callbackUrl: '/login' });
+    };
+
+    const parseResponse = async (res: Response, label: string) => {
+      if (res.status === 401 || res.status === 403) {
+        // Try to surface the server message for easier debugging
+        const body = await res.json().catch(() => ({}));
+        console.warn(`${label} request unauthorized`, body?.error || body);
+        handleUnauthorized();
+        return null;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to fetch ${label}`);
+      }
+      return res.json();
+    };
+
     try {
       setInitialLoading(true);
-      const sportsRes = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
-      const sportsData = await sportsRes.json();
-      setSportsResources(sportsData.resources);
+      const sportsData = await parseResponse(
+        await fetch('/api/resources?type=SPORTS_EQUIPMENT', { credentials: 'include' }),
+        'sports resources'
+      );
+      if (!sportsData) return;
 
-      const labRes = await fetch('/api/resources?type=LAB_EQUIPMENT');
-      const labData = await labRes.json();
-      setLabResources(labData.resources);
+      const labData = await parseResponse(
+        await fetch('/api/resources?type=LAB_EQUIPMENT', { credentials: 'include' }),
+        'lab resources'
+      );
+      if (!labData) return;
+
+      const sportsList = Array.isArray(sportsData.resources) ? sportsData.resources : [];
+      const labList = Array.isArray(labData.resources) ? labData.resources : [];
+
+      setSportsResources(sportsList);
+      setLabResources(labList);
 
       // Fetch initial items after resources are loaded
-      if (sportsData.resources.length > 0 || labData.resources.length > 0) {
-        await fetchItems(sportsData.resources, labData.resources, false);
+      if (sportsList.length > 0 || labList.length > 0) {
+        await fetchItems(sportsList, labList, false);
       }
     } catch (err) {
       console.error('Failed to fetch equipment resources:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load equipment resources.');
     } finally {
       setInitialLoading(false);
     }

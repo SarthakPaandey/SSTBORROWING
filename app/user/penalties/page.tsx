@@ -145,11 +145,6 @@ export default async function PenaltyGuidePage() {
       `${equipmentBorrows}/${POLICIES.MAX_EQUIPMENT_BORROWS_PER_MONTH}`
     ),
     buildBookingLimit(
-      'Library',
-      `${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time`,
-      'Must pick up within 24 hours'
-    ),
-    buildBookingLimit(
       'Advance window',
       `${POLICIES.ADVANCE_BOOKING_DAYS} days`,
       'How far ahead you can book'
@@ -157,13 +152,11 @@ export default async function PenaltyGuidePage() {
   ];
 
   const penaltyRules = [
-    { label: 'No-show (equipment/library)', points: POLICIES.PENALTY_NO_SHOW },
+    { label: 'No-show (equipment)', points: POLICIES.PENALTY_NO_SHOW },
     { label: 'Late return', points: POLICIES.PENALTY_LATE_RETURN },
     { label: 'Damage or lost item', points: POLICIES.PENALTY_DAMAGE },
     { label: 'Early cancellation (>24h before)', points: POLICIES.PENALTY_CANCELLATION },
     { label: 'Late cancellation (<24h before)', points: POLICIES.PENALTY_LATE_CANCELLATION },
-    { label: 'Library: late return', points: POLICIES.PENALTY_BOOK_LATE_RETURN },
-    { label: 'Library: no pickup', points: POLICIES.PENALTY_BOOK_NO_PICKUP },
     { label: 'Reschedule fee', points: POLICIES.RESCHEDULE_PENALTY_POINTS },
   ];
 

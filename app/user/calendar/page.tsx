@@ -27,7 +27,6 @@ const kindConfig = {
   FACILITY: { emoji: '🏟️', icon: MapPin, label: 'Facility' },
   ROOM: { emoji: '🚪', icon: CalendarDays, label: 'Room' },
   EQUIPMENT: { emoji: '🎾', icon: Package, label: 'Equipment' },
-  LIBRARY: { emoji: '📚', icon: Package, label: 'Library' },
 };
 
 export default function CalendarPage() {
@@ -91,6 +90,9 @@ export default function CalendarPage() {
 
   // Filter bookings
   const filteredBookings = bookings.filter(booking => {
+    // Hide library bookings for v0
+    if (booking.kind === 'LIBRARY') return false;
+
     // Filter by type
     if (typeFilter !== 'ALL' && booking.kind !== typeFilter) return false;
 

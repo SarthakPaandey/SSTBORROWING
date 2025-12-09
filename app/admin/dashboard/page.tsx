@@ -1,17 +1,16 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth/config';
-import { connectDB } from '@/lib/db';
-import { Booking } from '@/models/Booking';
-import { User } from '@/models/User';
-import { Penalty } from '@/models/Penalty';
-import { Card, CardContent, CardHeader, CardTitle, StatCard } from '@/components/ui/Card';
-import { Calendar, Users, AlertTriangle, Clock, ArrowRight, CheckCircle2, Zap, Shield, Database, Sparkles } from 'lucide-react';
-import { AdminNotifications } from '@/components/AdminNotifications';
-import { DashboardCharts } from '@/components/admin/DashboardCharts';
-import { getTodayStart, getTodayEnd, getNow } from '@/lib/timezone';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/Badge';
+import { AlertTriangle, ArrowRight, Clock, Shield, Sparkles, Users, Zap } from 'lucide-react';
+
+import { AdminNotifications } from '@/components/AdminNotifications';
+import { authOptions } from '@/lib/auth/config';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { connectDB } from '@/lib/db';
+import { getTodayEnd, getTodayStart } from '@/lib/timezone';
+import { Booking } from '@/models/Booking';
+import { Penalty } from '@/models/Penalty';
+import { User } from '@/models/User';
 
 // Quick action items with emojis and styling
 const quickActions = [
@@ -19,10 +18,9 @@ const quickActions = [
     href: '/admin/lab-approvals',
     emoji: '🔬',
     title: 'Review Approvals',
-    description: 'pending requests',
+    description: 'Manage pending requests',
     gradient: 'from-amber-500/20 to-orange-500/10',
     borderColor: 'border-amber-500/20 hover:border-amber-500/40',
-    countKey: 'pendingApprovals',
   },
   {
     href: '/admin/blocks',
@@ -61,9 +59,7 @@ export default async function AdminDashboard() {
 
   const today = getTodayStart();
   const tomorrow = getTodayEnd();
-  const now = getNow();
 
-  // Get stats
   const todayBookings = await Booking.countDocuments({
     status: { $in: ['CONFIRMED', 'CHECKED_IN'] },
     start: { $gte: today, $lte: tomorrow },
@@ -80,6 +76,8 @@ export default async function AdminDashboard() {
   const recentPenalties = await Penalty.countDocuments({
     createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
   });
+
+  const now = new Date();
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -114,24 +112,10 @@ export default async function AdminDashboard() {
               System overview and management controls
             </p>
           </div>
-
-          {/* Quick stats summary */}
-          {pendingApprovals > 0 && (
-            <Link href="/admin/lab-approvals">
-              <div className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 animate-pulse hover:scale-105 transition-transform">
-                <span className="text-2xl leading-none opacity-90" aria-hidden>🔔</span>
-                <div>
-                  <p className="font-semibold text-warning">{pendingApprovals} Pending</p>
-                  <p className="text-xs text-text-muted">Approvals waiting</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-warning" />
-              </div>
-            </Link>
-          )}
         </div>
       </div>
 
-      {/* Stats Grid - Enhanced */}
+      {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Today's Bookings */}
         <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 p-6 transition-all duration-300 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-1">
@@ -213,10 +197,6 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Analytics Charts */}
-      <DashboardCharts />
-
-      {/* Notification Settings */}
       <AdminNotifications />
 
       {/* Quick Actions & System Status */}
@@ -252,12 +232,7 @@ export default async function AdminDashboard() {
                   <p className="font-medium text-text-main group-hover:text-accent-blue transition-colors">
                     {action.title}
                   </p>
-                  <p className="text-sm text-text-muted">
-                    {action.countKey === 'pendingApprovals'
-                      ? `${pendingApprovals} ${action.description}`
-                      : action.description
-                    }
-                  </p>
+                  <p className="text-sm text-text-muted">{action.description}</p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-text-muted group-hover:text-accent-blue group-hover:translate-x-1 transition-all" />
               </Link>

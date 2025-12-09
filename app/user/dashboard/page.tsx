@@ -38,8 +38,8 @@ const quickActions = [
   {
     href: '/user/equipment',
     emoji: '🎾',
-    title: 'Borrow Items',
-    description: 'Equipment & Books',
+    title: 'Borrow Equipment',
+    description: 'Sports & lab gear',
     gradient: 'from-purple-500/20 to-pink-500/10',
     borderColor: 'hover:border-purple-500/40',
     iconBg: 'bg-purple-500/20',

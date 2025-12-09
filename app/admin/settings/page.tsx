@@ -80,6 +80,18 @@ export default function AdminSettingsPage() {
         try {
             const res = await fetch('/api/admin/config');
             const data = await res.json();
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    toast.error('Session expired. Please log in again.');
+                } else if (res.status === 403) {
+                    toast.error('You do not have admin permissions.');
+                } else {
+                    toast.error(data.error || 'Failed to load settings');
+                }
+                return;
+            }
+
             setGrouped(data.grouped);
         } catch (error) {
             console.error('Failed to fetch config:', error);

@@ -10,24 +10,28 @@ import { Badge } from '@/components/ui/Badge';
 
 // Facility icons and colors mapping
 const facilityConfig: Record<string, { emoji: string; gradient: string; borderColor: string }> = {
+  'Table Tennis': { emoji: '🏓', gradient: 'from-indigo-500/20 to-purple-500/10', borderColor: 'border-indigo-500/20 hover:border-indigo-500/50' },
+  'Tennis': { emoji: '🎾', gradient: 'from-lime-500/20 to-green-500/10', borderColor: 'border-lime-500/20 hover:border-lime-500/50' },
+  'Volleyball': { emoji: '🏐', gradient: 'from-amber-500/20 to-orange-500/10', borderColor: 'border-amber-500/20 hover:border-amber-500/50' },
   'Turf': { emoji: '⚽', gradient: 'from-emerald-500/20 to-green-500/10', borderColor: 'border-emerald-500/20 hover:border-emerald-500/50' },
   'Court': { emoji: '🏀', gradient: 'from-orange-500/20 to-amber-500/10', borderColor: 'border-orange-500/20 hover:border-orange-500/50' },
   'Badminton': { emoji: '🏸', gradient: 'from-blue-500/20 to-cyan-500/10', borderColor: 'border-blue-500/20 hover:border-blue-500/50' },
-  'Tennis': { emoji: '🎾', gradient: 'from-lime-500/20 to-green-500/10', borderColor: 'border-lime-500/20 hover:border-lime-500/50' },
   'Cricket': { emoji: '🏏', gradient: 'from-yellow-500/20 to-amber-500/10', borderColor: 'border-yellow-500/20 hover:border-yellow-500/50' },
   'Swimming': { emoji: '🏊', gradient: 'from-cyan-500/20 to-blue-500/10', borderColor: 'border-cyan-500/20 hover:border-cyan-500/50' },
   'Gym': { emoji: '🏋️', gradient: 'from-red-500/20 to-rose-500/10', borderColor: 'border-red-500/20 hover:border-red-500/50' },
-  'Table Tennis': { emoji: '🏓', gradient: 'from-indigo-500/20 to-purple-500/10', borderColor: 'border-indigo-500/20 hover:border-indigo-500/50' },
   'default': { emoji: '🏟️', gradient: 'from-accent-blue/20 to-accent-purple-1/10', borderColor: 'border-accent-blue/20 hover:border-accent-blue/50' },
 };
 
 const getFacilityConfig = (name: string) => {
-  for (const key of Object.keys(facilityConfig)) {
-    if (name.toLowerCase().includes(key.toLowerCase())) {
-      return facilityConfig[key];
-    }
-  }
-  return facilityConfig['default'];
+  const lowerName = name.toLowerCase();
+
+  // Prefer more specific matches (longer keys) first to avoid partial hits like "Tennis" before "Table Tennis".
+  const match = Object.entries(facilityConfig)
+    .filter(([key]) => key !== 'default')
+    .sort((a, b) => b[0].length - a[0].length)
+    .find(([key]) => lowerName.includes(key.toLowerCase()));
+
+  return match ? match[1] : facilityConfig['default'];
 };
 
 export default async function FacilitiesPage() {

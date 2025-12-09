@@ -82,18 +82,9 @@ async function seed() {
       status: 'ACTIVE',
     });
 
-    const tableTennis1 = await Resource.create({
+    await Resource.create({
       type: 'FACILITY',
-      name: 'Table Tennis 1',
-      location: 'Recreation Room',
-      capacity: 2,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const tableTennis2 = await Resource.create({
-      type: 'FACILITY',
-      name: 'Table Tennis 2',
+      name: 'Table Tennis',
       location: 'Recreation Room',
       capacity: 2,
       rules: { slotMinutes: 60 },
@@ -105,41 +96,19 @@ async function seed() {
     // Create Rooms
     console.log('Creating rooms...');
 
-    const meetingRoomA = await Resource.create({
-      type: 'ROOM',
-      name: 'Meeting Room A',
-      location: 'Building B - Floor 2',
-      capacity: 10,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const meetingRoomB = await Resource.create({
-      type: 'ROOM',
-      name: 'Meeting Room B',
-      location: 'Building B - Floor 2',
-      capacity: 8,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const meetingRoomC = await Resource.create({
-      type: 'ROOM',
-      name: 'Meeting Room C',
-      location: 'Building B - Floor 3',
-      capacity: 12,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const meetingRoomD = await Resource.create({
-      type: 'ROOM',
-      name: 'Meeting Room D',
-      location: 'Building B - Floor 3',
-      capacity: 6,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
+    const meetingRoomNumbers = [6, 7, 9, 10, 12, 13, 14];
+    await Promise.all(
+      meetingRoomNumbers.map((roomNumber) =>
+        Resource.create({
+          type: 'ROOM',
+          name: `Meeting Room ${roomNumber}`,
+          location: 'Macro Campus - First Floor',
+          capacity: 8,
+          rules: { slotMinutes: 60 },
+          status: 'ACTIVE',
+        })
+      )
+    );
 
     const studyRoom1 = await Resource.create({
       type: 'ROOM',

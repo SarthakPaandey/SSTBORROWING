@@ -110,24 +110,6 @@ async function seed() {
       )
     );
 
-    const studyRoom1 = await Resource.create({
-      type: 'ROOM',
-      name: 'Study Room 1',
-      location: 'Library - Floor 1',
-      capacity: 4,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
-    const studyRoom2 = await Resource.create({
-      type: 'ROOM',
-      name: 'Study Room 2',
-      location: 'Library - Floor 1',
-      capacity: 4,
-      rules: { slotMinutes: 60 },
-      status: 'ACTIVE',
-    });
-
     console.log('Rooms created');
 
     // Create Sports Equipment Resource
@@ -143,14 +125,13 @@ async function seed() {
     const sportsItems = [
       { name: 'Football', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'FOOTBALL' },
       { name: 'Basketball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'BASKETBALL' },
-      { name: 'Badminton Racket', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false, sportCategory: 'BADMINTON' },
-      { name: 'Shuttlecocks', qtyTotal: 12, qtyAvailable: 12, safety: false, restricted: false, sportCategory: 'BADMINTON' },
-      { name: 'TT Paddle', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
-      { name: 'TT Balls', qtyTotal: 6, qtyAvailable: 6, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
-      { name: 'Cricket Bat', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false, sportCategory: 'CRICKET' },
-      { name: 'Cricket Pads', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false, sportCategory: 'CRICKET' },
-      { name: 'Cricket Helmet', qtyTotal: 2, qtyAvailable: 2, safety: true, restricted: false, sportCategory: 'CRICKET' },
-      { name: 'Cricket Ball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Badminton Racket', qtyTotal: 8, qtyAvailable: 8, safety: false, restricted: false, sportCategory: 'BADMINTON' },
+      { name: 'Cricket Bat', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Cricket Ball', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Cricket Stumps', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
+      { name: 'Volleyball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'VOLLEYBALL' },
+      { name: 'TT Bat', qtyTotal: 8, qtyAvailable: 8, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
+      { name: 'TT Ball', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
     ];
 
     for (const item of sportsItems) {

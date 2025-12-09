@@ -24,7 +24,7 @@ import { BookingQuery } from '@/types/api';
 import { BookingItem } from '@/types/booking';
 import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
-import { canBorrowSportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
+import { canBorrowSportCategory, getFacilitySportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
 import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFacilities } from '@/lib/sportEquipmentKits';
 import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
 import { triggerLazyExpiration } from '@/lib/lazyExpiration';
@@ -302,6 +302,23 @@ async function postHandler(req: Request) {
 
         if (activeFacilities >= POLICIES.MAX_ACTIVE_FACILITIES) {
           throw new ValidationError(`You can only have ${POLICIES.MAX_ACTIVE_FACILITIES} active facility bookings at a time. Please wait for one to complete or cancel it.`);
+        }
+
+        const facilitySport = getFacilitySportCategory(resource.name);
+
+        // Exclusive rule: When booking Table Tennis facility, user must not have any overlapping equipment bookings.
+        if (facilitySport === SPORT_CATEGORIES.TABLE_TENNIS) {
+          const overlappingEquipment = await Booking.countDocuments({
+            userId: user.id,
+            kind: 'EQUIPMENT',
+            status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+            start: { $lt: endDate },
+            end: { $gt: startDate },
+          }).session(session);
+
+          if (overlappingEquipment > 0) {
+            throw new ValidationError('Table Tennis bookings must be exclusive. You already have an equipment booking in this time slot. Please cancel it or choose a different time.');
+          }
         }
       }
 
@@ -597,6 +614,23 @@ async function postHandler(req: Request) {
             const kitValidation = await validateSportKitQuantities(itemsWithNames, sportCategory);
             if (!kitValidation.valid) {
               throw new ValidationError(kitValidation.errors.join(' '));
+            }
+
+            // Enforce facility/equipment pairing: if user has an overlapping facility booking with a mapped sport,
+            // the equipment must match that sport (e.g., Table Tennis facility -> only TT equipment).
+            const overlappingFacility = await Booking.findOne({
+              userId: user.id,
+              kind: 'FACILITY',
+              status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+              start: { $lt: endDate },
+              end: { $gt: startDate },
+            }).session(session).populate('resourceId');
+
+            const overlappingFacilityName = (overlappingFacility?.resourceId as any)?.name as string | undefined;
+            const overlappingFacilitySport = getFacilitySportCategory(overlappingFacilityName);
+
+            if (overlappingFacilitySport && overlappingFacilitySport !== sportCategory) {
+              throw new ValidationError(`Your overlapping facility booking (${overlappingFacilityName}) is for ${overlappingFacilitySport.replace('_', ' ').toLowerCase()}. You can only borrow equipment for that sport during the same time.`);
             }
 
             // FIX: Check if user has a matching facility booking (soft warning)

@@ -145,3 +145,20 @@ export function getSportCategoryDisplayName(category: SportCategory): string {
 
     return displayNames[category] || category;
 }
+
+/**
+ * Best-effort mapping from facility/resource name to sport category.
+ * Used for exclusive pairing rules (e.g., Table Tennis facility <-> TT equipment).
+ */
+export function getFacilitySportCategory(resourceName?: string): SportCategory | null {
+    if (!resourceName) return null;
+    const name = resourceName.toLowerCase();
+
+    if (name.includes('table tennis')) return SPORT_CATEGORIES.TABLE_TENNIS;
+    if (name.includes('basketball')) return SPORT_CATEGORIES.BASKETBALL;
+    if (name.includes('volleyball')) return SPORT_CATEGORIES.VOLLEYBALL;
+    if (name.includes('turf')) return SPORT_CATEGORIES.FOOTBALL; // turf shared for football/cricket use-case
+    if (name.includes('cricket')) return SPORT_CATEGORIES.CRICKET;
+
+    return null;
+}

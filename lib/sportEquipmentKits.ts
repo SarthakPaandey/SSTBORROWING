@@ -12,48 +12,41 @@ import { SPORT_CATEGORIES, SportCategory } from './sportCategoryRules';
 // Equipment limits per sport category
 // Maps item names to max quantity allowed per booking
 export const SPORT_EQUIPMENT_KITS: Record<SportCategory, Record<string, number>> = {
-    // Cricket: Full match kit
+    // Cricket
     CRICKET: {
-        'Cricket Bat': 2,        // One for each team
-        'Cricket Ball': 1,       // One ball per match
-        'Cricket Pads': 2,       // One set per batsman
-        'Cricket Helmet': 2,     // One per batsman
-        'Cricket Gloves': 2,     // One pair per batsman
-        'Cricket Stumps': 2,     // One set per end (if we add this item)
+        'Cricket Bat': 2,
+        'Cricket Ball': 1,
+        'Cricket Stumps': 2,
     },
 
-    // Badminton: Doubles kit
+    // Badminton
     BADMINTON: {
-        'Badminton Racket': 4,   // 2 per side for doubles
-        'Shuttlecocks': 2,       // Pack of shuttlecocks (qty represents packs)
+        'Badminton Racket': 4,
     },
 
-    // Table Tennis: Singles/Doubles kit
+    // Table Tennis
     TABLE_TENNIS: {
-        'TT Paddle': 4,          // 2 per side for doubles
-        'TT Balls': 2,           // A couple of balls
+        'TT Bat': 4,
+        'TT Ball': 1,
     },
 
-    // Basketball: One ball per game
+    // Basketball
     BASKETBALL: {
-        'Basketball': 1,         // One ball per game
+        'Basketball': 1,
     },
 
-    // Football: One ball per game
+    // Football
     FOOTBALL: {
         'Football': 1,
     },
 
-    // Volleyball: One ball per game
+    // Volleyball
     VOLLEYBALL: {
         'Volleyball': 1,
     },
 
-    // Tennis: Rackets and balls
-    TENNIS: {
-        'Tennis Racket': 4,
-        'Tennis Balls': 2,
-    },
+    // Tennis (unused for now)
+    TENNIS: {},
 
     // General: No specific limits
     GENERAL: {},
@@ -135,7 +128,7 @@ export async function validateSportKitQuantities(
  * Used for soft warnings when borrowing equipment without a matching facility.
  */
 export const SPORT_FACILITY_MAPPING: Record<SportCategory, string[]> = {
-    TABLE_TENNIS: ['Table Tennis 1', 'Table Tennis 2'],
+    TABLE_TENNIS: ['Table Tennis'],
     BASKETBALL: ['Basketball Court'],
     BADMINTON: [],
     FOOTBALL: ['Main Turf'],

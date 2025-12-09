@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { SuccessCelebration } from '@/components/ui/SuccessCelebration';
-import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
@@ -36,6 +36,11 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   // Availability data for TimeRangePicker
   const [busySlots, setBusySlots] = useState<Array<{ start: string; end: string }>>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [sportsResourceId, setSportsResourceId] = useState<string | null>(null);
+  const [sportsItems, setSportsItems] = useState<Array<{ _id: string; name: string; qtyAvailable: number; qtyTotal: number }>>([]);
+  const [equipmentSelection, setEquipmentSelection] = useState<Record<string, number>>({});
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
+  const [equipmentError, setEquipmentError] = useState('');
 
   useEffect(() => {
     fetchResource();
@@ -83,6 +88,98 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resource, date]);
+
+  // Map facility name to sport category (client-safe, no mongoose)
+  const getFacilitySportCategory = (name?: string | null) => {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    if (lower.includes('table tennis')) return 'TABLE_TENNIS';
+    if (lower.includes('basketball')) return 'BASKETBALL';
+    if (lower.includes('volleyball')) return 'VOLLEYBALL';
+    if (lower.includes('turf')) return 'FOOTBALL';
+    if (lower.includes('cricket')) return 'CRICKET';
+    if (lower.includes('badminton')) return 'BADMINTON';
+    return null;
+  };
+
+  const facilitySport = getFacilitySportCategory(resource?.name);
+
+  const recommendedEquipment: Record<string, string[]> = {
+    TABLE_TENNIS: ['TT Bat (up to 4)', 'TT Ball (up to 1)'],
+    BASKETBALL: ['Basketball (1)'],
+    FOOTBALL: ['Football (1)'],
+    CRICKET: ['Bat (up to 2)', 'Ball (1)', 'Stumps (up to 2)'],
+    VOLLEYBALL: ['Volleyball (1)'],
+    BADMINTON: ['Badminton Racket (up to 4)'],
+  };
+
+  const equipmentMaxBySport: Record<string, Record<string, number>> = {
+    TABLE_TENNIS: { 'TT Bat': 4, 'TT Ball': 1 },
+    BASKETBALL: { Basketball: 1 },
+    FOOTBALL: { Football: 1 },
+    CRICKET: { 'Cricket Bat': 2, 'Cricket Ball': 1, 'Cricket Stumps': 2 },
+    VOLLEYBALL: { Volleyball: 1 },
+    BADMINTON: { 'Badminton Racket': 4 },
+  };
+
+  // Fetch sports equipment resource once
+  useEffect(() => {
+    const fetchSportsResource = async () => {
+      try {
+        const res = await fetch('/api/resources?type=SPORTS_EQUIPMENT');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sportsRes = Array.isArray(data.resources) ? data.resources[0] : null;
+        if (sportsRes?._id) {
+          setSportsResourceId(sportsRes._id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch sports resource', err);
+      }
+    };
+    fetchSportsResource();
+  }, []);
+
+  // Fetch available sports items for the selected slot and sport
+  useEffect(() => {
+    const sport = facilitySport;
+    if (!sport || !sportsResourceId || !selectedSlot) {
+      setSportsItems([]);
+      setEquipmentSelection({});
+      return;
+    }
+
+    const fetchItems = async () => {
+      setEquipmentLoading(true);
+      setEquipmentError('');
+      try {
+        const startISO = selectedSlot.start;
+        const endISO = selectedSlot.end;
+        const res = await fetch(
+          `/api/admin/equipment?resourceId=${sportsResourceId}&start=${startISO}&end=${endISO}`
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load equipment availability');
+        }
+        const allowed = equipmentMaxBySport[sport] || {};
+        const filtered =
+          Array.isArray(data.items)
+            ? data.items.filter((item: any) => allowed[item.name] !== undefined)
+            : [];
+        setSportsItems(filtered);
+        setEquipmentSelection({});
+      } catch (err) {
+        console.error(err);
+        setEquipmentError(err instanceof Error ? err.message : 'Failed to load equipment availability');
+      } finally {
+        setEquipmentLoading(false);
+      }
+    };
+
+    fetchItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facilitySport, sportsResourceId, selectedSlot?.start, selectedSlot?.end]);
 
   const handleBook = async () => {
     if (!selectedSlot) return;
@@ -166,6 +263,59 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
         if (!res.ok) {
           throw new Error(data.error || 'Failed to create booking');
+        }
+
+        // If user selected equipment, create an equipment booking for the same slot (clamped to max 75 min and 8 PM)
+        const selectedItems = Object.entries(equipmentSelection)
+          .filter(([_, qty]) => qty > 0)
+          .map(([itemId, qty]) => ({ itemId, qty }));
+
+        if (selectedItems.length > 0 && sportsResourceId) {
+          try {
+            const startDate = new Date(selectedSlot.start);
+            const endDate = new Date(selectedSlot.end);
+
+            // Equipment borrow end = min(facility end, start+75min, same-day 8PM)
+            const equipEnd = new Date(startDate);
+            equipEnd.setMinutes(equipEnd.getMinutes() + 75);
+            const facilityEnd = endDate;
+            if (equipEnd > facilityEnd) equipEnd.setTime(facilityEnd.getTime());
+
+            const closing = new Date(startDate);
+            closing.setHours(20, 0, 0, 0); // 8 PM local
+            if (equipEnd > closing) equipEnd.setTime(closing.getTime());
+
+            // Ensure at least 15 minutes
+            if (equipEnd <= startDate) {
+              throw new Error('Equipment borrow window is too short for this slot.');
+            }
+
+            const equipRes = await fetch('/api/bookings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                resourceId: sportsResourceId,
+                kind: 'EQUIPMENT',
+                start: startDate.toISOString(),
+                end: equipEnd.toISOString(),
+                items: selectedItems,
+              }),
+            });
+
+            const equipData = await equipRes.json();
+            if (!equipRes.ok) {
+              throw new Error(equipData.error || 'Failed to book equipment');
+            }
+          } catch (equipErr) {
+            console.error(equipErr);
+            setError(
+              `Facility booked, but equipment booking failed: ${
+                equipErr instanceof Error ? equipErr.message : 'Unknown error'
+              }`
+            );
+            setLoading(false);
+            return;
+          }
         }
 
         setSuccess(true);
@@ -329,6 +479,91 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
               />
             )}
           </div>
+
+          {/* Optional equipment prompt for sport-specific facilities */}
+          {selectedSlot && facilitySport && recommendedEquipment[facilitySport] && (
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-accent-blue/10">
+                  <Sparkles className="h-5 w-5 text-accent-blue" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-text-main">
+                    Optional: add {facilitySport.replace('_', ' ').toLowerCase()} equipment for this slot
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    You can borrow matching equipment for this booking. It’s optional and non-blocking.
+                  </p>
+                  {equipmentLoading ? (
+                    <p className="text-xs text-text-muted">Loading equipment availability...</p>
+                  ) : equipmentError ? (
+                    <p className="text-xs text-red-300">{equipmentError}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2 text-xs text-text-muted">
+                        {recommendedEquipment[facilitySport].map(item => (
+                          <span key={item} className="px-2 py-1 rounded-full bg-white/5 border border-white/10">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        {sportsItems.map((item) => {
+                          const maxAllowed = equipmentMaxBySport[facilitySport]?.[item.name] ?? 0;
+                          const maxSelectable = Math.min(maxAllowed, item.qtyAvailable ?? 0);
+                          const current = equipmentSelection[item._id] ?? 0;
+                          return (
+                            <div key={item._id} className="flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                              <div className="space-y-1">
+                                <p className="text-sm text-text-main">{item.name}</p>
+                                <p className="text-xs text-text-muted">
+                                  Available: {item.qtyAvailable ?? 0} • Max per booking: {maxAllowed}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={current <= 0}
+                                  onClick={() =>
+                                    setEquipmentSelection((prev) => ({
+                                      ...prev,
+                                      [item._id]: Math.max(0, current - 1),
+                                    }))
+                                  }
+                                >
+                                  -
+                                </Button>
+                                <span className="min-w-[24px] text-center text-sm">{current}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={current >= maxSelectable}
+                                  onClick={() =>
+                                    setEquipmentSelection((prev) => ({
+                                      ...prev,
+                                      [item._id]: Math.min(maxSelectable, current + 1),
+                                    }))
+                                  }
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {sportsItems.length === 0 && (
+                          <p className="text-xs text-text-muted">No matching equipment available for this time.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Group Member Emails */}
           {isTeamSport && (

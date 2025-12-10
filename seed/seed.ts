@@ -129,7 +129,7 @@ async function seed() {
       { name: 'Cricket Bat', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
       { name: 'Cricket Ball', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
       { name: 'Cricket Stumps', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'CRICKET' },
-      { name: 'Volleyball', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, sportCategory: 'VOLLEYBALL' },
+      { name: 'Volleyball', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false, sportCategory: 'VOLLEYBALL' },
       { name: 'TT Bat', qtyTotal: 8, qtyAvailable: 8, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
       { name: 'TT Ball', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, sportCategory: 'TABLE_TENNIS' },
     ];

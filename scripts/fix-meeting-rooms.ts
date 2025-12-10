@@ -56,7 +56,7 @@ async function main() {
     { name: 'Cricket Bat', qtyTotal: 4, sportCategory: 'CRICKET' },
     { name: 'Cricket Ball', qtyTotal: 4, sportCategory: 'CRICKET' },
     { name: 'Cricket Stumps', qtyTotal: 4, sportCategory: 'CRICKET' },
-    { name: 'Volleyball', qtyTotal: 2, sportCategory: 'VOLLEYBALL' },
+    { name: 'Volleyball', qtyTotal: 3, sportCategory: 'VOLLEYBALL' },
     { name: 'TT Bat', qtyTotal: 8, sportCategory: 'TABLE_TENNIS' },
     { name: 'TT Ball', qtyTotal: 4, sportCategory: 'TABLE_TENNIS' },
   ];

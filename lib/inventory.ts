@@ -27,7 +27,10 @@ export async function getAvailableQuantity(
         items: {
             $elemMatch: { itemId }
         },
-        status: { $in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] }, // Active bookings
+        // PHYSICAL AVAILABILITY MODEL: Only count items that are actually checked out
+        // Advance bookings (PENDING/CONFIRMED) don't deplete inventory until QR scan
+        // This ensures equipment stays available to everyone until physically taken
+        status: 'CHECKED_IN',
         start: { $lt: end },
         end: { $gt: start }
     };

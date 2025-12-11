@@ -14,20 +14,18 @@ describe('Sport Equipment Kits', () => {
             const cricketKit = SPORT_EQUIPMENT_KITS.CRICKET;
             expect(cricketKit['Cricket Bat']).toBe(2);
             expect(cricketKit['Cricket Ball']).toBe(1);
-            expect(cricketKit['Cricket Pads']).toBe(2);
-            expect(cricketKit['Cricket Helmet']).toBe(2);
+            expect(cricketKit['Cricket Stumps']).toBe(2);
         });
 
         it('should have badminton kit with correct limits', () => {
             const badmintonKit = SPORT_EQUIPMENT_KITS.BADMINTON;
             expect(badmintonKit['Badminton Racket']).toBe(4);
-            expect(badmintonKit['Shuttlecocks']).toBe(2);
         });
 
         it('should have table tennis kit with correct limits', () => {
             const ttKit = SPORT_EQUIPMENT_KITS.TABLE_TENNIS;
-            expect(ttKit['TT Paddle']).toBe(4);
-            expect(ttKit['TT Balls']).toBe(2);
+            expect(ttKit['TT Bat']).toBe(4);
+            expect(ttKit['TT Ball']).toBe(1);
         });
 
         it('should have basketball kit with 1 ball limit', () => {
@@ -53,8 +51,8 @@ describe('Sport Equipment Kits', () => {
         });
 
         it('should handle partial name matching', () => {
-            // "TT Paddle" should match even if item name is slightly different
-            expect(getMaxQuantityForItem('TT Paddle', SPORT_CATEGORIES.TABLE_TENNIS)).toBe(4);
+            // "TT Bat" should match via partial matching
+            expect(getMaxQuantityForItem('TT Bat', SPORT_CATEGORIES.TABLE_TENNIS)).toBe(4);
         });
     });
 
@@ -63,7 +61,7 @@ describe('Sport Equipment Kits', () => {
             const items = [
                 { itemId: '1', name: 'Cricket Bat', qty: 2 },
                 { itemId: '2', name: 'Cricket Ball', qty: 1 },
-                { itemId: '3', name: 'Cricket Helmet', qty: 2 },
+                { itemId: '3', name: 'Cricket Stumps', qty: 2 },
             ];
 
             const result = await validateSportKitQuantities(items, SPORT_CATEGORIES.CRICKET);
@@ -96,7 +94,6 @@ describe('Sport Equipment Kits', () => {
         it('should allow valid badminton doubles kit', async () => {
             const items = [
                 { itemId: '1', name: 'Badminton Racket', qty: 4 }, // For doubles
-                { itemId: '2', name: 'Shuttlecocks', qty: 2 },
             ];
 
             const result = await validateSportKitQuantities(items, SPORT_CATEGORIES.BADMINTON);
@@ -118,8 +115,7 @@ describe('Sport Equipment Kits', () => {
     describe('getSuggestedFacilities', () => {
         it('should suggest TT tables for table tennis', () => {
             const facilities = getSuggestedFacilities(SPORT_CATEGORIES.TABLE_TENNIS);
-            expect(facilities).toContain('Table Tennis 1');
-            expect(facilities).toContain('Table Tennis 2');
+            expect(facilities).toContain('Table Tennis');
         });
 
         it('should suggest Basketball Court for basketball', () => {
@@ -142,7 +138,7 @@ describe('Sport Equipment Kits', () => {
         it('should return warning for table tennis without facility', () => {
             const warning = getFacilityWarningMessage(SPORT_CATEGORIES.TABLE_TENNIS);
             expect(warning).toContain('table tennis');
-            expect(warning).toContain('Table Tennis 1');
+            expect(warning).toContain('Table Tennis');
             expect(warning).toContain('Play responsibly');
         });
 

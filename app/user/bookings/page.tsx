@@ -585,28 +585,41 @@ export default function BookingsPage() {
               {pastBookings.slice(0, 10).map((booking, index) => (
                 <div
                   key={booking._id}
-                  className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
+                  className="rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
-                      booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
-                        booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
-                          'bg-text-muted/10 text-text-muted'
-                      }`}>
-                      {booking.status === 'COMPLETED' ? '✅' :
-                        booking.status === 'CANCELLED' ? '❌' :
-                          booking.status === 'NO_SHOW' ? '👻' : '📋'}
+                  <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
+                        booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
+                          booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
+                            'bg-text-muted/10 text-text-muted'
+                        }`}>
+                        {booking.status === 'COMPLETED' ? '✅' :
+                          booking.status === 'CANCELLED' ? '❌' :
+                            booking.status === 'NO_SHOW' ? '👻' : '📋'}
+                      </div>
+                      <div>
+                        <p className="font-medium text-text-main">{booking.resourceName}</p>
+                        <p className="text-sm text-text-muted flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDateTime(booking.start)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-text-main">{booking.resourceName}</p>
-                      <p className="text-sm text-text-muted flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDateTime(booking.start)}
-                      </p>
-                    </div>
+                    {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
                   </div>
-                  {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
+
+                  {/* Show rejection reason if booking was rejected */}
+                  {booking.approval === 'REJECTED' && booking.rejectionReason && (
+                    <div className="mt-3 p-3 bg-danger/10 border border-danger/20 rounded-lg flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-danger flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-medium text-danger">Rejection Reason:</p>
+                        <p className="text-sm text-text-main">{booking.rejectionReason}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 

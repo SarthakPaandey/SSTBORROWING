@@ -17,7 +17,7 @@ const navIcons: Record<string, string> = {
   '/user/equipment': '🎾',
   '/user/group-invitations': '👥',
   '/user/bookings': '📅',
-  '/user/calendar': '🗓️',
+
   '/user/penalties': '⚖️',
   '/admin/dashboard': '📊',
   '/admin/resources': '🗂️',
@@ -110,7 +110,7 @@ export function Navbar() {
       { href: '/user/equipment', label: 'Equipment' },
       { href: '/user/group-invitations', label: 'Group Invites' },
       { href: '/user/bookings', label: 'My Bookings' },
-      { href: '/user/calendar', label: 'Calendar' },
+
       { href: '/user/penalties', label: 'Rules & Penalties' },
     ];
   };

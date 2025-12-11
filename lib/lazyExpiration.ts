@@ -54,6 +54,7 @@ async function runExpirationTasks(): Promise<void> {
         await Promise.all([
             expireGroupBookings(),
             autoCompleteFacilitiesAndRooms(),
+            expireEquipmentNoShows(),
         ]);
 
     } catch (error) {
@@ -90,4 +91,52 @@ async function autoCompleteFacilitiesAndRooms(): Promise<number> {
     }
 
     return completedCount;
+}
+
+/**
+ * Expire equipment/library bookings that have passed the grace period without pickup.
+ * This marks them as NO_SHOW without applying penalties (penalties are applied by full cron).
+ * This keeps lazy expiration lightweight while preventing stale bookings from blocking limits.
+ */
+async function expireEquipmentNoShows(): Promise<number> {
+    const { POLICIES } = await import('./policies');
+    const now = new Date();
+    const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+    const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
+
+    // Mark CONFIRMED equipment/library bookings as NO_SHOW if past grace period
+    const confirmResult = await Booking.updateMany(
+        {
+            status: 'CONFIRMED',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            $or: [
+                { start: { $lt: noShowCutoff } }, // Start time + grace period has passed
+                { end: { $lt: now } }              // End time has passed
+            ],
+            checkedInAt: null, // Never checked in
+        },
+        {
+            $set: { status: 'NO_SHOW' }
+        }
+    );
+
+    // Also cancel PENDING equipment bookings that have started (can't pick up anymore)
+    const pendingResult = await Booking.updateMany(
+        {
+            status: 'PENDING',
+            kind: { $in: ['EQUIPMENT', 'LIBRARY'] },
+            start: { $lt: now }, // Start time has passed
+        },
+        {
+            $set: { status: 'CANCELLED' }
+        }
+    );
+
+    const totalExpired = (confirmResult.modifiedCount || 0) + (pendingResult.modifiedCount || 0);
+
+    if (totalExpired > 0) {
+        console.log(`[LazyExpiration] Expired ${totalExpired} equipment/library bookings (${confirmResult.modifiedCount} no-shows, ${pendingResult.modifiedCount} cancelled pending)`);
+    }
+
+    return totalExpired;
 }

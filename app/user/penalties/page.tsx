@@ -58,14 +58,26 @@ export default async function PenaltyGuidePage() {
 
   const bookingStatuses: BookingStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN'];
 
-  const [facilityActive, roomActive, equipmentActive, libraryActive] = await Promise.all([
+  const [facilityActive, roomActive, libraryActive, equipmentBookings] = await Promise.all([
     Booking.countDocuments({ userId: user._id, kind: 'FACILITY', status: { $in: bookingStatuses } }),
     Booking.countDocuments({ userId: user._id, kind: 'ROOM', status: { $in: bookingStatuses } }),
-    Booking.countDocuments({ userId: user._id, kind: 'EQUIPMENT', status: { $in: bookingStatuses } }),
     Booking.countDocuments({ userId: user._id, kind: 'LIBRARY', status: { $in: bookingStatuses } }),
+    Booking.find({ userId: user._id, kind: 'EQUIPMENT', status: { $in: bookingStatuses } })
+      .select('items')
+      .lean(),
   ]);
 
-  const activeTotal = facilityActive + roomActive + equipmentActive + libraryActive;
+  // Count total items across all active equipment bookings (not just booking count)
+  const equipmentItemsCount = equipmentBookings.reduce((total, booking) => {
+    if (booking.items && Array.isArray(booking.items)) {
+      return total + booking.items.reduce((sum, item) => sum + (item.qty || 0), 0);
+    }
+    return total;
+  }, 0);
+
+  // Total active bookings limit only applies to FACILITY + ROOM (not equipment/library)
+  // This matches the enforcement logic in app/api/bookings/route.ts
+  const activeTotal = facilityActive + roomActive;
 
   const nowIST = getNow();
   const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
@@ -114,7 +126,7 @@ export default async function PenaltyGuidePage() {
     buildBookingLimit(
       'Total active bookings',
       `${activeTotal}/${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS}`,
-      'Across all resource types'
+      'Facilities + Rooms only'
     ),
     buildBookingLimit(
       'Facilities',
@@ -128,7 +140,7 @@ export default async function PenaltyGuidePage() {
     ),
     buildBookingLimit(
       'Equipment items',
-      `${equipmentActive}/${POLICIES.MAX_ACTIVE_EQUIPMENT_ITEMS}`,
+      `${equipmentItemsCount}/${POLICIES.MAX_ACTIVE_EQUIPMENT_ITEMS}`,
       'Active borrowed items at once'
     ),
     buildBookingLimit(

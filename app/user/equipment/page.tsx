@@ -642,6 +642,18 @@ export default function EquipmentPage() {
                 </p>
               </div>
 
+              {/* Availability Warning Banner */}
+              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-warning text-sm">Availability = Physical Stock</p>
+                  <p className="text-xs text-text-muted">
+                    Shown availability is the current physical count. Equipment is not reserved until you check in with the guard.
+                    Multiple people may book the same slot - first to arrive gets the items.
+                  </p>
+                </div>
+              </div>
+
               {/* Lab duration selector - only show on Lab tab */}
               {tab === 'lab' && (
                 <div className="rounded-xl border border-card-border/40 bg-card/60 p-4 space-y-2">

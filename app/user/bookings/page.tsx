@@ -39,12 +39,6 @@ export default function BookingsPage() {
   }>({ open: false });
   const [rescheduling, setRescheduling] = useState(false);
   const [confirmedPenalty, setConfirmedPenalty] = useState(false);
-  const [extendModal, setExtendModal] = useState<{
-    open: boolean;
-    booking?: EnrichedBooking;
-    minutes: number;
-  }>({ open: false, minutes: 30 });
-  const [extending, setExtending] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -87,18 +81,14 @@ export default function BookingsPage() {
   }, [qrModal.open, qrModal.expiresAt]);
 
   const handleGenerateQR = async (bookingId: string, startTime: string) => {
-    const start = new Date(startTime).getTime();
-    const now = new Date().getTime();
-    const timeUntilStart = start - now;
-    const minutesUntilStart = timeUntilStart / (1000 * 60);
-
-    if (minutesUntilStart > 15) {
-      setError('QR code can only be generated 15 minutes before the booking start time');
-      return;
-    }
+    // Timing validation handled by backend - supports both:
+    // 1. Instant checkout (equipment page): QR available immediately
+    // 2. Advance booking (facility + equipment): QR available 15 min before slot
+    void startTime; // Keep param for potential future use
 
     setGeneratingQR(bookingId);
     setError('');
+
 
     try {
       const res = await fetch(`/api/bookings/${bookingId}/qr`, {
@@ -148,36 +138,7 @@ export default function BookingsPage() {
     }
   };
 
-  const handleExtend = async () => {
-    if (!extendModal.booking || !extendModal.minutes) return;
 
-    try {
-      setExtending(true);
-      setError('');
-
-      const res = await fetch(`/api/bookings/${extendModal.booking._id}/extend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minutes: extendModal.minutes }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to extend booking');
-      }
-
-      await fetchBookings();
-      setExtendModal({ open: false, minutes: 30 });
-      toast.success(`Booking extended by ${extendModal.minutes} minutes!`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to extend booking';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setExtending(false);
-    }
-  };
 
   const handleReschedule = async () => {
     if (!rescheduleModal.booking || !rescheduleModal.newStart || !rescheduleModal.newEnd) {
@@ -579,18 +540,7 @@ export default function BookingsPage() {
                         return null;
                       })()}
 
-                      {/* Extend button for checked-in equipment */}
-                      {booking.status === 'CHECKED_IN' && booking.kind === 'EQUIPMENT' && (booking.extensionCount || 0) < 1 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setExtendModal({ open: true, booking, minutes: 30 })}
-                          className="group/btn border-success text-success hover:bg-success/10"
-                        >
-                          <Plus className="mr-2 h-4 w-4 group-hover/btn:scale-125 transition-transform" />
-                          Extend Time
-                        </Button>
-                      )}
+
 
                       {['CONFIRMED', 'PENDING'].includes(booking.status) && (
                         <Button
@@ -875,73 +825,7 @@ export default function BookingsPage() {
         )}
       </Modal>
 
-      {/* Extend Equipment Modal */}
-      <Modal
-        isOpen={extendModal.open}
-        onClose={() => setExtendModal({ open: false, minutes: 30 })}
-        title="⏱️ Extend Equipment Time"
-      >
-        {extendModal.booking && (
-          <div className="space-y-4">
-            <div className="p-4 bg-bg-dark rounded-lg border border-card-border">
-              <p className="text-sm text-text-muted mb-1">Equipment</p>
-              <p className="font-medium text-text-main">
-                {extendModal.booking.items?.map(i => i.name).join(', ') || 'Equipment'}
-              </p>
-              <p className="text-sm text-text-muted mt-2">
-                Current return time: <span className="text-text-main">{formatDateTime(extendModal.booking.end)}</span>
-              </p>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-main mb-2">
-                Extend by (minutes)
-              </label>
-              <div className="flex gap-2">
-                {[15, 30, 45, 60].map((mins) => (
-                  <Button
-                    key={mins}
-                    size="sm"
-                    variant={extendModal.minutes === mins ? 'default' : 'outline'}
-                    onClick={() => setExtendModal({ ...extendModal, minutes: mins })}
-                  >
-                    {mins} min
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3 bg-accent-blue/10 rounded-lg border border-accent-blue/30">
-              <p className="text-sm text-accent-blue">
-                ℹ️ You can only extend once per booking. Max 60 minutes. Must return before 8 PM.
-              </p>
-            </div>
-
-            {error && (
-              <div className="p-3 bg-danger/10 rounded-lg border border-danger/30">
-                <p className="text-sm text-danger">{error}</p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setExtendModal({ open: false, minutes: 30 })}
-                disabled={extending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleExtend}
-                disabled={extending || !extendModal.minutes}
-                className="bg-success hover:bg-success/90"
-              >
-                {extending ? 'Extending...' : `Extend by ${extendModal.minutes} mins`}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

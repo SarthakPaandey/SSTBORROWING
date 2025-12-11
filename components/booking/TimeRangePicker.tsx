@@ -396,13 +396,10 @@ export default function TimeRangePicker({
 
                     {/* Main Timeline - Rectangular Bar */}
                     <div className="relative h-12 rounded-sm bg-slate-900/60 border border-slate-800/60 overflow-hidden">
-                        {/* Gradient overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-slate-800/80 via-transparent to-slate-800/80 pointer-events-none z-10" />
-
-                        {/* Available zone - Prominent green */}
+                        {/* Available zone - Solid green */}
                         {earliestBookableTime <= workEnd && (
                             <div
-                                className="absolute inset-y-0 bg-green-500/40 transition-all duration-500"
+                                className="absolute inset-y-0 bg-green-600/50 transition-all duration-500"
                                 style={{
                                     left: isToday ? `${getPosition(timelineEarliestBookable)}%` : '0%',
                                     right: '0%',
@@ -423,7 +420,7 @@ export default function TimeRangePicker({
                             </div>
                         )}
 
-                        {/* Busy slots */}
+                        {/* Busy slots - Solid red */}
                         {busySlots.map((slot, index) => {
                             const slotStart = parseTime(slot.start);
                             const slotEnd = parseTime(slot.end);
@@ -432,7 +429,7 @@ export default function TimeRangePicker({
                             return (
                                 <div
                                     key={index}
-                                    className="absolute inset-y-1 rounded-sm bg-red-500/60 border border-red-400"
+                                    className="absolute inset-y-1 rounded-sm bg-red-500/70 border border-red-400"
                                     style={{ left: `${left}%`, width: `${width}%` }}
                                 />
                             );

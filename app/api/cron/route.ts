@@ -4,7 +4,7 @@ import { Booking } from '@/models/Booking';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { QRToken } from '@/models/QRToken';
-import { POLICIES } from '@/lib/policies';
+import { POLICIES, loadDynamicPolicies } from '@/lib/policies';
 import { recalculatePenaltyPoints, expireGroupBookings } from '@/lib/groupBookingPenalties';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
 import { getDaysAgo } from '@/lib/timezone';
@@ -42,6 +42,13 @@ export async function GET(req: NextRequest) {
             }, { status: 200 });
         }
 
+        // Load dynamic policies from admin settings
+        const dynamicPolicies = await loadDynamicPolicies([
+            'NO_SHOW_GRACE_MINUTES',
+            'PENALTY_THRESHOLD_LEVEL_0',
+            'SUSPENSION_DURATION_LEVEL_0',
+        ]);
+
         // Use UTC for database comparisons (DB stores UTC timestamps)
         const now = new Date();
         const results = {
@@ -55,7 +62,7 @@ export async function GET(req: NextRequest) {
 
         // 1. Handle No-Shows (EQUIPMENT and LIBRARY only)
         // FIX: Each booking update + penalty is now wrapped in a transaction for atomicity
-        const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const gracePeriodMs = dynamicPolicies.NO_SHOW_GRACE_MINUTES * 60 * 1000;
         const noShowCutoff = new Date(now.getTime() - gracePeriodMs);
 
         const noShowBookings = await Booking.find({

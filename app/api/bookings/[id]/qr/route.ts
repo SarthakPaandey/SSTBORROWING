@@ -71,22 +71,32 @@ export async function POST(
     const bookingEnd = new Date(booking.end).getTime();
     const bookingStart = new Date(booking.start).getTime();
 
-    // Use policy for QR validity window (set to 1440 min / 24 hours for testing)
-    const GRACE_PERIOD_MS = POLICIES.QR_VALIDITY_BEFORE_START * 60 * 1000;
+    // Detect instant checkout: booking start is within 5 minutes of "now" (or in the past)
+    // This happens when user books from Equipment page (start = now) vs Facility page (start = future slot)
+    const isInstantCheckout = (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY')
+      && (bookingStart - now.getTime() <= 5 * 60 * 1000);
+
+    // For instant checkout: allow QR generation immediately (no early restriction)
+    // For advance bookings: use standard policy window (QR_VALIDITY_BEFORE_START minutes before)
+    const GRACE_PERIOD_MS = isInstantCheckout
+      ? Math.max(0, bookingStart - now.getTime()) + 60 * 1000  // Allow immediately (with 1 min buffer)
+      : POLICIES.QR_VALIDITY_BEFORE_START * 60 * 1000;         // Standard policy window
 
     // Allow QR generation:
-    // - Starting GRACE_PERIOD_MS before booking start (24 hours in testing mode)
-    // - Up to 15 minutes AFTER booking start (grace period for pickup)
+    // - Starting GRACE_PERIOD_MS before booking start
+    // - Up to QR_VALIDITY_AFTER_START minutes AFTER booking start (grace period for pickup)
     const earliestGenTime = bookingStart - GRACE_PERIOD_MS;
-    const latestGenTime = bookingStart + (POLICIES.QR_VALIDITY_AFTER_START * 60 * 1000); // 30 min after START
+    const latestGenTime = bookingStart + (POLICIES.QR_VALIDITY_AFTER_START * 60 * 1000);
 
     if (now.getTime() < earliestGenTime) {
-      throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time`);
+      const minutesUntil = Math.ceil((earliestGenTime - now.getTime()) / (60 * 1000));
+      throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time. Please wait ${minutesUntil} more minutes.`);
     }
 
     if (now.getTime() > latestGenTime) {
       throw new ValidationError(`QR generation window closed. Must generate within ${POLICIES.QR_VALIDITY_AFTER_START} minutes of booking start time.`);
     }
+
 
     // Clean up any expired or used tokens for this booking to prevent confusion
     // This helps avoid "Token already used" errors when users accidentally scan old QRs

@@ -13,6 +13,7 @@ import {
   canUserBook,
   isWithinAdvanceWindow,
   hasConsecutiveBookings,
+  loadDynamicPolicies,
 } from '@/lib/policies';
 import { sendEmail, generateApprovalEmailHTML, getApprovalEmailRecipients } from '@/lib/email';
 import { formatDateTime } from '@/lib/utils';
@@ -127,6 +128,21 @@ async function postHandler(req: Request) {
         throw new ValidationError('Invalid resource ID format');
       }
 
+      // Load dynamic policies from admin settings (with DB override support)
+      const dynamicPolicies = await loadDynamicPolicies([
+        'WORKING_HOURS_START',
+        'WORKING_HOURS_END',
+        'MIN_BOOKING_DURATION_MINUTES',
+        'MAX_BOOKING_DURATION_MINUTES',
+        'MAX_ACTIVE_FACILITIES',
+        'MAX_ACTIVE_ROOMS',
+        'MAX_TOTAL_ACTIVE_BOOKINGS',
+        'ADVANCE_BOOKING_DAYS',
+        'NO_SHOW_GRACE_MINUTES',
+        'MAX_RESCHEDULE_PER_BOOKING',
+        'MAX_RESCHEDULE_PER_MONTH',
+      ]);
+
       const startDate = new Date(start);
       const endDate = new Date(end);
 
@@ -139,7 +155,7 @@ async function postHandler(req: Request) {
         throw new ValidationError('Cannot book in the past');
       }
 
-      // Validate working hours (8 AM - 8 PM IST)
+      // Validate working hours (dynamic from admin settings)
       // Convert to IST for validation
       const startIST = toIST(startDate);
       const endIST = toIST(endDate);
@@ -147,17 +163,17 @@ async function postHandler(req: Request) {
       const endHour = endIST.getHours();
       const endMinutes = endIST.getMinutes();
 
-      // Working hours: 8:00 AM (08:00) to 8:00 PM (20:00)
-      if (startHour < POLICIES.WORKING_HOURS_START) {
-        throw new ValidationError(`Bookings cannot start before ${POLICIES.WORKING_HOURS_START}:00 AM`);
+      // Working hours: configurable via admin settings
+      if (startHour < dynamicPolicies.WORKING_HOURS_START) {
+        throw new ValidationError(`Bookings cannot start before ${dynamicPolicies.WORKING_HOURS_START}:00 AM`);
       }
 
-      // End time can be exactly 8:00 PM (20:00) but not after
+      // End time can be exactly closing time but not after
       if (
-        endHour > POLICIES.WORKING_HOURS_END ||
-        (endHour === POLICIES.WORKING_HOURS_END && endMinutes > 0)
+        endHour > dynamicPolicies.WORKING_HOURS_END ||
+        (endHour === dynamicPolicies.WORKING_HOURS_END && endMinutes > 0)
       ) {
-        throw new ValidationError(`Bookings cannot end after ${POLICIES.WORKING_HOURS_END % 12 || 12}:00 PM`);
+        throw new ValidationError(`Bookings cannot end after ${dynamicPolicies.WORKING_HOURS_END % 12 || 12}:00 PM`);
       }
 
       // Get user with penalty info
@@ -219,7 +235,7 @@ async function postHandler(req: Request) {
       // Check advance window (skip for equipment borrows which are immediate)
       if (kind !== 'EQUIPMENT') {
         if (!isWithinAdvanceWindow(startDate)) {
-          throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+          throw new ValidationError(`Bookings can only be made up to ${dynamicPolicies.ADVANCE_BOOKING_DAYS} days in advance`);
         }
       }
 
@@ -227,17 +243,17 @@ async function postHandler(req: Request) {
       const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
 
       if (kind === 'FACILITY' || kind === 'ROOM') {
-        // Dynamic slot system: 15-120 minutes
-        if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+        // Dynamic slot system: configurable via admin settings
+        if (durationMinutes < dynamicPolicies.MIN_BOOKING_DURATION_MINUTES) {
           throw new ValidationError(
-            `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
+            `Booking duration must be at least ${dynamicPolicies.MIN_BOOKING_DURATION_MINUTES} minutes. ` +
             `Current duration: ${Math.round(durationMinutes)} minutes.`
           );
         }
 
-        if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
+        if (durationMinutes > dynamicPolicies.MAX_BOOKING_DURATION_MINUTES) {
           throw new ValidationError(
-            `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
+            `Booking duration cannot exceed ${dynamicPolicies.MAX_BOOKING_DURATION_MINUTES} minutes (${dynamicPolicies.MAX_BOOKING_DURATION_MINUTES / 60} hours). ` +
             `Current duration: ${Math.round(durationMinutes)} minutes.`
           );
         }
@@ -302,8 +318,8 @@ async function postHandler(req: Request) {
           end: { $gt: new Date() },
         }).session(session);
 
-        if (activeFacilities >= POLICIES.MAX_ACTIVE_FACILITIES) {
-          throw new ValidationError(`You can only have ${POLICIES.MAX_ACTIVE_FACILITIES} active facility bookings at a time. Please wait for one to complete or cancel it.`);
+        if (activeFacilities >= dynamicPolicies.MAX_ACTIVE_FACILITIES) {
+          throw new ValidationError(`You can only have ${dynamicPolicies.MAX_ACTIVE_FACILITIES} active facility bookings at a time. Please wait for one to complete or cancel it.`);
         }
 
         const facilitySport = getFacilitySportCategory(resource.name);
@@ -332,8 +348,8 @@ async function postHandler(req: Request) {
           end: { $gt: new Date() },
         }).session(session);
 
-        if (activeRooms >= POLICIES.MAX_ACTIVE_ROOMS) {
-          throw new ValidationError(`You can only have ${POLICIES.MAX_ACTIVE_ROOMS} active room booking at a time. Please wait for it to complete or cancel it.`);
+        if (activeRooms >= dynamicPolicies.MAX_ACTIVE_ROOMS) {
+          throw new ValidationError(`You can only have ${dynamicPolicies.MAX_ACTIVE_ROOMS} active room booking at a time. Please wait for it to complete or cancel it.`);
         }
       }
 
@@ -348,8 +364,8 @@ async function postHandler(req: Request) {
       const groupActiveBookings = await countActiveGroupParticipations(user.id, session);
       const totalActiveBookings = personalActiveBookings + groupActiveBookings;
 
-      if (totalActiveBookings >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
-        throw new ValidationError(`You can only have ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS} active facility/room bookings at a time. Please cancel or complete existing bookings first.`);
+      if (totalActiveBookings >= dynamicPolicies.MAX_TOTAL_ACTIVE_BOOKINGS) {
+        throw new ValidationError(`You can only have ${dynamicPolicies.MAX_TOTAL_ACTIVE_BOOKINGS} active facility/room bookings at a time. Please cancel or complete existing bookings first.`);
       }
 
       // Per-user, per-category daily & monthly caps
@@ -368,7 +384,7 @@ async function postHandler(req: Request) {
       // Check library book limits
       if (kind === 'LIBRARY') {
         // FIX: Only count as active if CHECKED_IN or within pickup window
-        const gracePeriodMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const gracePeriodMs = dynamicPolicies.NO_SHOW_GRACE_MINUTES * 60 * 1000;
         const graceCutoff = new Date(new Date().getTime() - gracePeriodMs);
 
         const activeBookBorrowings = await Booking.countDocuments({
@@ -393,10 +409,32 @@ async function postHandler(req: Request) {
       // Check for overlapping equipment bookings (Lab OR Sports)
       // A student playing sports can't simultaneously use lab equipment
       if (kind === 'EQUIPMENT') {
+        // FIX: For equipment, only block if:
+        // 1. CHECKED_IN (user actually has the equipment), OR
+        // 2. CONFIRMED/PENDING but still within the pickup grace period
+        // Bookings that are CONFIRMED/PENDING but past grace period should NOT block
+        // (they are effectively expired and will be cleaned up by cron)
+        const gracePeriodMs = dynamicPolicies.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const nowTime = new Date();
+
         const overlappingEquipmentBooking = await Booking.findOne({
           userId: user.id,
           kind: 'EQUIPMENT',
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          $or: [
+            // CHECKED_IN bookings always block (user has the equipment)
+            { status: 'CHECKED_IN' },
+            // CONFIRMED/PENDING only block if still within grace period
+            {
+              status: { $in: ['CONFIRMED', 'PENDING'] },
+              // Grace period hasn't expired: start + grace > now
+              $expr: {
+                $gt: [
+                  { $add: ['$start', gracePeriodMs] },
+                  nowTime
+                ]
+              }
+            }
+          ],
           // Check for time overlap
           start: { $lt: endDate },
           end: { $gt: startDate },
@@ -492,11 +530,26 @@ async function postHandler(req: Request) {
         }).session(session);
         const sportsEquipmentIds = sportsEquipmentResources.map(r => r.id);
 
+        // FIX: Exclude expired equipment bookings (past grace period)
+        const gracePeriodMs = dynamicPolicies.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+        const nowTime = new Date();
+
         const sportsConflict = await Booking.findOne({
           userId: user.id,
           resourceId: { $in: sportsEquipmentIds },
           kind: 'EQUIPMENT',
-          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          $or: [
+            { status: 'CHECKED_IN' },
+            {
+              status: { $in: ['CONFIRMED', 'PENDING'] },
+              $expr: {
+                $gt: [
+                  { $add: ['$start', gracePeriodMs] },
+                  nowTime
+                ]
+              }
+            }
+          ],
           start: { $lt: endDate },
           end: { $gt: startDate },
         }).session(session);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { SystemConfig, EDITABLE_POLICIES, EditablePolicyKey } from '@/models/SystemConfig';
-import { POLICIES } from '@/lib/policies';
+import { POLICIES, refreshPolicyCache } from '@/lib/policies';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError } from '@/lib/errors';
 
@@ -124,6 +124,11 @@ export async function POST(req: NextRequest) {
 
         const successCount = results.filter(r => r.success).length;
         const failCount = results.filter(r => !r.success).length;
+
+        // FIX: Refresh policy cache so new values take effect immediately
+        if (successCount > 0) {
+            await refreshPolicyCache();
+        }
 
         return NextResponse.json({
             success: failCount === 0,

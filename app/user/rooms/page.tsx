@@ -28,9 +28,9 @@ function getRoomConfig(name: string) {
 }
 
 function getCapacityBadge(capacity: number) {
-  if (capacity <= 4) return { label: 'Cozy', color: 'bg-blue-500/20 text-blue-400' };
-  if (capacity <= 10) return { label: 'Medium', color: 'bg-amber-500/20 text-amber-400' };
-  if (capacity <= 20) return { label: 'Large', color: 'bg-emerald-500/20 text-emerald-400' };
+  if (capacity <= 6) return { label: 'Small', color: 'bg-blue-500/20 text-blue-400' };
+  if (capacity <= 12) return { label: 'Medium', color: 'bg-amber-500/20 text-amber-400' };
+  if (capacity <= 24) return { label: 'Large', color: 'bg-emerald-500/20 text-emerald-400' };
   return { label: 'Hall', color: 'bg-purple-500/20 text-purple-400' };
 }
 
@@ -57,12 +57,12 @@ export default async function RoomsPage() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-purple-1/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         {/* Floating room icons */}
         <div className="absolute top-4 right-8 text-4xl opacity-20 animate-float">🚪</div>
         <div className="absolute bottom-4 right-24 text-3xl opacity-20 animate-float" style={{ animationDelay: '1s' }}>🏢</div>
         <div className="absolute top-12 right-32 text-2xl opacity-20 animate-float" style={{ animationDelay: '2s' }}>📋</div>
-        
+
         <div className="relative flex items-center gap-4">
           <div className="relative">
             {/* Animated glow ring */}
@@ -90,7 +90,7 @@ export default async function RoomsPage() {
           { label: 'Study Rooms', value: rooms.filter(r => r.name.toLowerCase().includes('study')).length, emoji: '📚' },
           { label: 'Available Now', value: rooms.length, emoji: '✅' },
         ].map((stat, index) => (
-          <div 
+          <div
             key={stat.label}
             className="p-3 rounded-xl bg-card border border-card-border hover:border-accent-purple-1/30 transition-all group"
             style={{ animationDelay: `${index * 50}ms` }}
@@ -108,11 +108,10 @@ export default async function RoomsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rooms.map((room, index) => {
           const config = getRoomConfig(room.name);
-          const capacityBadge = room.capacity ? getCapacityBadge(room.capacity) : null;
-          
+
           return (
-            <Link 
-              key={room._id.toString()} 
+            <Link
+              key={room._id.toString()}
               href={`/user/rooms/${room._id}`}
               className="group"
               style={{ animationDelay: `${index * 50}ms` }}
@@ -120,33 +119,26 @@ export default async function RoomsPage() {
               <Card className={`cursor-pointer transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:-translate-y-2 overflow-hidden bg-gradient-to-br ${config.gradient} border ${config.accent} animate-fade-in-up`}>
                 {/* Top accent line */}
                 <div className="h-1 bg-gradient-to-r from-accent-purple-1 via-pink-500 to-accent-purple-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-                
+
                 <CardHeader className="pb-2">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">
-                        {config.emoji}
-                      </span>
-                      <div>
-                        <CardTitle className="group-hover:text-accent-purple-1 transition-colors">
-                          {room.name}
-                        </CardTitle>
-                        {room.location && (
-                          <CardDescription className="flex items-center text-text-muted mt-1">
-                            <MapPin className="mr-1 h-3 w-3" />
-                            {room.location}
-                          </CardDescription>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">
+                      {config.emoji}
+                    </span>
+                    <div>
+                      <CardTitle className="group-hover:text-accent-purple-1 transition-colors">
+                        {room.name}
+                      </CardTitle>
+                      {room.location && (
+                        <CardDescription className="flex items-center text-text-muted mt-1">
+                          <MapPin className="mr-1 h-3 w-3" />
+                          {room.location}
+                        </CardDescription>
+                      )}
                     </div>
-                    {capacityBadge && (
-                      <Badge className={`${capacityBadge.color} text-xs`}>
-                        {capacityBadge.label}
-                      </Badge>
-                    )}
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="pt-2">
                   <div className="space-y-3">
                     {/* Info pills */}
@@ -155,14 +147,8 @@ export default async function RoomsPage() {
                         <Clock className="h-3 w-3 text-accent-purple-1" />
                         <span>8 AM – 8 PM</span>
                       </div>
-                      {room.capacity && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-bg-dark/50 text-xs text-text-muted">
-                          <Users className="h-3 w-3 text-accent-purple-1" />
-                          <span>{room.capacity} people</span>
-                        </div>
-                      )}
                     </div>
-                    
+
                     {/* Book now hint */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t border-card-border/50">
                       <span className="text-xs text-text-muted group-hover:text-accent-purple-1 transition-colors">

@@ -58,6 +58,27 @@ export async function refreshPolicyCache(): Promise<void> {
   await getPolicyValue('MAX_FACILITY_BOOKINGS_PER_DAY'); // Trigger refresh
 }
 
+/**
+ * Load multiple dynamic policy values at once.
+ * More efficient than individual getPolicyValue calls when you need many values.
+ * Returns an object with the policy keys as properties.
+ */
+export async function loadDynamicPolicies<K extends keyof typeof POLICIES>(
+  keys: K[]
+): Promise<{ [P in K]: number }> {
+  // Ensure cache is fresh
+  const now = Date.now();
+  if (!policyCache || now > policyCacheExpiry) {
+    await getPolicyValue(keys[0]); // This triggers cache refresh
+  }
+
+  const result = {} as { [P in K]: number };
+  for (const key of keys) {
+    result[key] = policyCache?.get(key) ?? (POLICIES[key] as number);
+  }
+  return result;
+}
+
 export const POLICIES = {
   // Booking limits
   MAX_ACTIVE_FACILITIES: 2,

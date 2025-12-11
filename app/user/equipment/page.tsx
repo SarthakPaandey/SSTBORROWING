@@ -92,17 +92,22 @@ export default function EquipmentPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const fetchRequestId = useRef(0);
-  const equipmentThought = useMemo(() => {
-    const quotes = [
-      { text: 'The harder you work, the luckier you get.', author: 'Gary Player' },
-      { text: 'It always seems impossible until it’s done.', author: 'Nelson Mandela' },
-      { text: 'Practice beats talent when talent doesn’t practice.', author: 'Unknown' },
-      { text: 'Somewhere, something incredible is waiting to be known.', author: 'Carl Sagan' },
-      { text: 'Imagination is more important than knowledge.', author: 'Albert Einstein' },
-      { text: 'Champions keep playing until they get it right.', author: 'Billie Jean King' },
-      { text: 'In science, we don’t make predictions, we try to explain.', author: 'Steven Weinberg' },
-    ];
-    return quotes[Math.floor(Math.random() * quotes.length)];
+  // Use consistent quote on server/client to avoid hydration mismatch
+  const quotes = [
+    { text: 'The harder you work, the luckier you get.', author: 'Gary Player' },
+    { text: 'It always seems impossible until it\'s done.', author: 'Nelson Mandela' },
+    { text: 'Practice beats talent when talent doesn\'t practice.', author: 'Unknown' },
+    { text: 'Somewhere, something incredible is waiting to be known.', author: 'Carl Sagan' },
+    { text: 'Imagination is more important than knowledge.', author: 'Albert Einstein' },
+    { text: 'Champions keep playing until they get it right.', author: 'Billie Jean King' },
+    { text: 'In science, we don\'t make predictions, we try to explain.', author: 'Steven Weinberg' },
+  ];
+  const [equipmentThought, setEquipmentThought] = useState(quotes[0]);
+
+  // Randomize quote only on client side after hydration to avoid mismatch
+  useEffect(() => {
+    setEquipmentThought(quotes[Math.floor(Math.random() * quotes.length)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1005,8 +1010,8 @@ export default function EquipmentPage() {
                               onClick={() => handleQuantityChange(item._id, isSelected ? 0 : 1)}
                               disabled={isOutOfStock && !isSelected}
                               className={`min-w-[100px] transition-all ${isSelected
-                                  ? 'bg-accent-purple-1 hover:bg-accent-purple-1/90 text-white'
-                                  : 'hover:border-accent-purple-1/30 hover:text-accent-purple-1'
+                                ? 'bg-accent-purple-1 hover:bg-accent-purple-1/90 text-white'
+                                : 'hover:border-accent-purple-1/30 hover:text-accent-purple-1'
                                 }`}
                             >
                               {isSelected ? (

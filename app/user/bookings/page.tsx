@@ -502,6 +502,7 @@ export default function BookingsPage() {
                         </Button>
                       )}
 
+                      {/* Reschedule button temporarily disabled - needs availability display
                       {(() => {
                         const rescheduleCheck = canReschedule(booking);
                         if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
@@ -541,6 +542,7 @@ export default function BookingsPage() {
                         }
                         return null;
                       })()}
+                      */}
 
 
 

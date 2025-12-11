@@ -58,22 +58,12 @@ export default async function PenaltyGuidePage() {
 
   const bookingStatuses: BookingStatus[] = ['PENDING', 'CONFIRMED', 'CHECKED_IN'];
 
-  const [facilityActive, roomActive, libraryActive, equipmentBookings] = await Promise.all([
+  const [facilityActive, roomActive, libraryActive] = await Promise.all([
     Booking.countDocuments({ userId: user._id, kind: 'FACILITY', status: { $in: bookingStatuses } }),
     Booking.countDocuments({ userId: user._id, kind: 'ROOM', status: { $in: bookingStatuses } }),
     Booking.countDocuments({ userId: user._id, kind: 'LIBRARY', status: { $in: bookingStatuses } }),
-    Booking.find({ userId: user._id, kind: 'EQUIPMENT', status: { $in: bookingStatuses } })
-      .select('items')
-      .lean(),
   ]);
 
-  // Count total items across all active equipment bookings (not just booking count)
-  const equipmentItemsCount = equipmentBookings.reduce((total, booking) => {
-    if (booking.items && Array.isArray(booking.items)) {
-      return total + booking.items.reduce((sum, item) => sum + (item.qty || 0), 0);
-    }
-    return total;
-  }, 0);
 
   // Total active bookings limit only applies to FACILITY + ROOM (not equipment/library)
   // This matches the enforcement logic in app/api/bookings/route.ts
@@ -138,11 +128,7 @@ export default async function PenaltyGuidePage() {
       `${roomActive}/${POLICIES.MAX_ACTIVE_ROOMS}`,
       'Active room bookings at once'
     ),
-    buildBookingLimit(
-      'Equipment items',
-      `${equipmentItemsCount}/${POLICIES.MAX_ACTIVE_EQUIPMENT_ITEMS}`,
-      'Active borrowed items at once'
-    ),
+
     buildBookingLimit(
       'Monthly facility hours',
       `${facilityHoursUsed.toFixed(1)}/${POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hrs`,

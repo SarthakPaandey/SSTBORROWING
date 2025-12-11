@@ -155,7 +155,7 @@ export default async function PenaltyGuidePage() {
     { label: 'Damage or lost item', points: POLICIES.PENALTY_DAMAGE },
     { label: 'Early cancellation (>24h before)', points: POLICIES.PENALTY_CANCELLATION },
     { label: 'Late cancellation (<24h before)', points: POLICIES.PENALTY_LATE_CANCELLATION },
-    { label: 'Reschedule fee', points: POLICIES.RESCHEDULE_PENALTY_POINTS },
+
   ];
 
   const escalationSteps = [
@@ -188,7 +188,7 @@ export default async function PenaltyGuidePage() {
     },
     {
       q: 'When do penalties apply?',
-      a: 'Common cases: no-show, late return, damage/loss, late cancellation, missing a library pickup, or rescheduling fees.',
+      a: 'Common cases: no-show, late return, damage/loss, late cancellation, or missing a library pickup.',
     },
     {
       q: 'What happens when I hit a threshold?',
@@ -322,7 +322,7 @@ export default async function PenaltyGuidePage() {
             <ul className="space-y-2 text-sm text-text-muted">
               <li>• Hold up to 3 active facility/room bookings combined (per-type limits apply).</li>
               <li>• Book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance.</li>
-              <li>• Reschedule once per booking (free, no penalty).</li>
+
               <li>• Borrow up to {POLICIES.MAX_BOOKS_PER_STUDENT} library book at a time.</li>
               <li>• Keep facility usage under {POLICIES.MAX_FACILITY_HOURS_PER_MONTH} hrs/month and rooms under {POLICIES.MAX_ROOM_HOURS_PER_MONTH} hrs/month.</li>
             </ul>

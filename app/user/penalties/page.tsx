@@ -184,7 +184,7 @@ export default async function PenaltyGuidePage() {
   const faqItems = [
     {
       q: 'How many bookings can I hold at once?',
-      a: 'Up to 3 total active bookings across all types, with sub-limits of 2 facilities, 1 room, and 5 equipment items.',
+      a: 'Up to 3 active facility/room bookings combined (max 2 facilities, 1 room). Equipment and library borrows have separate monthly limits.',
     },
     {
       q: 'When do penalties apply?',
@@ -320,7 +320,7 @@ export default async function PenaltyGuidePage() {
           <div className="rounded-xl border border-card-border bg-card/70 p-4 space-y-3">
             <p className="text-sm font-semibold text-text-main">What you&apos;re currently allowed to do</p>
             <ul className="space-y-2 text-sm text-text-muted">
-              <li>• Hold up to 3 active bookings in total (within per-type limits).</li>
+              <li>• Hold up to 3 active facility/room bookings combined (per-type limits apply).</li>
               <li>• Book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance.</li>
               <li>• Reschedule once per booking (free, no penalty).</li>
               <li>• Borrow up to {POLICIES.MAX_BOOKS_PER_STUDENT} library book at a time.</li>

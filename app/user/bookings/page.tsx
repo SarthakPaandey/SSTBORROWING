@@ -112,7 +112,9 @@ export default function BookingsPage() {
       });
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate QR code');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate QR code';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setGeneratingQR(null);
     }

@@ -8,6 +8,36 @@ import { POLICIES } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import mongoose from 'mongoose';
 
+/**
+ * Format milliseconds into human-readable duration
+ * Examples: "5 minutes", "2 hours and 30 minutes", "1 day and 3 hours"
+ */
+function formatDuration(ms: number): string {
+  const totalMinutes = Math.ceil(ms / (60 * 1000));
+
+  if (totalMinutes < 60) {
+    return `${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`;
+  }
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (totalHours < 24) {
+    if (minutes === 0) {
+      return `${totalHours} ${totalHours === 1 ? 'hour' : 'hours'}`;
+    }
+    return `${totalHours} ${totalHours === 1 ? 'hour' : 'hours'} and ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  }
+
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (hours === 0) {
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+  return `${days} ${days === 1 ? 'day' : 'days'} and ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -89,8 +119,9 @@ export async function POST(
     const latestGenTime = bookingStart + (POLICIES.QR_VALIDITY_AFTER_START * 60 * 1000);
 
     if (now.getTime() < earliestGenTime) {
-      const minutesUntil = Math.ceil((earliestGenTime - now.getTime()) / (60 * 1000));
-      throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time. Please wait ${minutesUntil} more minutes.`);
+      const timeRemaining = earliestGenTime - now.getTime();
+      const readableDuration = formatDuration(timeRemaining);
+      throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time. Please wait ${readableDuration}.`);
     }
 
     if (now.getTime() > latestGenTime) {

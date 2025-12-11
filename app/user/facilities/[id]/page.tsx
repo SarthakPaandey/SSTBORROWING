@@ -41,6 +41,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   const [equipmentSelection, setEquipmentSelection] = useState<Record<string, number>>({});
   const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [equipmentError, setEquipmentError] = useState('');
+  const [sharedTurfSport, setSharedTurfSport] = useState<'FOOTBALL' | 'CRICKET'>('FOOTBALL');
 
   useEffect(() => {
     fetchResource();
@@ -103,6 +104,10 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   };
 
   const facilitySport = getFacilitySportCategory(resource?.name);
+  const isSharedTurf =
+    resource?.sharedGroupId === POLICIES.SHARED_TURF_GROUP_ID ||
+    (resource?.name?.toLowerCase() || '').includes('turf');
+  const sportForEquipment = isSharedTurf ? sharedTurfSport : facilitySport;
 
   const recommendedEquipment: Record<string, string[]> = {
     TABLE_TENNIS: ['TT Bat (up to 4)', 'TT Ball (up to 1)'],
@@ -142,7 +147,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
   // Fetch available sports items for the selected slot and sport
   useEffect(() => {
-    const sport = facilitySport;
+    const sport = sportForEquipment;
     if (!sport || !sportsResourceId || !selectedSlot) {
       setSportsItems([]);
       setEquipmentSelection({});
@@ -162,7 +167,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
         if (!res.ok) {
           throw new Error(data.error || 'Failed to load equipment availability');
         }
-        const allowed = equipmentMaxBySport[sport] || {};
+        const allowed = equipmentMaxBySport[sportForEquipment] || {};
         const filtered =
           Array.isArray(data.items)
             ? data.items.filter((item: any) => allowed[item.name] !== undefined)
@@ -179,18 +184,29 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
 
     fetchItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [facilitySport, sportsResourceId, selectedSlot?.start, selectedSlot?.end]);
+  }, [sportForEquipment, sportsResourceId, selectedSlot?.start, selectedSlot?.end]);
 
   const handleBook = async () => {
     if (!selectedSlot) return;
 
-    // Validate that slot is not in the past
+    // Validate that slot is not in the past and clamp end to 8 PM
     const today = getISTToday();
     const slotStart = new Date(selectedSlot.start);
+    const slotEndRaw = new Date(selectedSlot.end);
     const now = getISTNow();
+    const closing = new Date(slotStart);
+    closing.setHours(20, 0, 0, 0); // 8 PM local
+    const slotEnd = slotEndRaw > closing ? closing : slotEndRaw;
 
     if (date === today && slotStart < now) {
       setError('Cannot book a time slot in the past');
+      return;
+    }
+
+    // Ensure minimum duration (15 minutes) and not zero after clamp
+    const durationMinutes = (slotEnd.getTime() - slotStart.getTime()) / (1000 * 60);
+    if (durationMinutes < 15) {
+      setError('Booking duration must be at least 15 minutes before 8:00 PM closing.');
       return;
     }
 
@@ -224,7 +240,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
           body: JSON.stringify({
             resourceId: params.id,
             start: selectedSlot.start,
-            end: selectedSlot.end,
+            end: slotEnd.toISOString(),
             memberEmails: validEmails,
           }),
         });
@@ -255,7 +271,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
             resourceId: params.id,
             kind: 'FACILITY',
             start: selectedSlot.start,
-            end: selectedSlot.end,
+            end: slotEnd.toISOString(),
           }),
         });
 
@@ -273,20 +289,17 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
         if (selectedItems.length > 0 && sportsResourceId) {
           try {
             const startDate = new Date(selectedSlot.start);
-            const endDate = new Date(selectedSlot.end);
+            const endDate = slotEnd;
 
-            // Equipment borrow end = min(facility end, start+75min, same-day 8PM)
-            const equipEnd = new Date(startDate);
-            equipEnd.setMinutes(equipEnd.getMinutes() + 75);
-            const facilityEnd = endDate;
-            if (equipEnd > facilityEnd) equipEnd.setTime(facilityEnd.getTime());
-
+            // Equipment borrow matches facility window, clamped to 8 PM same day
+            const equipStart = new Date(startDate);
+            const equipEnd = new Date(endDate);
             const closing = new Date(startDate);
             closing.setHours(20, 0, 0, 0); // 8 PM local
             if (equipEnd > closing) equipEnd.setTime(closing.getTime());
 
             // Ensure at least 15 minutes
-            if (equipEnd <= startDate) {
+            if (equipEnd <= equipStart || (equipEnd.getTime() - equipStart.getTime()) / (1000 * 60) < 15) {
               throw new Error('Equipment borrow window is too short for this slot.');
             }
 
@@ -296,7 +309,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
               body: JSON.stringify({
                 resourceId: sportsResourceId,
                 kind: 'EQUIPMENT',
-                start: startDate.toISOString(),
+                start: equipStart.toISOString(),
                 end: equipEnd.toISOString(),
                 items: selectedItems,
               }),
@@ -481,7 +494,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
           </div>
 
           {/* Optional equipment prompt for sport-specific facilities */}
-          {selectedSlot && facilitySport && recommendedEquipment[facilitySport] && (
+          {selectedSlot && sportForEquipment && recommendedEquipment[sportForEquipment] && (
             <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-accent-blue/10">
@@ -489,11 +502,29 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-text-main">
-                    Optional: add {facilitySport.replace('_', ' ').toLowerCase()} equipment for this slot
+                    Optional: add {sportForEquipment.replace('_', ' ').toLowerCase()} equipment for this slot
                   </p>
                   <p className="text-xs text-text-muted">
                     You can borrow matching equipment for this booking. It’s optional and non-blocking.
                   </p>
+                  {isSharedTurf && (
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {(['FOOTBALL', 'CRICKET'] as const).map((sport) => (
+                        <Button
+                          key={sport}
+                          type="button"
+                          size="sm"
+                          variant={sharedTurfSport === sport ? 'default' : 'ghost'}
+                          onClick={() => {
+                            setSharedTurfSport(sport);
+                            setEquipmentSelection({});
+                          }}
+                        >
+                          {sport === 'FOOTBALL' ? 'Football' : 'Cricket'}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   {equipmentLoading ? (
                     <p className="text-xs text-text-muted">Loading equipment availability...</p>
                   ) : equipmentError ? (
@@ -501,7 +532,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                   ) : (
                     <div className="space-y-3">
                       <div className="flex flex-wrap gap-2 text-xs text-text-muted">
-                        {recommendedEquipment[facilitySport].map(item => (
+                        {recommendedEquipment[sportForEquipment].map(item => (
                           <span key={item} className="px-2 py-1 rounded-full bg-white/5 border border-white/10">
                             {item}
                           </span>
@@ -509,7 +540,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                       </div>
                       <div className="space-y-2">
                         {sportsItems.map((item) => {
-                          const maxAllowed = equipmentMaxBySport[facilitySport]?.[item.name] ?? 0;
+                          const maxAllowed = equipmentMaxBySport[sportForEquipment]?.[item.name] ?? 0;
                           const maxSelectable = Math.min(maxAllowed, item.qtyAvailable ?? 0);
                           const current = equipmentSelection[item._id] ?? 0;
                           return (

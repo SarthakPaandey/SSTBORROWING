@@ -158,12 +158,14 @@ async function seed() {
     });
 
     const labItems = [
-      { name: 'Arduino Kit', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false },
-      { name: 'Raspberry Pi', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false },
-      { name: 'Sensor Kit', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false },
-      { name: 'Soldering Iron', qtyTotal: 3, qtyAvailable: 3, safety: true, restricted: true },
-      { name: 'Multimeter', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false },
-      { name: 'VR Headset', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false },
+      { name: 'Laptop', qtyTotal: 10, qtyAvailable: 10, safety: false, restricted: false, labCategory: 'LAPTOP' },
+      { name: 'Arduino Kit', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false, labCategory: 'GENERAL' },
+      { name: 'Raspberry Pi', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false, labCategory: 'GENERAL' },
+      { name: 'Sensor Kit', qtyTotal: 5, qtyAvailable: 5, safety: false, restricted: false, labCategory: 'GENERAL' },
+      { name: 'Soldering Iron', qtyTotal: 3, qtyAvailable: 3, safety: true, restricted: true, labCategory: 'GENERAL' },
+      { name: 'Multimeter', qtyTotal: 3, qtyAvailable: 3, safety: false, restricted: false, labCategory: 'GENERAL' },
+      { name: 'VR Headset', qtyTotal: 2, qtyAvailable: 2, safety: false, restricted: false, labCategory: 'SAME_DAY_RETURN' },
+      { name: 'Monitor', qtyTotal: 4, qtyAvailable: 4, safety: false, restricted: false, labCategory: 'SAME_DAY_RETURN' },
     ];
 
     for (const item of labItems) {

@@ -102,13 +102,13 @@ export const POLICIES = {
 
   // Per-type duration defaults: Sports Equipment
   MIN_DURATION_SPORTS: 15,
-  MAX_DURATION_SPORTS: 75,
+  MAX_DURATION_SPORTS: 120, // align with facility max duration
   HOURS_START_SPORTS: 8,
   HOURS_END_SPORTS: 20,
 
-  // Per-type duration defaults: Lab Equipment
-  MIN_DURATION_LAB: 1440,    // 24 hours
-  MAX_DURATION_LAB: 1440,    // 24 hours (fixed)
+  // Per-type duration defaults: Lab Equipment (now dynamic: 1 hour to 7 days)
+  MIN_DURATION_LAB: 60,       // 1 hour minimum
+  MAX_DURATION_LAB: 10080,    // 7 days maximum (in minutes)
   HOURS_START_LAB: 8,
   HOURS_END_LAB: 20,
 
@@ -121,8 +121,8 @@ export const POLICIES = {
   // Slot durations (minutes) - legacy, kept for compatibility
   FACILITY_SLOT_MINUTES: 60,
   ROOM_SLOT_MINUTES: 60,
-  SPORTS_EQUIPMENT_BORROW_MINUTES: 75, // 75 minutes for sports equipment
-  LAB_EQUIPMENT_BORROW_MINUTES: 1440, // 24 hours (1 day) for lab equipment
+  SPORTS_EQUIPMENT_BORROW_MINUTES: 120,   // Up to 120 minutes for sports equipment (matches facility cap)
+  LAB_EQUIPMENT_BORROW_MINUTES: 10080,    // Up to 7 days for lab equipment
   LIBRARY_BOOK_BORROW_MINUTES: 20160, // 14 days for library books
 
   // Equipment extension rules
@@ -130,11 +130,11 @@ export const POLICIES = {
   MAX_EXTENSIONS_PER_BOOKING: 1,       // Only 1 extension allowed per booking
 
   // Auto-cancel timings
-  NO_SHOW_GRACE_MINUTES: 15,
+  NO_SHOW_GRACE_MINUTES: 30,  // 30 minutes grace period before marking as no-show/cancelled
 
   // QR validity windows (minutes)
   QR_VALIDITY_BEFORE_START: 15, // Can generate QR 15 min before booking start
-  QR_VALIDITY_AFTER_START: 15,  // Can generate QR up to 15 min after booking start
+  QR_VALIDITY_AFTER_START: 30,  // Can generate QR up to 30 min after booking start (matches grace period)
   QR_EQUIPMENT_PICKUP_WINDOW: 10, // QR expires 10 min after generation
 
   // Reschedule policies

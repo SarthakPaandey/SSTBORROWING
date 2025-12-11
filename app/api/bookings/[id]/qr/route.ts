@@ -78,14 +78,14 @@ export async function POST(
     // - Starting GRACE_PERIOD_MS before booking start (24 hours in testing mode)
     // - Up to 15 minutes AFTER booking start (grace period for pickup)
     const earliestGenTime = bookingStart - GRACE_PERIOD_MS;
-    const latestGenTime = bookingStart + (15 * 60 * 1000); // 15 min after START
+    const latestGenTime = bookingStart + (POLICIES.QR_VALIDITY_AFTER_START * 60 * 1000); // 30 min after START
 
     if (now.getTime() < earliestGenTime) {
       throw new ValidationError(`QR code can be generated starting ${POLICIES.QR_VALIDITY_BEFORE_START} minutes before your booking time`);
     }
 
     if (now.getTime() > latestGenTime) {
-      throw new ValidationError('QR generation window closed. Must generate within 15 minutes of booking start time.');
+      throw new ValidationError(`QR generation window closed. Must generate within ${POLICIES.QR_VALIDITY_AFTER_START} minutes of booking start time.`);
     }
 
     // Clean up any expired or used tokens for this booking to prevent confusion

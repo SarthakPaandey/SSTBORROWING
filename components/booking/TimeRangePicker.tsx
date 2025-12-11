@@ -347,7 +347,7 @@ export default function TimeRangePicker({
             {/* Modern Timeline */}
             <div className="relative">
                 {/* Timeline Container with glass effect */}
-                <div className="relative bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-950/90 rounded-2xl p-5 border border-white/[0.08] backdrop-blur-xl shadow-xl">
+                <div className="relative bg-gradient-to-br from-slate-950/90 via-slate-950/80 to-black/92 rounded-2xl p-5 border border-white/[0.06] backdrop-blur-xl shadow-xl">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
@@ -367,11 +367,11 @@ export default function TimeRangePicker({
                             </div>
                             {/* Desktop: Full legend */}
                             <div className="hidden sm:flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-green-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                                 <span className="text-xs text-slate-400">Available</span>
                             </div>
                             <div className="hidden sm:flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-rose-400 to-red-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
                                 <span className="text-xs text-slate-400">Booked</span>
                             </div>
                             <div className="hidden sm:flex items-center gap-1.5">
@@ -395,40 +395,30 @@ export default function TimeRangePicker({
                     </div>
 
                     {/* Main Timeline - Rectangular Bar */}
-                    <div className="relative h-12 rounded-sm bg-slate-800/50 border border-slate-700/50 overflow-hidden">
+                    <div className="relative h-12 rounded-sm bg-slate-900/60 border border-slate-800/60 overflow-hidden">
                         {/* Gradient overlay */}
                         <div className="absolute inset-0 bg-gradient-to-r from-slate-800/80 via-transparent to-slate-800/80 pointer-events-none z-10" />
 
                         {/* Available zone - Prominent green */}
                         {earliestBookableTime <= workEnd && (
                             <div
-                                className="absolute inset-y-0 transition-all duration-500"
+                                className="absolute inset-y-0 bg-green-500/40 transition-all duration-500"
                                 style={{
                                     left: isToday ? `${getPosition(timelineEarliestBookable)}%` : '0%',
                                     right: '0%',
-                                    background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(16, 185, 129, 0.4) 50%, rgba(34, 197, 94, 0.45) 100%)',
-                                    borderLeft: isToday ? '3px solid rgb(34, 197, 94)' : 'none',
-                                    boxShadow: isToday ? 'inset 4px 0 12px rgba(34, 197, 94, 0.3)' : 'none',
+                                    borderLeft: isToday ? '2px solid rgb(34, 197, 94)' : 'none',
                                 }}
-                            >
-                                {/* Subtle animated pattern */}
-                                <div
-                                    className="absolute inset-0 opacity-30"
-                                    style={{
-                                        backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.05) 40px, rgba(255,255,255,0.05) 80px)',
-                                    }}
-                                />
-                            </div>
+                            />
                         )}
 
                         {/* Past time zone */}
                         {isToday && (
                             <div
-                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/60"
+                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-slate-950/85 via-slate-900/80 to-slate-900/60"
                                 style={{ width: earliestBookableTime > workEnd ? '100%' : `${getPosition(timelineEarliestBookable)}%` }}
                             >
                                 <div className="absolute inset-0" style={{
-                                    backgroundImage: 'repeating-linear-gradient(60deg, transparent, transparent 4px, rgba(100,116,139,0.1) 4px, rgba(100,116,139,0.1) 8px)'
+                                    backgroundImage: 'repeating-linear-gradient(60deg, transparent, transparent 4px, rgba(100,116,139,0.12) 4px, rgba(100,116,139,0.12) 8px)'
                                 }} />
                             </div>
                         )}
@@ -442,20 +432,16 @@ export default function TimeRangePicker({
                             return (
                                 <div
                                     key={index}
-                                    className="absolute inset-y-1 rounded-sm bg-gradient-to-b from-rose-500/40 via-rose-600/30 to-rose-700/25 border border-rose-500/30"
+                                    className="absolute inset-y-1 rounded-sm bg-red-500/60 border border-red-400"
                                     style={{ left: `${left}%`, width: `${width}%` }}
-                                >
-                                    <div className="absolute inset-0 rounded-sm" style={{
-                                        backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(244,63,94,0.1) 3px, rgba(244,63,94,0.1) 6px)'
-                                    }} />
-                                </div>
+                                />
                             );
                         })}
 
                         {/* Hour grid lines */}
                         {hourMarkers.map((marker, i) => (
                             <div key={i} className="absolute inset-y-0" style={{ left: `${marker.position}%` }}>
-                                <div className="w-px h-full bg-slate-700/50" />
+                                <div className="w-px h-full bg-slate-700/40" />
                             </div>
                         ))}
 
@@ -473,8 +459,8 @@ export default function TimeRangePicker({
                         {selectedStartTime !== null && selectedEnd !== null && (
                             <div
                                 className={`absolute inset-y-1 rounded-sm transition-all duration-300 z-10 ${isCurrentSelectionValid
-                                    ? 'bg-gradient-to-r from-blue-500/40 via-cyan-400/30 to-blue-500/40 border-2 border-cyan-400/60 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
-                                    : 'bg-gradient-to-r from-amber-500/40 via-orange-400/30 to-amber-500/40 border-2 border-amber-400/60'
+                                    ? 'bg-gradient-to-r from-cyan-500/28 via-blue-500/24 to-cyan-500/28 border-2 border-cyan-400/55 shadow-[0_0_14px_rgba(34,211,238,0.2)]'
+                                    : 'bg-gradient-to-r from-amber-500/30 via-orange-500/24 to-amber-500/30 border-2 border-amber-400/55'
                                     }`}
                                 style={{
                                     left: `${getPosition(selectedStartTime)}%`,
@@ -483,13 +469,13 @@ export default function TimeRangePicker({
                             >
                                 {isCurrentSelectionValid && (
                                     <div className="absolute inset-0 rounded-sm overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent animate-shimmer" />
                                     </div>
                                 )}
                                 {/* Time labels on selection */}
                                 <div className="absolute inset-x-0 -bottom-5 flex justify-between px-0.5">
-                                    <span className="text-[8px] font-bold text-cyan-400 bg-slate-900/90 px-1 rounded-sm">{formatTime12(selectedStartTime).replace(' ', '')}</span>
-                                    <span className="text-[8px] font-bold text-cyan-400 bg-slate-900/90 px-1 rounded-sm">{formatTime12(selectedEnd).replace(' ', '')}</span>
+                                    <span className="text-[8px] font-bold text-cyan-300 bg-slate-950/90 px-1 rounded-sm">{formatTime12(selectedStartTime).replace(' ', '')}</span>
+                                    <span className="text-[8px] font-bold text-cyan-300 bg-slate-950/90 px-1 rounded-sm">{formatTime12(selectedEnd).replace(' ', '')}</span>
                                 </div>
                             </div>
                         )}

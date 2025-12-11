@@ -173,11 +173,6 @@ async function postHandler(req: Request) {
         throw new ValidationError(canBook.reason || 'Booking not allowed');
       }
 
-      // Check advance window
-      if (!isWithinAdvanceWindow(startDate)) {
-        throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
-      }
-
       // Get resource
       const resource = await Resource.findById(resourceId).session(session);
       if (!resource || resource.status !== 'ACTIVE') {
@@ -219,6 +214,13 @@ async function postHandler(req: Request) {
         kind = 'EQUIPMENT';
       } else {
         kind = resource.type as 'FACILITY' | 'ROOM' | 'LIBRARY';
+      }
+
+      // Check advance window (skip for equipment borrows which are immediate)
+      if (kind !== 'EQUIPMENT') {
+        if (!isWithinAdvanceWindow(startDate)) {
+          throw new ValidationError(`Bookings can only be made up to ${POLICIES.ADVANCE_BOOKING_DAYS} days in advance`);
+        }
       }
 
       // Validate booking duration based on booking type
@@ -263,14 +265,14 @@ async function postHandler(req: Request) {
             );
           }
         } else {
-          // Lab equipment: Fixed 24-hour duration
-          const expectedDuration = POLICIES.LAB_EQUIPMENT_BORROW_MINUTES; // 1440 min (24h)
-
-          if (durationMinutes !== expectedDuration) {
-            throw new ValidationError(
-              `Lab equipment borrow duration must be exactly ${expectedDuration} minutes (24 hours). ` +
-              `Current duration: ${Math.round(durationMinutes)} minutes.`
-            );
+          // Lab equipment: Duration validated per-item based on labCategory after items are loaded
+          // Categories: LAPTOP (up to 60 days), SAME_DAY_RETURN (return by 8 PM), GENERAL (1-7 days)
+          // Basic range check: at least 1 minute, at most 60 days (will be refined per-item)
+          if (durationMinutes < 1) {
+            throw new ValidationError('Lab equipment borrow duration must be at least 1 minute.');
+          }
+          if (durationMinutes > 86400) { // 60 days max for any lab item
+            throw new ValidationError('Lab equipment borrow duration cannot exceed 60 days.');
           }
         }
       } else if (kind === 'LIBRARY') {
@@ -385,6 +387,52 @@ async function postHandler(req: Request) {
 
         if (activeBookBorrowings >= POLICIES.MAX_BOOKS_PER_STUDENT) {
           throw new ValidationError(`You can only borrow ${POLICIES.MAX_BOOKS_PER_STUDENT} book at a time. Please return your current book first.`);
+        }
+      }
+
+      // Check for overlapping equipment bookings (Lab OR Sports)
+      // A student playing sports can't simultaneously use lab equipment
+      if (kind === 'EQUIPMENT') {
+        const overlappingEquipmentBooking = await Booking.findOne({
+          userId: user.id,
+          kind: 'EQUIPMENT',
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          // Check for time overlap
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
+
+        if (overlappingEquipmentBooking) {
+          // Get resource name for better error message
+          const overlappingResource = await Resource.findById(overlappingEquipmentBooking.resourceId).session(session);
+          const overlappingType = overlappingResource?.type === 'LAB_EQUIPMENT' ? 'lab equipment' : 'sports equipment';
+          throw new ValidationError(
+            `You already have ${overlappingType} borrowed during this time. ` +
+            `Please return your current equipment before borrowing more.`
+          );
+        }
+      }
+
+      // Check for overlapping ROOM + FACILITY bookings
+      // A student can't be in a meeting room AND on the turf at the same time
+      if (kind === 'ROOM' || kind === 'FACILITY') {
+        const overlappingLocationBooking = await Booking.findOne({
+          userId: user.id,
+          kind: { $in: ['ROOM', 'FACILITY'] },
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          // Check for time overlap
+          start: { $lt: endDate },
+          end: { $gt: startDate },
+        }).session(session);
+
+        if (overlappingLocationBooking) {
+          // Get resource name for better error message
+          const overlappingResource = await Resource.findById(overlappingLocationBooking.resourceId).session(session);
+          const overlappingType = overlappingLocationBooking.kind === 'ROOM' ? 'a meeting room' : 'a facility';
+          throw new ValidationError(
+            `You already have ${overlappingType} (${overlappingResource?.name || 'Unknown'}) booked during this time. ` +
+            `You can only be in one place at a time.`
+          );
         }
       }
 
@@ -583,6 +631,19 @@ async function postHandler(req: Request) {
             sportCategory = Array.from(categories)[0] as SportCategory;
           }
 
+          // Enforce single sport per booking
+          if (categories.size > 1) {
+            const sports = Array.from(categories).join(', ');
+            throw new ValidationError(`You can only borrow one sport at a time. Found: ${sports}.`);
+          }
+
+          // Total cap: apply only when no specific sport category was detected (e.g., GENERAL-only)
+          const totalRequestedQty = items.reduce((sum, i) => sum + i.qty, 0);
+          const hasSingleSport = categories.size === 1;
+          if (!hasSingleSport && totalRequestedQty > POLICIES.MAX_SPORTS_EQUIPMENT_ITEMS_PER_BOOKING) {
+            throw new ValidationError(`You can only borrow up to ${POLICIES.MAX_SPORTS_EQUIPMENT_ITEMS_PER_BOOKING} sports equipment items per booking.`);
+          }
+
           const sportCategoryCheck = await canBorrowSportCategory({
             userId: user.id,
             requestedItemIds: itemIds,
@@ -626,10 +687,17 @@ async function postHandler(req: Request) {
               end: { $gt: startDate },
             }).session(session).populate('resourceId');
 
-            const overlappingFacilityName = (overlappingFacility?.resourceId as any)?.name as string | undefined;
+            const overlappingFacilityResource = overlappingFacility?.resourceId as any;
+            const overlappingFacilityName = overlappingFacilityResource?.name as string | undefined;
             const overlappingFacilitySport = getFacilitySportCategory(overlappingFacilityName);
+            const isSharedTurfFacility =
+              overlappingFacilityResource?.sharedGroupId === POLICIES.SHARED_TURF_GROUP_ID ||
+              (overlappingFacilityName || '').toLowerCase().includes('turf');
+            const sharedTurfCompatible =
+              isSharedTurfFacility &&
+              (sportCategory === SPORT_CATEGORIES.FOOTBALL || sportCategory === SPORT_CATEGORIES.CRICKET);
 
-            if (overlappingFacilitySport && overlappingFacilitySport !== sportCategory) {
+            if (overlappingFacilitySport && overlappingFacilitySport !== sportCategory && !sharedTurfCompatible) {
               throw new ValidationError(`Your overlapping facility booking (${overlappingFacilityName}) is for ${overlappingFacilitySport.replace('_', ' ').toLowerCase()}. You can only borrow equipment for that sport during the same time.`);
             }
 
@@ -653,6 +721,56 @@ async function postHandler(req: Request) {
               if (!hasFacilityMatch) {
                 // Add soft warning (but don't block)
                 facilityWarning = getFacilityWarningMessage(sportCategory);
+              }
+            }
+          }
+        }
+
+        // Validate lab equipment duration per-item based on labCategory
+        if (resource.type === 'LAB_EQUIPMENT') {
+          const { validateLabBorrowDuration, detectLabCategoryFromName, LAB_CATEGORIES } = await import('@/lib/labEquipmentRules');
+          const { toIST } = await import('@/lib/timezone');
+
+          // Check all items and ensure they can all be borrowed for the requested duration
+          for (const item of items) {
+            const currentItem = await EquipmentItem.findById(item.itemId).session(session);
+            if (!currentItem) {
+              throw new NotFoundError('Lab equipment item');
+            }
+
+            // Use labCategory from item, or detect from name for backward compatibility
+            const labCategory = currentItem.labCategory || detectLabCategoryFromName(currentItem.name);
+
+            // Special handling for SAME_DAY_RETURN items (VR Headsets, Monitors)
+            if (labCategory === LAB_CATEGORIES.SAME_DAY_RETURN) {
+              // Convert start/end to IST for comparison
+              const startIST = toIST(startDate);
+              const endIST = toIST(endDate);
+
+              // Must be returned by 8 PM on the same day
+              const startDay = startIST.toISOString().split('T')[0];
+              const endDay = endIST.toISOString().split('T')[0];
+
+              if (startDay !== endDay) {
+                throw new ValidationError(
+                  `${currentItem.name} must be returned on the same day. ` +
+                  `VR Headsets and Monitors cannot be borrowed overnight.`
+                );
+              }
+
+              const endHourIST = endIST.getHours();
+              const endMinuteIST = endIST.getMinutes();
+              if (endHourIST > 20 || (endHourIST === 20 && endMinuteIST > 0)) {
+                throw new ValidationError(
+                  `${currentItem.name} must be returned by 8:00 PM today. ` +
+                  `VR Headsets and Monitors have same-day return policy.`
+                );
+              }
+            } else {
+              // Standard duration validation for LAPTOP and GENERAL categories
+              const validation = validateLabBorrowDuration(durationMinutes, labCategory, currentItem.name);
+              if (!validation.valid) {
+                throw new ValidationError(validation.reason!);
               }
             }
           }

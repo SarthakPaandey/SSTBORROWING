@@ -56,8 +56,20 @@ export async function PATCH(
       const bookingStartTime = new Date(booking.start).getTime();
       const currentTime = new Date().getTime();
 
-      if (currentTime > bookingStartTime) {
-        throw new ValidationError('Cannot cancel past bookings');
+      // For equipment/library bookings that haven't been picked up,
+      // allow cancellation within the grace period (30 min after start)
+      const graceEndTime = bookingStartTime + (POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000);
+
+      if (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') {
+        // Equipment can be cancelled up until the grace period ends (if not picked up)
+        if (currentTime > graceEndTime) {
+          throw new ValidationError('Cannot cancel booking after grace period has ended');
+        }
+      } else {
+        // Facilities and rooms cannot be cancelled after start time
+        if (currentTime > bookingStartTime) {
+          throw new ValidationError('Cannot cancel past bookings');
+        }
       }
 
       // Check if cancellation is late (within 24 hours of start) - using UTC

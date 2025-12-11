@@ -14,6 +14,8 @@ import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
 import { LoadingState, InlineLoading } from '@/components/ui/LoadingState';
 import { triggerBookingSuccess } from '@/lib/confetti';
 import { Package, Sparkles, FlaskConical, Trophy, Clock, ShoppingCart, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react';
+import { POLICIES } from '@/lib/policies';
+import { getMaxQuantityForItem } from '@/lib/sportEquipmentKits';
 
 // Enhanced sport icons with more detail
 const sportIcons: Record<string, string> = {
@@ -49,6 +51,29 @@ const sportColors: Record<string, { gradient: string; border: string; bg: string
   GENERAL: { gradient: 'from-gray-500/20 to-slate-600/10', border: 'border-gray-500/30', bg: 'bg-gray-500/10' },
 };
 
+const getItemMaxSelectable = (item: any): number => {
+  const sportCategory = item?.sportCategory || 'GENERAL';
+  const policyMax = getMaxQuantityForItem(item?.name || '', sportCategory);
+  const available = item?.availableNow ?? 0;
+  return Math.max(0, Math.min(policyMax, available));
+};
+
+const getSelectedSportCategory = (
+  selected: Record<string, number>,
+  sportsItems: any[]
+): string | null => {
+  const categories = new Set<string>();
+  for (const item of sportsItems) {
+    const qty = selected[item._id] || 0;
+    if (qty > 0) {
+      categories.add(item.sportCategory || 'GENERAL');
+    }
+  }
+  if (categories.size === 0) return null;
+  if (categories.size === 1) return Array.from(categories)[0];
+  return 'MIXED';
+};
+
 export default function EquipmentPage() {
   const router = useRouter();
   const [sportsResources, setSportsResources] = useState<any[]>([]);
@@ -57,9 +82,10 @@ export default function EquipmentPage() {
   const [labItems, setLabItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
   const [tab, setTab] = useState<'sports' | 'lab'>('sports');
-  // FIX: Use IST timezone for accurate date display
+  // Use IST timezone for accurate date display; startTime only used for Lab tab
   const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
+  const [labDurationDays, setLabDurationDays] = useState(1); // 1-7 days for lab equipment
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -83,38 +109,72 @@ export default function EquipmentPage() {
     fetchResources();
   }, []);
 
-  // Reset time if it becomes invalid when date changes
+  // #region agent log
   useEffect(() => {
-    // FIX: Use IST timezone for accurate today check
+    fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'lab-duration-pre-fix',
+        hypothesisId: 'H1',
+        location: 'equipment/page.tsx:tabEffect',
+        message: 'Tab changed',
+        data: { tab },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => { });
+  }, [tab]);
+  // #endregion
+
+  // For Lab tab only, ensure startTime is not in the past if the date is today
+  useEffect(() => {
+    if (tab !== 'lab') return;
     const today = getISTToday();
     const dateStr = formatISTDate(date);
     if (dateStr === today) {
       const [hours, minutes] = startTime.split(':').map(Number);
-      // FIX: Use IST time for both selectedTime and now to ensure consistent comparison
       const now = getISTNow();
       const selectedTime = new Date(now);
       selectedTime.setHours(hours, minutes, 0, 0);
 
-      // If selected time is in the past, reset to next available time slot
       if (selectedTime < now) {
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const roundedMinutes = Math.ceil(currentMinutes / 15) * 15; // Round up to next 15-minute slot
+        const roundedMinutes = Math.ceil(currentMinutes / 15) * 15;
         const nextHour = Math.floor(roundedMinutes / 60);
         const nextMinute = roundedMinutes % 60;
         const nextTime = `${nextHour.toString().padStart(2, '0')}:${nextMinute.toString().padStart(2, '0')}`;
 
-        // Ensure it's within allowed hours (9 AM - 8 PM)
         if (nextHour >= 9 && nextHour < 20) {
           setStartTime(nextTime);
         } else if (nextHour < 9) {
           setStartTime('09:00');
         } else {
-          setStartTime('09:00'); // If past 8 PM, reset to start of next day's window
+          setStartTime('09:00');
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [date, tab]);
+
+  // #region agent log
+  useEffect(() => {
+    const now = getISTNow();
+    fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'debug-session',
+        runId: 'lab-duration-pre-fix',
+        hypothesisId: 'H2',
+        location: 'equipment/page.tsx:labDurationRender',
+        message: 'Lab render state',
+        data: { tab, labDurationDays, startTime, date: formatISTDate(date), now: now.toISOString() },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => { });
+  }, [tab, labDurationDays, startTime, date]);
+  // #endregion
 
   // Refetch items when date or time changes to update availability
   useEffect(() => {
@@ -237,9 +297,47 @@ export default function EquipmentPage() {
   };
 
   const handleQuantityChange = (itemId: string, qty: number) => {
+    const item = [...sportsItems, ...labItems].find((i) => i._id === itemId);
+    const maxSelectable = item ? getItemMaxSelectable(item) : undefined;
+    let nextQty = maxSelectable !== undefined ? Math.min(Math.max(0, qty), maxSelectable) : Math.max(0, qty);
+
+    // Enforce single-sport rule in UI: once a sport is selected, block others
+    if (tab === 'sports' && item) {
+      const selectedCategory = getSelectedSportCategory(selectedItems, sportsItems);
+      const itemCategory = item.sportCategory || 'GENERAL';
+
+      if (selectedCategory && selectedCategory !== 'GENERAL' && itemCategory !== selectedCategory) {
+        setError('You can only borrow one sport at a time. Clear other selections to switch sports.');
+        return;
+      }
+
+      if (selectedCategory === 'GENERAL' && itemCategory !== 'GENERAL') {
+        setError('You can only borrow one sport at a time. Clear general items to pick a sport.');
+        return;
+      }
+
+      // Clear stale error when change is valid
+      setError('');
+    }
+
+    // Enforce single-item rule for lab equipment
+    // Only one lab item can be borrowed at a time
+    if (tab === 'lab' && item && nextQty > 0) {
+      // Check if there's already a different item selected
+      const currentlySelectedId = Object.keys(selectedItems).find(id => selectedItems[id] > 0);
+      if (currentlySelectedId && currentlySelectedId !== itemId) {
+        // Replace the selection - clear old and add new
+        setSelectedItems({ [itemId]: Math.min(1, nextQty) });
+        setError('');
+        return;
+      }
+      // Lab items can only have qty of 1
+      nextQty = Math.min(1, nextQty);
+    }
+
     setSelectedItems((prev) => ({
       ...prev,
-      [itemId]: Math.max(0, qty),
+      [itemId]: nextQty,
     }));
   };
 
@@ -258,9 +356,19 @@ export default function EquipmentPage() {
     const isSports = kind === 'EQUIPMENT' && sportsResources.some(r => r._id === resourceId);
     const isLab = kind === 'EQUIPMENT' && labResources.some(r => r._id === resourceId);
 
-    if (isSports && totalItemCount > 3) {
-      setError('You can only borrow up to 3 sports equipment items at once');
-      return;
+    if (isSports) {
+      const selectedCategory = getSelectedSportCategory(selectedItems, sportsItems);
+      if (selectedCategory === 'MIXED') {
+        setError('You can only borrow one sport at a time.');
+        return;
+      }
+
+      // If a specific sport is chosen, allow exceeding 3; otherwise cap GENERAL to 3
+      const hasSpecificSport = selectedCategory && selectedCategory !== 'GENERAL';
+      if (!hasSpecificSport && totalItemCount > 3) {
+        setError('You can only borrow up to 3 sports equipment items at once.');
+        return;
+      }
     }
 
     if (isLab && totalItemCount > 1) {
@@ -272,54 +380,72 @@ export default function EquipmentPage() {
     setError('');
 
     try {
-      // FIX: Create date in IST timezone by specifying +05:30 offset
-      // This ensures the backend receives the correct IST time regardless of browser timezone
-      const dateStr = formatISTDate(date);
-      const start = new Date(`${dateStr}T${startTime}:00+05:30`);
-      const startHour = parseInt(startTime.split(':')[0]);
-      // FIX: Use IST timezone for today check
-      const today = getISTToday();
+      let start: Date;
+      let end: Date;
 
-      // Check if booking is in the past for today
-      if (dateStr === today && start < getISTNow()) {
-        setError('Pickup time must be in the future for today');
-        setLoading(false);
-        return;
-      }
-
-      // Equipment pickup time must be between 8am and 8pm
-      if (startHour < 8) {
-        setError('Equipment pickup time must be after 8:00 AM');
-        setLoading(false);
-        return;
-      }
-
-      // Calculate end time based on equipment type
-      const end = new Date(start);
       if (isSports) {
-        // Dynamic duration: min(75 minutes, time until 8 PM IST)
-        // FIX: Create closing time explicitly in IST to avoid browser timezone issues
-        const closingTime = new Date(`${dateStr}T20:00:00+05:30`); // 8:00 PM IST
-
-        const maxEndWithDuration = new Date(start);
-        maxEndWithDuration.setMinutes(maxEndWithDuration.getMinutes() + 75);
-
-        // Use the earlier of: 75 min from pickup OR 8 PM IST closing
-        if (maxEndWithDuration <= closingTime) {
-          end.setMinutes(end.getMinutes() + 75);
-        } else {
-          end.setTime(closingTime.getTime());
+        // Instant pickup for sports: start now, end = min(start+120min, 8 PM today)
+        const now = getISTNow();
+        start = new Date(now);
+        const closingTime = new Date(`${formatISTDate(now)}T20:00:00+05:30`);
+        end = new Date(start);
+        end.setMinutes(end.getMinutes() + POLICIES.MAX_BOOKING_DURATION_MINUTES); // 120 minutes cap
+        if (end > closingTime) {
+          end = closingTime;
         }
 
-        // Validate minimum 15 minutes session
         const sessionMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
         if (sessionMinutes < 15) {
-          setError('Minimum borrowing time is 15 minutes. Please select an earlier pickup time.');
+          setError('No pickup window available before 8:00 PM.');
           setLoading(false);
           return;
         }
-      } else if (isLab) {
-        end.setHours(end.getHours() + 24); // 24 hours for lab equipment
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'sports-duration-dynamic',
+            hypothesisId: 'H3',
+            location: 'equipment/page.tsx:handleBook-sports',
+            message: 'Sports booking window',
+            data: { start: start.toISOString(), end: end.toISOString(), sessionMinutes },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => { });
+        // #endregion
+      } else {
+        // Lab flow: dynamic duration based on item category
+        start = getISTNow();
+        end = new Date(start);
+
+        // Get the selected lab item to check its category
+        const selectedItemId = Object.keys(selectedItems).find(id => selectedItems[id] > 0);
+        const selectedLabItem = labItems.find((item: any) => item._id === selectedItemId);
+        const labCategory = selectedLabItem?.labCategory || 'GENERAL';
+
+        if (labCategory === 'SAME_DAY_RETURN') {
+          // VR Headsets and Monitors: Return by 8 PM today
+          const dateStr = formatISTDate(start);
+          end = new Date(`${dateStr}T20:00:00+05:30`); // 8 PM IST
+
+          // Check if it's already past 8 PM
+          if (end <= start) {
+            setError('It is too late to borrow same-day return items. They must be returned by 8:00 PM.');
+            setLoading(false);
+            return;
+          }
+        } else if (labCategory === 'LAPTOP') {
+          // Laptops: Up to 60 days (2 months)
+          const days = Math.max(1, Math.min(60, labDurationDays));
+          end.setDate(end.getDate() + days);
+        } else {
+          // GENERAL: 1-7 days
+          const days = Math.max(1, Math.min(7, labDurationDays));
+          end.setDate(end.getDate() + days);
+        }
       }
 
       const res = await fetch('/api/bookings', {
@@ -494,69 +620,46 @@ export default function EquipmentPage() {
                   </CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-1">
                     <Zap className="h-3 w-3" />
-                    Available for immediate checkout • Max 3 items per booking
+                    One sport at a time • Can exceed 3 if same sport
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Date/Time Selection */}
-              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
+              {/* Sports: instant pickup, no time selection */}
+              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-text-main">
                   <Clock className="h-4 w-4 text-success" />
-                  Select Pickup Time
+                  Instant pickup
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <DatePicker
-                    value={date}
-                    onChange={(newDate) => {
-                      if (newDate instanceof Date) setDate(newDate);
-                    }}
-                    minDate={getISTNow()}
-                    placeholder="Select a date"
-                  />
-                  <CompactTimePicker
-                    date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
-                    value={startTime}
-                    onChange={setStartTime}
-                    minTime="08:00"
-                    maxTime="19:45"
-                    stepMinutes={15}
-                    label="Pickup Time"
-                    durationHint={(() => {
-                      const [h, m] = startTime.split(':').map(Number);
-                      const pickupMinutes = h * 60 + m;
-                      const closeMinutes = 20 * 60; // 8 PM closing time
-                      const maxDuration = 75;
-                      const returnMinutes = Math.min(pickupMinutes + maxDuration, closeMinutes);
-                      const durationMinutes = Math.max(0, returnMinutes - pickupMinutes);
-
-                      const formatDuration = (mins: number) => {
-                        if (mins >= 60) {
-                          const hrs = Math.floor(mins / 60);
-                          const rem = mins % 60;
-                          return `${hrs}h${rem ? ` ${rem}m` : ''}`;
-                        }
-                        return `${mins} min`;
-                      };
-
-                      const formatTime = (totalMinutes: number) => {
-                        const hours = Math.floor(totalMinutes / 60);
-                        const minutes = totalMinutes % 60;
-                        const period = hours >= 12 ? 'PM' : 'AM';
-                        const displayHour = ((hours + 11) % 12) + 1;
-                        return `${displayHour}:${minutes.toString().padStart(2, '0')} ${period}`;
-                      };
-
-                      const hitsClosing = returnMinutes === closeMinutes;
-                      const durationText = formatDuration(durationMinutes);
-                      const returnText = `${formatTime(returnMinutes)}${hitsClosing ? ' (8 PM closing)' : ''}`;
-
-                      return `⏱️ Duration: ${durationText} • Return by ${returnText}`;
-                    })()}
-                  />
-                </div>
+                <p className="text-xs text-text-muted">
+                  Starts now. Return by 8:00 PM today.
+                </p>
               </div>
+
+              {/* Lab duration selector - only show on Lab tab */}
+              {tab === 'lab' && (
+                <div className="rounded-xl border border-card-border/40 bg-card/60 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4 text-accent-blue" />
+                    <p className="text-sm font-semibold text-text-main">Lab borrow duration</p>
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    Choose how many days to keep lab equipment (min 1 day, max 7 days). Lab items require admin approval.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={7}
+                      value={labDurationDays}
+                      onChange={(e) => setLabDurationDays(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
+                      className="w-24"
+                    />
+                    <span className="text-sm text-text-muted">day(s)</span>
+                  </div>
+                </div>
+              )}
 
               {/* Sport Category Groups - Enhanced */}
               <div className="space-y-4">
@@ -607,6 +710,11 @@ export default function EquipmentPage() {
                           {items.map((item: any, itemIndex: number) => {
                             const isSelected = (selectedItems[item._id] || 0) > 0;
                             const isOutOfStock = item.availableNow === 0;
+                            const itemMaxPerPolicy = getMaxQuantityForItem(item.name, item.sportCategory || 'GENERAL');
+                            const maxSelectable = Math.min(item.availableNow ?? 0, itemMaxPerPolicy);
+                            const plusDisabled =
+                              isOutOfStock ||
+                              (selectedItems[item._id] || 0) >= maxSelectable;
 
                             return (
                               <div
@@ -639,7 +747,7 @@ export default function EquipmentPage() {
                                       />
                                     </div>
                                     <span className="text-xs text-text-muted whitespace-nowrap">
-                                      {item.availableNow}/{item.qtyTotal}
+                                      {item.availableNow}/{item.qtyTotal} • Max per booking: {itemMaxPerPolicy}
                                     </span>
                                   </div>
                                 </div>
@@ -656,7 +764,7 @@ export default function EquipmentPage() {
                                   </span>
                                   <button
                                     onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
-                                    disabled={isOutOfStock || (selectedItems[item._id] || 0) >= item.availableNow}
+                                    disabled={plusDisabled}
                                     className="w-9 h-9 rounded-xl bg-success/10 border border-success/30 flex items-center justify-center hover:bg-success/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-success"
                                   >
                                     +
@@ -736,7 +844,7 @@ export default function EquipmentPage() {
                     </Badge>
                   </div>
                   <CardDescription className="mt-1">
-                    Max 1 item per booking • 24-hour borrowing period
+                    Max 1 item • Laptops: up to 2 months • VR/Monitors: same-day return
                   </CardDescription>
                 </div>
               </div>
@@ -753,33 +861,67 @@ export default function EquipmentPage() {
                 </div>
               </div>
 
-              {/* Date/Time Selection */}
-              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-text-main">
-                  <Clock className="h-4 w-4 text-accent-purple-1" />
-                  Select Pickup Time
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <DatePicker
-                    value={date}
-                    onChange={(newDate) => {
-                      if (newDate instanceof Date) setDate(newDate);
-                    }}
-                    minDate={getISTNow()}
-                    placeholder="Select a date"
-                  />
-                  <CompactTimePicker
-                    date={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
-                    value={startTime}
-                    onChange={setStartTime}
-                    minTime="08:00"
-                    maxTime="20:00"
-                    stepMinutes={30}
-                    label="Pickup Time"
-                    durationHint="⏱️ Duration: 24 hours"
-                  />
-                </div>
-              </div>
+              {/* Lab borrow duration - only show when an item is selected */}
+              {(() => {
+                // Get the currently selected lab item to determine duration settings
+                const selectedItemId = Object.keys(selectedItems).find(id => selectedItems[id] > 0);
+                const selectedLabItem = labItems.find((item: any) => item._id === selectedItemId);
+
+                // Don't show duration section until an item is selected
+                if (!selectedLabItem) {
+                  return null;
+                }
+
+                const labCategory = selectedLabItem?.labCategory || 'GENERAL';
+
+                if (labCategory === 'SAME_DAY_RETURN') {
+                  // VR Headsets and Monitors - same day return
+                  return (
+                    <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 space-y-2 animate-fade-in-up">
+                      <div className="flex items-center gap-2 text-sm font-medium text-warning">
+                        <Clock className="h-4 w-4" />
+                        Same-Day Return Required
+                      </div>
+                      <p className="text-sm text-text-muted">
+                        <strong>{selectedLabItem?.name}</strong> must be returned by <span className="text-warning font-semibold">8:00 PM today</span>.
+                        VR Headsets and Monitors cannot be borrowed overnight.
+                      </p>
+                    </div>
+                  );
+                }
+
+                // LAPTOP or GENERAL - show duration picker
+                const maxDays = labCategory === 'LAPTOP' ? 60 : 7;
+
+                return (
+                  <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4 animate-fade-in-up">
+                    <div className="flex items-center gap-2 text-sm font-medium text-text-main">
+                      <Clock className="h-4 w-4 text-accent-purple-1" />
+                      Borrow Duration for <span className="text-accent-purple-1">{selectedLabItem?.name}</span>
+                      {labCategory === 'LAPTOP' && (
+                        <Badge variant="secondary" className="text-xs">💻 Up to 2 months</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted">
+                      {labCategory === 'LAPTOP'
+                        ? 'Laptops can be borrowed for up to 2 months (60 days).'
+                        : 'Choose how many days to keep this equipment (min 1 day, max 7 days).'
+                      } Requests need admin approval.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={maxDays}
+                        value={labDurationDays}
+                        onChange={(e) => setLabDurationDays(Math.max(1, Math.min(maxDays, Number(e.target.value) || 1)))}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-text-muted">day(s) • max {maxDays}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Lab Items - Enhanced */}
               <div className="space-y-3">
@@ -812,8 +954,27 @@ export default function EquipmentPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               {isSelected && <CheckCircle2 className="h-4 w-4 text-accent-purple-1" />}
-                              <span className="text-xl">🔬</span>
+                              <span className="text-xl">
+                                {item.labCategory === 'LAPTOP' ? '💻' :
+                                  item.labCategory === 'SAME_DAY_RETURN' ? '🎮' : '🔬'}
+                              </span>
                               <p className="font-semibold text-text-main">{item.name}</p>
+                              {/* Category-specific badges */}
+                              {item.labCategory === 'LAPTOP' && (
+                                <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-400">
+                                  📅 Up to 60 days
+                                </Badge>
+                              )}
+                              {item.labCategory === 'SAME_DAY_RETURN' && (
+                                <Badge variant="warning" className="text-xs">
+                                  ⏰ Return by 8 PM
+                                </Badge>
+                              )}
+                              {(!item.labCategory || item.labCategory === 'GENERAL') && (
+                                <Badge variant="secondary" className="text-xs">
+                                  1-7 days
+                                </Badge>
+                              )}
                               {isOutOfStock && (
                                 <Badge variant="destructive">❌ Out of Stock</Badge>
                               )}
@@ -839,29 +1000,21 @@ export default function EquipmentPage() {
                           </div>
                           <div className="flex items-center gap-2 w-full justify-between sm:w-auto sm:justify-end sm:ml-4">
                             <Button
-                              variant="outline"
+                              variant={isSelected ? "default" : "outline"}
                               size="sm"
-                              onClick={() =>
-                                handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)
-                              }
-                              disabled={(selectedItems[item._id] || 0) === 0}
-                              className="w-10 h-10 text-lg hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                              onClick={() => handleQuantityChange(item._id, isSelected ? 0 : 1)}
+                              disabled={isOutOfStock && !isSelected}
+                              className={`min-w-[100px] transition-all ${isSelected
+                                  ? 'bg-accent-purple-1 hover:bg-accent-purple-1/90 text-white'
+                                  : 'hover:border-accent-purple-1/30 hover:text-accent-purple-1'
+                                }`}
                             >
-                              −
-                            </Button>
-                            <span className={`w-10 text-center font-bold text-lg ${isSelected ? 'text-accent-purple-1' : 'text-text-main'}`}>
-                              {selectedItems[item._id] || 0}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)
-                              }
-                              disabled={isOutOfStock || (selectedItems[item._id] || 0) >= item.availableNow}
-                              className="w-10 h-10 text-lg hover:bg-accent-purple-1/10 hover:text-accent-purple-1 hover:border-accent-purple-1/30"
-                            >
-                              +
+                              {isSelected ? (
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Selected
+                                </span>
+                              ) : 'Select'}
                             </Button>
                           </div>
                         </div>

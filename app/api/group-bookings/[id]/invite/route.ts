@@ -5,7 +5,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/auth/guards';
-import { canUserBook, POLICIES, isGroupBookingExpired } from '@/lib/policies';
+import { canUserBook, isGroupBookingExpired, getPolicyValue } from '@/lib/policies';
 import { handleApiError, NotFoundError, AuthorizationError, ValidationError, ConflictError } from '@/lib/errors';
 import { getTodayStart } from '@/lib/timezone';
 import { sendEmail } from '@/lib/email';
@@ -128,8 +128,9 @@ export async function POST(
       start: { $gte: today, $lt: tomorrow },
     }).session(session);
 
-    // Check per-type daily limit for facilities
-    if (todayBookings >= POLICIES.MAX_FACILITY_BOOKINGS_PER_DAY) {
+    // Check per-type daily limit for facilities (DYNAMIC - uses admin-configured value)
+    const maxFacilityPerDay = await getPolicyValue('MAX_FACILITY_BOOKINGS_PER_DAY');
+    if (todayBookings >= maxFacilityPerDay) {
       throw new ConflictError(`${email} has reached their daily facility booking limit`);
     }
 

@@ -4,7 +4,7 @@ import { Booking } from '@/models/Booking';
 import { Resource } from '@/models/Resource';
 import { User } from '@/models/User';
 import { GroupBooking } from '@/models/GroupBooking';
-import { POLICIES, canUserBook, isWithinAdvanceWindow, calculateGroupBookingExpiration, canCreateGroupBooking } from '@/lib/policies';
+import { POLICIES, canUserBook, isWithinAdvanceWindow, calculateGroupBookingExpiration, canCreateGroupBooking, getPolicyValue } from '@/lib/policies';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { groupBookingSchema } from '@/lib/validations';
@@ -125,15 +125,21 @@ async function postHandler(req: Request) {
       // Validate booking duration
       const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
 
-      if (durationMinutes < POLICIES.MIN_BOOKING_DURATION_MINUTES) {
+      // Dynamic duration limits
+      const [minDuration, maxDuration] = await Promise.all([
+        getPolicyValue('MIN_BOOKING_DURATION_MINUTES'),
+        getPolicyValue('MAX_BOOKING_DURATION_MINUTES'),
+      ]);
+
+      if (durationMinutes < minDuration) {
         throw new ValidationError(
-          `Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes.`
+          `Booking duration must be at least ${minDuration} minutes.`
         );
       }
 
-      if (durationMinutes > POLICIES.MAX_BOOKING_DURATION_MINUTES) {
+      if (durationMinutes > maxDuration) {
         throw new ValidationError(
-          `Booking duration cannot exceed ${POLICIES.MAX_BOOKING_DURATION_MINUTES} minutes (${POLICIES.MAX_BOOKING_DURATION_MINUTES / 60} hours).`
+          `Booking duration cannot exceed ${maxDuration} minutes (${maxDuration / 60} hours).`
         );
       }
 
@@ -228,10 +234,12 @@ async function postHandler(req: Request) {
         const activeGroup = await countActiveGroupParticipations(member.id, txSession);
         const activeTotal = activePersonal + activeGroup;
 
-        if (activeTotal >= POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS) {
+        // Dynamic total active bookings limit
+        const maxTotalActive = await getPolicyValue('MAX_TOTAL_ACTIVE_BOOKINGS');
+        if (activeTotal >= maxTotalActive) {
           throw new ValidationError(
             `${member.email} already has ${activeTotal} active facility/room bookings. ` +
-            `Maximum allowed is ${POLICIES.MAX_TOTAL_ACTIVE_BOOKINGS}. Please cancel an existing booking first.`
+            `Maximum allowed is ${maxTotalActive}. Please cancel an existing booking first.`
           );
         }
       }

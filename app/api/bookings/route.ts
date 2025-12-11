@@ -709,6 +709,21 @@ async function postHandler(req: Request) {
             throw new ValidationError(sportCategoryCheck.reason || 'Sport category conflict');
           }
 
+          // FIX: Enforce cumulative item limit across overlapping bookings
+          // If user already has items borrowed in overlapping time, ensure total stays within limit
+          const existingItems = sportCategoryCheck.totalOverlappingItems;
+          const newItems = items.reduce((sum, i) => sum + i.qty, 0);
+          const totalItems = existingItems + newItems;
+          const maxItems = POLICIES.MAX_SPORTS_EQUIPMENT_ITEMS_PER_BOOKING;
+
+          if (totalItems > maxItems) {
+            throw new ValidationError(
+              `You already have ${existingItems} item${existingItems !== 1 ? 's' : ''} borrowed during this time. ` +
+              `Adding ${newItems} more would exceed the limit of ${maxItems} items. ` +
+              `Please return your current items first or choose a different time.`
+            );
+          }
+
           // FIX: Validate sport kit quantities (e.g., Cricket: max 2 bats, 2 helmets, 1 ball)
           if (sportCategory) {
             // First, build enriched items to get names

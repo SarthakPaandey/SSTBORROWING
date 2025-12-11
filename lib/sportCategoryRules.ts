@@ -58,6 +58,7 @@ export async function canBorrowSportCategory(options: {
     reason?: string;
     conflictingSport?: string;
     activeBookingIds?: string[];
+    totalOverlappingItems: number;
 }> {
     const { userId, requestedItemIds, start, end, session } = options;
 
@@ -69,7 +70,7 @@ export async function canBorrowSportCategory(options: {
 
     // If no sport-specific categories, allow (all items are GENERAL or no sportCategory set)
     if (requestedCategories.size === 0) {
-        return { allowed: true };
+        return { allowed: true, totalOverlappingItems: 0 };
     }
 
     // Check if user is trying to borrow from multiple sports in one booking
@@ -78,6 +79,7 @@ export async function canBorrowSportCategory(options: {
         return {
             allowed: false,
             reason: `Cannot borrow equipment from multiple sports in one booking (${sports}). Please create separate bookings.`,
+            totalOverlappingItems: 0,
         };
     }
 
@@ -99,6 +101,14 @@ export async function canBorrowSportCategory(options: {
         ? await Booking.find(query).session(session)
         : await Booking.find(query);
 
+    // Calculate total items from overlapping bookings
+    let totalOverlappingItems = 0;
+    for (const booking of overlappingBookings) {
+        if (booking.items && booking.items.length > 0) {
+            totalOverlappingItems += booking.items.reduce((sum: number, item: any) => sum + (item.qty || 0), 0);
+        }
+    }
+
     // Check each overlapping booking for conflicting sport categories
     for (const booking of overlappingBookings) {
         if (!booking.items || booking.items.length === 0) continue;
@@ -119,13 +129,14 @@ export async function canBorrowSportCategory(options: {
                     reason: `You have an overlapping ${bookingSport} equipment booking during this time. You can only borrow from one sport at a time. Please choose a different time or cancel the existing booking.`,
                     conflictingSport: bookingSport,
                     activeBookingIds: [(booking as any)._id.toString()],
+                    totalOverlappingItems,
                 };
             }
         }
     }
 
     // No conflicts found
-    return { allowed: true };
+    return { allowed: true, totalOverlappingItems };
 }
 
 /**

@@ -38,6 +38,7 @@ export interface IBooking extends Document {
   approvalEmailSent?: boolean; // Track if approval email was sent to admins
   approvalEmailSentAt?: Date; // When approval email was sent
   approvalEmailError?: string; // Error message if email send failed
+  rejectionReason?: string; // Optional reason provided when admin rejects booking
   rescheduleCount: number; // Number of times this booking has been rescheduled
   extensionCount: number;  // Number of times this equipment booking has been extended
   rescheduleHistory?: {
@@ -123,6 +124,7 @@ const BookingSchema = new Schema<IBooking>(
     approvalEmailSent: { type: Boolean, default: false }, // Track email delivery
     approvalEmailSentAt: { type: Date }, // Timestamp of successful send
     approvalEmailError: { type: String }, // Error message if send failed
+    rejectionReason: { type: String }, // Optional reason provided when admin rejects booking
     // Reschedule tracking fields
     rescheduleCount: {
       type: Number,

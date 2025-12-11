@@ -25,7 +25,7 @@ export async function POST(
       throw new ValidationError('Invalid booking ID format');
     }
 
-    const { action } = await req.json(); // 'approve' or 'reject'
+    const { action, reason } = await req.json(); // 'approve' or 'reject', optional reason for rejection
 
     if (!['approve', 'reject'].includes(action)) {
       throw new ValidationError('Invalid action');
@@ -36,8 +36,8 @@ export async function POST(
       throw new NotFoundError('Booking');
     }
 
-    // Prevent approving bookings in the past
-    if (new Date(booking.start) < new Date()) {
+    // Prevent approving bookings in the past (but allow rejecting to clean up)
+    if (action === 'approve' && new Date(booking.start) < new Date()) {
       throw new ValidationError('Cannot approve bookings that have already started or ended');
     }
 
@@ -57,11 +57,12 @@ export async function POST(
       booking.approvedAt = new Date();
     }
     if (action === 'reject') {
-      // No need to release qtyReserved as we no longer use it for blocking
-      // (Time-based overlap checking is used instead)
-
       booking.approval = 'REJECTED';
       booking.status = 'CANCELLED';
+      // Store optional rejection reason
+      if (reason && reason.trim()) {
+        booking.rejectionReason = reason.trim();
+      }
     }
 
     await booking.save();
@@ -81,6 +82,7 @@ export async function POST(
         bookingStart: booking.start,
         bookingEnd: booking.end,
         userId: booking.userId,
+        ...(reason && { rejectionReason: reason }),
       },
     });
 
@@ -89,4 +91,5 @@ export async function POST(
     return handleApiError(error);
   }
 }
+
 

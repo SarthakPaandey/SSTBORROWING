@@ -39,6 +39,7 @@ export interface IBooking extends Document {
   approvalEmailSentAt?: Date; // When approval email was sent
   approvalEmailError?: string; // Error message if email send failed
   rejectionReason?: string; // Optional reason provided when admin rejects booking
+  borrowReason?: string; // Optional reason/purpose provided by user when borrowing lab equipment
   rescheduleCount: number; // Number of times this booking has been rescheduled
   extensionCount: number;  // Number of times this equipment booking has been extended
   rescheduleHistory?: {
@@ -125,6 +126,7 @@ const BookingSchema = new Schema<IBooking>(
     approvalEmailSentAt: { type: Date }, // Timestamp of successful send
     approvalEmailError: { type: String }, // Error message if send failed
     rejectionReason: { type: String }, // Optional reason provided when admin rejects booking
+    borrowReason: { type: String, maxlength: 500 }, // Optional reason/purpose provided by user
     // Reschedule tracking fields
     rescheduleCount: {
       type: Number,

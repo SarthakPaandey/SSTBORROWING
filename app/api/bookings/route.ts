@@ -120,7 +120,7 @@ async function postHandler(req: Request) {
         throw new ValidationError('Validation failed: ' + JSON.stringify(validationResult.error.flatten()));
       }
 
-      const { resourceId, start, end, items } = validationResult.data;
+      const { resourceId, start, end, items, borrowReason } = validationResult.data;
       const userId = authSession.user.id;
 
       // FIX: Validate resourceId format to prevent MongoDB CastError
@@ -894,6 +894,8 @@ async function postHandler(req: Request) {
         requiresApproval,
         approval: requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
         qrIssued: false,
+        // Store borrow reason for lab equipment (optional, used for approval)
+        ...(borrowReason && { borrowReason: borrowReason.trim().substring(0, 500) }),
       }], { session });
 
       // Return booking data for email sending after transaction completes

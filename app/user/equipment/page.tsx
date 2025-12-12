@@ -86,6 +86,7 @@ export default function EquipmentPage() {
   const [date, setDate] = useState<Date>(getISTNow());
   const [startTime, setStartTime] = useState('09:00');
   const [labDurationDays, setLabDurationDays] = useState(1); // 1-7 days for lab equipment
+  const [borrowReason, setBorrowReason] = useState(''); // Reason for borrowing lab equipment
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -462,6 +463,8 @@ export default function EquipmentPage() {
           start: start.toISOString(),
           end: end.toISOString(),
           items,
+          // Include borrow reason for lab equipment (requires approval)
+          ...(isLab && borrowReason.trim() && { borrowReason: borrowReason.trim() }),
         }),
       });
 
@@ -935,6 +938,22 @@ export default function EquipmentPage() {
                         className="w-24"
                       />
                       <span className="text-sm text-text-muted">day(s) • max {maxDays}</span>
+                    </div>
+
+                    {/* Borrow Reason/Purpose */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-text-main flex items-center gap-2">
+                        📝 Reason for borrowing
+                        <span className="text-xs text-text-muted font-normal">(helps with approval)</span>
+                      </label>
+                      <textarea
+                        value={borrowReason}
+                        onChange={(e) => setBorrowReason(e.target.value)}
+                        placeholder="e.g., For final year project on machine learning, need laptop for 2 weeks..."
+                        maxLength={500}
+                        className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-accent-purple-1 focus:outline-none resize-none text-sm"
+                      />
+                      <p className="text-xs text-text-muted text-right">{borrowReason.length}/500</p>
                     </div>
                   </div>
                 );

@@ -241,6 +241,18 @@ export default function LabApprovalsPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Borrow Reason - Show if provided */}
+                      {booking.borrowReason && (
+                        <div className="bg-accent-purple-1/10 border border-accent-purple-1/30 rounded-lg p-3">
+                          <p className="text-sm font-medium text-accent-purple-1 mb-1 flex items-center gap-2">
+                            📝 Reason for Borrowing:
+                          </p>
+                          <p className="text-sm text-text-main whitespace-pre-wrap">
+                            {booking.borrowReason}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-2">

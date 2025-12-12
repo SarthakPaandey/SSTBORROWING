@@ -897,15 +897,33 @@ export default function EquipmentPage() {
                 if (labCategory === 'SAME_DAY_RETURN') {
                   // VR Headsets and Monitors - same day return
                   return (
-                    <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 space-y-2 animate-fade-in-up">
-                      <div className="flex items-center gap-2 text-sm font-medium text-warning">
-                        <Clock className="h-4 w-4" />
-                        Same-Day Return Required
+                    <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 space-y-4 animate-fade-in-up">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-warning">
+                          <Clock className="h-4 w-4" />
+                          Same-Day Return Required
+                        </div>
+                        <p className="text-sm text-text-muted">
+                          <strong>{selectedLabItem?.name}</strong> must be returned by <span className="text-warning font-semibold">8:00 PM today</span>.
+                          VR Headsets and Monitors cannot be borrowed overnight.
+                        </p>
                       </div>
-                      <p className="text-sm text-text-muted">
-                        <strong>{selectedLabItem?.name}</strong> must be returned by <span className="text-warning font-semibold">8:00 PM today</span>.
-                        VR Headsets and Monitors cannot be borrowed overnight.
-                      </p>
+
+                      {/* Borrow Reason/Purpose */}
+                      <div className="space-y-2 pt-2 border-t border-warning/20">
+                        <label className="text-sm font-medium text-text-main flex items-center gap-2">
+                          📝 Reason for borrowing
+                          <span className="text-xs text-text-muted font-normal">(helps with approval)</span>
+                        </label>
+                        <textarea
+                          value={borrowReason}
+                          onChange={(e) => setBorrowReason(e.target.value)}
+                          placeholder="e.g., For VR demo in my final year project presentation..."
+                          maxLength={500}
+                          className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-warning focus:outline-none resize-none text-sm"
+                        />
+                        <p className="text-xs text-text-muted text-right">{borrowReason.length}/500</p>
+                      </div>
                     </div>
                   );
                 }

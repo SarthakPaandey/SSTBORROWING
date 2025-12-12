@@ -36,17 +36,31 @@ export async function POST(
       throw new NotFoundError('Booking');
     }
 
+    // Get resource for type check and audit log
+    const resource = await Resource.findById(booking.resourceId);
+
     // Prevent approving bookings in the past (but allow rejecting to clean up)
-    if (action === 'approve' && new Date(booking.start) < new Date()) {
-      throw new ValidationError('Cannot approve bookings that have already started or ended');
+    if (action === 'approve') {
+      const now = new Date();
+      const isEquipment = resource?.type === 'LAB_EQUIPMENT' || resource?.type === 'SPORTS_EQUIPMENT';
+      
+      if (isEquipment) {
+        // For equipment: check END time only, since start is when borrow period begins
+        // User picks up item when approved, not at scheduled start time
+        if (new Date(booking.end) < now) {
+          throw new ValidationError('Cannot approve bookings that have already ended');
+        }
+      } else {
+        // For facilities/rooms: check START time since these are scheduled slots
+        if (new Date(booking.start) < now) {
+          throw new ValidationError('Cannot approve bookings that have already started or ended');
+        }
+      }
     }
 
     if (booking.approval !== 'PENDING') {
       throw new ValidationError('Booking does not require approval');
     }
-
-    // Get resource name for audit log
-    const resource = await Resource.findById(booking.resourceId);
     const previousStatus = booking.approval;
 
     if (action === 'approve') {

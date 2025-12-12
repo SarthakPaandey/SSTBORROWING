@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
         return {
           ...itemObj,
           availableNow,
+          // Physical stock on shelf (updated by checkout/return)
+          physicalStock: itemObj.qtyAvailable,
+          // Number of items currently checked out
+          checkedOutCount: itemObj.qtyTotal - itemObj.qtyAvailable,
           // Keep qtyReserved for backward compatibility but don't use it for display
           qtyReserved: itemObj.qtyReserved || 0
         };

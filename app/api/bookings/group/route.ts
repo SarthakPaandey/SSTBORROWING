@@ -144,7 +144,7 @@ async function postHandler(req: Request) {
       }
 
       // Check if group booking can be created (enough time before start)
-      const canCreate = canCreateGroupBooking(startDate);
+      const canCreate = await canCreateGroupBooking(startDate);
       if (!canCreate.allowed) {
         throw new ValidationError(canCreate.reason || 'Cannot create group booking');
       }
@@ -259,9 +259,9 @@ async function postHandler(req: Request) {
       }], { session: txSession });
 
       // Create group booking with dynamic expiry
-      // Expiration is the earlier of: creation + 2h OR start - 1h
+      // Expiration is based on configurable cutoff (default: 5 minutes before start)
       const createdAt = new Date();
-      const expiresAt = calculateGroupBookingExpiration(startDate, createdAt);
+      const expiresAt = await calculateGroupBookingExpiration(startDate, createdAt);
 
       const groupBooking = await GroupBooking.create([{
         bookingId: booking[0].id,

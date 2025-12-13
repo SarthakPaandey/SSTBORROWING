@@ -14,7 +14,7 @@ export interface ISystemConfig extends Document {
     key: string;
     value: number;
     description?: string;
-    category: 'limits' | 'durations' | 'durations_facility' | 'durations_room' | 'durations_sports' | 'durations_lab' | 'penalties' | 'general';
+    category: 'limits' | 'durations' | 'durations_facility' | 'durations_room' | 'durations_sports' | 'durations_lab' | 'penalties' | 'general' | 'group_booking';
     updatedBy: string;
     updatedAt: Date;
     createdAt: Date;
@@ -35,7 +35,7 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
         description: { type: String },
         category: {
             type: String,
-            enum: ['limits', 'durations', 'durations_facility', 'durations_room', 'durations_sports', 'durations_lab', 'penalties', 'general'],
+            enum: ['limits', 'durations', 'durations_facility', 'durations_room', 'durations_sports', 'durations_lab', 'penalties', 'general', 'group_booking'],
             default: 'general',
         },
         updatedBy: {
@@ -282,6 +282,29 @@ export const EDITABLE_POLICIES = {
         category: 'general' as const,
         min: 0,
         max: 20,
+    },
+
+    // ========== Group Booking Settings ==========
+    GROUP_BOOKING_MIN_MEMBERS: {
+        description: 'Minimum team size',
+        helpText: 'Minimum number of people (including organizer) required to confirm a group booking. Example: 6 = need at least 6 people for football.',
+        category: 'group_booking' as const,
+        min: 2,
+        max: 22,
+    },
+    GROUP_BOOKING_REPLY_TIME_MINUTES: {
+        description: 'Reply time window',
+        helpText: 'Minutes friends have to accept/reject invitation before it expires. Example: 10 = friends have 10 minutes to respond.',
+        category: 'group_booking' as const,
+        min: 5,
+        max: 120,
+    },
+    GROUP_BOOKING_CUTOFF_MINUTES: {
+        description: 'Pre-start cutoff',
+        helpText: 'Group must be finalized this many minutes before booking start. Example: 5 = must be confirmed at least 5 minutes before.',
+        category: 'group_booking' as const,
+        min: 1,
+        max: 60,
     },
 } as const;
 

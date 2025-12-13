@@ -197,8 +197,11 @@ export const POLICIES = {
 
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
-  GROUP_BOOKING_MIN_REPLY_TIME_HOURS: 10 / 60, // 10 minutes for friends to respond (0.167 hours)
-  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 5 / 60, // Group must be finalized at least 5 minutes before booking start
+  GROUP_BOOKING_MIN_REPLY_TIME_HOURS: 10 / 60, // 10 minutes for friends to respond (0.167 hours) - LEGACY, use MINUTES version
+  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 5 / 60, // Group must be finalized at least 5 minutes before booking start - LEGACY
+  // NEW: Use minutes for easier admin configuration
+  GROUP_BOOKING_REPLY_TIME_MINUTES: 10, // 10 minutes for friends to respond
+  GROUP_BOOKING_CUTOFF_MINUTES: 5, // Must be confirmed 5 minutes before start
   GROUP_BOOKING_TEAM_SPORTS: ['Main Turf', 'Basketball Court', 'Volleyball Court'], // Sports that require groups
 } as const;
 
@@ -334,22 +337,21 @@ export function hasConsecutiveBookings(
 /**
  * Calculate dynamic expiration time for group bookings
  * 
- * NEW LOGIC: Invitations remain valid until the "Point of No Return" (cutoff).
- * The cutoff is 15 minutes before the booking starts.
- * 
- * This ensures:
- * - Future bookings: Friends have plenty of time to respond (days if needed)
- * - Urgent bookings: Team is confirmed at least 15 mins before the game
+ * Expiration = booking start - cutoff time (configurable via admin)
+ * Default cutoff: 5 minutes before start
  */
-export function calculateGroupBookingExpiration(
+export async function calculateGroupBookingExpiration(
   bookingStart: Date,
   _createdAt: Date = getNow() // No longer used, kept for backward compatibility
-): Date {
+): Promise<Date> {
   const startDate = new Date(bookingStart);
 
-  // Expiration is simply: booking start time - cutoff period (15 minutes)
+  // Get dynamic cutoff from DB (in minutes)
+  const cutoffMinutes = await getPolicyValue('GROUP_BOOKING_CUTOFF_MINUTES');
+
+  // Expiration is: booking start time - cutoff period
   const expiresAt = new Date(
-    startDate.getTime() - POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS * 60 * 60 * 1000
+    startDate.getTime() - cutoffMinutes * 60 * 1000
   );
 
   return expiresAt;
@@ -358,23 +360,22 @@ export function calculateGroupBookingExpiration(
 /**
  * Check if a group booking can be created for the given start time
  * 
- * NEW LOGIC: Requires at least (cutoff + minimum reply time) before start.
- * With 15m cutoff + 15m reply time = 30 minutes minimum notice.
- * 
- * This allows more spontaneous bookings while ensuring friends have time to respond.
+ * Requires at least (cutoff + reply time) before start.
+ * Default: 5 min cutoff + 10 min reply = 15 minutes minimum notice.
  */
-export function canCreateGroupBooking(bookingStart: Date): { allowed: boolean; reason?: string } {
+export async function canCreateGroupBooking(bookingStart: Date): Promise<{ allowed: boolean; reason?: string }> {
   // Convert to IST timezone for proper comparison
   const startDate = toIST(new Date(bookingStart));
   const now = getNow();
 
-  // Minimum time required = cutoff (15m) + minimum reply time (15m) = 30 minutes
-  const minRequiredHours =
-    POLICIES.GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS +
-    POLICIES.GROUP_BOOKING_MIN_REPLY_TIME_HOURS;
+  // Get dynamic values from DB (in minutes)
+  const [cutoffMinutes, replyMinutes] = await Promise.all([
+    getPolicyValue('GROUP_BOOKING_CUTOFF_MINUTES'),
+    getPolicyValue('GROUP_BOOKING_REPLY_TIME_MINUTES'),
+  ]);
 
-  const minRequiredMs = minRequiredHours * 60 * 60 * 1000;
-  const minRequiredMinutes = Math.round(minRequiredHours * 60);
+  const minRequiredMinutes = cutoffMinutes + replyMinutes;
+  const minRequiredMs = minRequiredMinutes * 60 * 1000;
   const timeUntilStart = startDate.getTime() - now.getTime();
 
   if (timeUntilStart < minRequiredMs) {

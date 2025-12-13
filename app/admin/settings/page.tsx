@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save, HelpCircle, ChevronDown } from 'lucide-react';
+import { Settings, Clock, AlertTriangle, Sliders, RotateCcw, Save, HelpCircle, ChevronDown, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PolicyConfig {
@@ -31,6 +31,7 @@ interface GroupedPolicies {
     durations_lab: PolicyConfig[];
     penalties: PolicyConfig[];
     general: PolicyConfig[];
+    group_booking: PolicyConfig[];
 }
 
 type DurationCategory = 'durations' | 'durations_facility' | 'durations_room' | 'durations_sports' | 'durations_lab';
@@ -48,6 +49,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
     durations: <Clock className="w-5 h-5" />,
     penalties: <AlertTriangle className="w-5 h-5" />,
     general: <Settings className="w-5 h-5" />,
+    group_booking: <Users className="w-5 h-5" />,
 };
 
 const categoryTitles: Record<string, string> = {
@@ -55,6 +57,7 @@ const categoryTitles: Record<string, string> = {
     durations: 'Duration Settings',
     penalties: 'Penalty Settings',
     general: 'General Settings',
+    group_booking: 'Group Booking Settings',
 };
 
 const categoryDescriptions: Record<string, string> = {
@@ -62,6 +65,7 @@ const categoryDescriptions: Record<string, string> = {
     durations: 'Configure timing and working hours',
     penalties: 'Adjust penalty thresholds and suspensions',
     general: 'Other system-wide settings',
+    group_booking: 'Team size, confirmation windows, and timing',
 };
 
 export default function AdminSettingsPage() {
@@ -276,7 +280,7 @@ export default function AdminSettingsPage() {
     const currentDurationPolicies = grouped[selectedDurationCategory] || [];
 
     // Categories to render (excluding per-type duration categories which are handled separately)
-    const mainCategories: (keyof GroupedPolicies)[] = ['limits', 'penalties', 'general'];
+    const mainCategories: (keyof GroupedPolicies)[] = ['limits', 'group_booking', 'penalties', 'general'];
 
     return (
         <div className="space-y-6">

@@ -81,11 +81,11 @@ export default async function UserDashboard() {
   const nextAction = suspensionLevel >= 2 ? 'Permanent block' : 'Suspension';
   const penaltyProgress = Math.min((user.penaltyPoints / threshold) * 100, 100);
 
-  // Get upcoming bookings
+  // Get upcoming bookings (including active ones that haven't ended yet)
   const upcomingBookings = await Booking.find({
     userId: user.id,
     status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
-    start: { $gte: now },
+    end: { $gte: now }, // Show everything that hasn't ended yet (active + future)
   })
     .sort({ start: 1 })
     .limit(5)
@@ -120,7 +120,7 @@ export default async function UserDashboard() {
         {/* Background decorations */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-purple-1/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        
+
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-3xl animate-bounce-subtle">{greeting.emoji}</span>
@@ -158,7 +158,7 @@ export default async function UserDashboard() {
             </div>
             {/* Progress bar */}
             <div className="mt-4 h-2 bg-danger/20 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-danger to-red-400 rounded-full transition-all duration-500"
                 style={{ width: `${penaltyProgress}%` }}
               />
@@ -176,7 +176,7 @@ export default async function UserDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action, index) => (
             <Link key={action.href} href={action.href}>
-              <Card 
+              <Card
                 className={`
                   cursor-pointer h-full
                   bg-gradient-to-br ${action.gradient}
@@ -251,12 +251,11 @@ export default async function UserDashboard() {
                 >
                   <div className="flex items-center gap-4">
                     {/* Status indicator */}
-                    <div className={`w-2 h-12 rounded-full ${
-                      booking.status === 'CONFIRMED' ? 'bg-success' :
-                      booking.status === 'PENDING' ? 'bg-warning' :
-                      'bg-accent-blue'
-                    }`} />
-                    
+                    <div className={`w-2 h-12 rounded-full ${booking.status === 'CONFIRMED' ? 'bg-success' :
+                        booking.status === 'PENDING' ? 'bg-warning' :
+                          'bg-accent-blue'
+                      }`} />
+
                     <div>
                       <p className="font-medium text-text-main group-hover:text-accent-blue transition-colors">
                         {booking.resourceName}
@@ -269,17 +268,17 @@ export default async function UserDashboard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <Badge
                     variant={
                       booking.status === 'CONFIRMED' ? 'success' :
-                      booking.status === 'PENDING' ? 'warning' :
-                      'default'
+                        booking.status === 'PENDING' ? 'warning' :
+                          'default'
                     }
                     icon={
                       booking.status === 'CONFIRMED' ? '✅' :
-                      booking.status === 'PENDING' ? '⏳' :
-                      '📍'
+                        booking.status === 'PENDING' ? '⏳' :
+                          '📍'
                     }
                   >
                     {booking.status}
@@ -302,7 +301,7 @@ export default async function UserDashboard() {
             Generate your QR code 15 minutes before your booking time for quick check-in!
           </p>
         </div>
-        
+
         <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 border border-accent-blue/20">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">📱</span>
@@ -312,7 +311,7 @@ export default async function UserDashboard() {
             Add this page to your home screen for instant access to your bookings!
           </p>
         </div>
-        
+
         <div className="p-4 rounded-xl bg-gradient-to-br from-accent-purple-1/10 to-accent-purple-1/5 border border-accent-purple-1/20">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">👥</span>

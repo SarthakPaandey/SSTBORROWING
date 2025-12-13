@@ -197,8 +197,8 @@ export const POLICIES = {
 
   // Group booking rules
   GROUP_BOOKING_MIN_MEMBERS: 6, // Minimum 6 people for team sports
-  GROUP_BOOKING_MIN_REPLY_TIME_HOURS: 0.25, // Minimum 15 minutes for friends to see and respond to invitation
-  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 0.25, // Group must be finalized at least 15 minutes before booking start
+  GROUP_BOOKING_MIN_REPLY_TIME_HOURS: 10 / 60, // 10 minutes for friends to respond (0.167 hours)
+  GROUP_BOOKING_FINALIZATION_CUTOFF_HOURS: 5 / 60, // Group must be finalized at least 5 minutes before booking start
   GROUP_BOOKING_TEAM_SPORTS: ['Main Turf', 'Basketball Court', 'Volleyball Court'], // Sports that require groups
 } as const;
 

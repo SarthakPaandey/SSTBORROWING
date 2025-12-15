@@ -10,6 +10,8 @@ export interface IBlock extends Document {
   type: BlockType;
   createdBy: string; // Admin user ID
   createdAt: Date;
+  recurringGroupId?: string; // UUID to group recurring blocks
+  recurringPattern?: string; // Human-readable pattern description
 }
 
 const BlockSchema = new Schema<IBlock>(
@@ -32,6 +34,14 @@ const BlockSchema = new Schema<IBlock>(
       required: true,
       ref: 'User'
     },
+    recurringGroupId: {
+      type: String,
+      required: false,
+    },
+    recurringPattern: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,
@@ -40,5 +50,6 @@ const BlockSchema = new Schema<IBlock>(
 );
 
 BlockSchema.index({ resourceId: 1, start: 1, end: 1 });
+BlockSchema.index({ recurringGroupId: 1 }); // Index for efficient series queries
 
 export const Block: Model<IBlock> = mongoose.models.Block || mongoose.model<IBlock>('Block', BlockSchema);

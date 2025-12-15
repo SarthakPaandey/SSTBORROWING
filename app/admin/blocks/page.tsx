@@ -9,9 +9,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { TimePicker } from '@/components/ui/TimePicker';
 import { formatDateTime } from '@/lib/utils';
-import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle, Check, X } from 'lucide-react';
+import { Plus, Wrench, Calendar as CalendarIcon, Clock, Trash2, AlertTriangle, Check, X, Repeat } from 'lucide-react';
 import { getISTTodayStart } from '@/lib/timezone-client';
 import { Block, Resource } from '@/types/frontend';
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function BlocksPage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -29,8 +32,18 @@ export default function BlocksPage() {
   const [reason, setReason] = useState('');
   const [blockType, setBlockType] = useState<'MAINTENANCE' | 'EVENT'>('MAINTENANCE');
 
+  // Recurring block state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date>(() => {
+    const d = getISTTodayStart();
+    d.setMonth(d.getMonth() + 1);
+    return d;
+  });
+
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteSeriesModal, setDeleteSeriesModal] = useState<Block | null>(null);
 
   useEffect(() => {
     fetchResources();
@@ -71,6 +84,11 @@ export default function BlocksPage() {
       return;
     }
 
+    if (isRecurring && recurrenceDays.length === 0) {
+      alert('Please select at least one day for recurring blocks');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -98,6 +116,13 @@ export default function BlocksPage() {
             end: endISO,
             reason: reason,
             type: blockType,
+            // Recurring params
+            isRecurring,
+            recurrenceType: 'weekly',
+            recurrenceDays: isRecurring ? recurrenceDays : undefined,
+            recurrenceEndDate: isRecurring ? recurrenceEndDate.toISOString() : undefined,
+            startTime: isRecurring ? startTime : undefined,
+            endTime: isRecurring ? endTime : undefined,
           }),
         })
       );
@@ -109,10 +134,14 @@ export default function BlocksPage() {
         setModalOpen(false);
         fetchBlocks();
         // Reset form
-        setReason('');
-        setBlockType('MAINTENANCE');
-        setSelectedResources([]);
-        alert(`Successfully created ${selectedResources.length} block(s)`);
+        resetForm();
+
+        if (isRecurring) {
+          const data = await results[0].json();
+          alert(`Successfully created ${data.count} recurring blocks with pattern: ${data.pattern}`);
+        } else {
+          alert(`Successfully created ${selectedResources.length} block(s)`);
+        }
       } else {
         alert(`Created ${results.length - failed.length} blocks, but ${failed.length} failed`);
       }
@@ -123,17 +152,38 @@ export default function BlocksPage() {
     }
   };
 
-  const handleDelete = async (blockId: string) => {
-    if (!confirm('Are you sure you want to delete this block?')) return;
+  const resetForm = () => {
+    setReason('');
+    setBlockType('MAINTENANCE');
+    setSelectedResources([]);
+    setIsRecurring(false);
+    setRecurrenceDays([]);
+    const d = getISTTodayStart();
+    d.setMonth(d.getMonth() + 1);
+    setRecurrenceEndDate(d);
+  };
+
+  const handleDelete = async (blockId: string, deleteSeries: boolean = false) => {
+    if (!deleteSeries && !confirm('Are you sure you want to delete this block?')) return;
 
     setDeleting(blockId);
+    setDeleteSeriesModal(null);
+
     try {
-      const res = await fetch(`/api/admin/blocks/${blockId}`, {
+      const url = deleteSeries
+        ? `/api/admin/blocks/${blockId}?deleteSeries=true`
+        : `/api/admin/blocks/${blockId}`;
+
+      const res = await fetch(url, {
         method: 'DELETE',
       });
 
       if (res.ok) {
+        const data = await res.json();
         fetchBlocks();
+        if (deleteSeries && data.deletedCount) {
+          alert(`Deleted ${data.deletedCount} blocks in the series`);
+        }
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to delete block');
@@ -158,6 +208,24 @@ export default function BlocksPage() {
       setSelectedResources([]);
     } else {
       setSelectedResources(resources.map(r => r._id));
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setRecurrenceDays(prev =>
+      prev.includes(day)
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort((a, b) => a - b)
+    );
+  };
+
+  const setQuickRecurrence = (type: 'weekend' | 'weekdays' | 'sunday') => {
+    if (type === 'weekend') {
+      setRecurrenceDays([0, 6]); // Sunday, Saturday
+    } else if (type === 'weekdays') {
+      setRecurrenceDays([1, 2, 3, 4, 5]); // Mon-Fri
+    } else if (type === 'sunday') {
+      setRecurrenceDays([0]); // Sunday only
     }
   };
 
@@ -200,6 +268,25 @@ export default function BlocksPage() {
     }
   };
 
+  const getPreviewCount = () => {
+    if (!isRecurring || recurrenceDays.length === 0) return 0;
+
+    let count = 0;
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
+    const end = new Date(recurrenceEndDate);
+    end.setHours(23, 59, 59, 999);
+
+    while (current <= end) {
+      if (recurrenceDays.includes(current.getDay())) {
+        count++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    return count * selectedResources.length;
+  };
+
   const filteredBlocks = blocks.filter(block => {
     if (filterType === 'ALL') return true;
     return block.type === filterType;
@@ -207,6 +294,7 @@ export default function BlocksPage() {
 
   const maintenanceBlocks = blocks.filter(b => b.type === 'MAINTENANCE');
   const eventBlocks = blocks.filter(b => b.type === 'EVENT');
+  const recurringBlocks = blocks.filter(b => b.recurringGroupId);
 
   return (
     <div className="space-y-6">
@@ -222,7 +310,7 @@ export default function BlocksPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -260,6 +348,20 @@ export default function BlocksPage() {
               <div>
                 <p className="text-sm text-text-muted">Events</p>
                 <p className="text-2xl font-bold text-badge-blue">{eventBlocks.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="icon-circle w-12 h-12">
+                <Repeat className="h-6 w-6 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-text-muted">Recurring</p>
+                <p className="text-2xl font-bold text-purple-500">{recurringBlocks.length}</p>
               </div>
             </div>
           </CardContent>
@@ -318,11 +420,17 @@ export default function BlocksPage() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-text-main">{block.resourceName}</h3>
                               <Badge variant={block.type === 'MAINTENANCE' ? 'warning' : 'default'}>
                                 {block.type}
                               </Badge>
+                              {block.recurringPattern && (
+                                <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                  <Repeat className="h-3 w-3 mr-1" />
+                                  {block.recurringPattern}
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-text-muted">{block.reason}</p>
                           </div>
@@ -336,15 +444,29 @@ export default function BlocksPage() {
                         </div>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(block._id)}
-                        disabled={deleting === block._id}
-                        className="hover:bg-danger/10 hover:text-danger hover:border-danger"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        {block.recurringGroupId ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteSeriesModal(block)}
+                            disabled={deleting === block._id}
+                            className="hover:bg-danger/10 hover:text-danger hover:border-danger"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(block._id)}
+                            disabled={deleting === block._id}
+                            className="hover:bg-danger/10 hover:text-danger hover:border-danger"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -354,11 +476,49 @@ export default function BlocksPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Delete Series Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteSeriesModal}
+        onClose={() => setDeleteSeriesModal(null)}
+        title="Delete Recurring Block"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-text-muted">
+            This block is part of a recurring series ({deleteSeriesModal?.recurringPattern}).
+            Would you like to delete just this block or the entire series?
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              onClick={() => deleteSeriesModal && handleDelete(deleteSeriesModal._id, false)}
+              className="w-full"
+            >
+              Delete This Block Only
+            </Button>
+            <Button
+              variant="gradient"
+              onClick={() => deleteSeriesModal && handleDelete(deleteSeriesModal._id, true)}
+              className="w-full bg-danger hover:bg-danger/80"
+            >
+              Delete Entire Series
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteSeriesModal(null)}
+              className="w-full"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={modalOpen}
         onClose={() => {
           setModalOpen(false);
-          setSelectedResources([]);
+          resetForm();
         }}
         title="Create Resource Block"
         size="lg"
@@ -457,48 +617,156 @@ export default function BlocksPage() {
             </div>
           </div>
 
-          {/* Quick Date Selection */}
-          <div>
-            <label className="block text-sm font-medium text-text-main mb-2">
-              Quick Select
+          {/* Recurring Toggle */}
+          <div className="p-4 border border-card-border rounded-lg">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="w-5 h-5 rounded border-card-border text-purple-500 focus:ring-purple-500"
+              />
+              <div className="flex items-center gap-2">
+                <Repeat className="h-5 w-5 text-purple-500" />
+                <span className="font-medium text-text-main">Make Recurring</span>
+              </div>
+              <span className="text-xs text-text-muted ml-auto">Block specific days weekly</span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setQuickDate('today')}
-                className="text-xs h-8"
-              >
-                Today
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setQuickDate('tomorrow')}
-                className="text-xs h-8"
-              >
-                Tomorrow
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setQuickDate('weekend')}
-                className="text-xs h-8"
-              >
-                This Weekend
-              </Button>
-            </div>
+
+            {isRecurring && (
+              <div className="mt-4 space-y-4 pt-4 border-t border-card-border">
+                {/* Quick Presets */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">Quick Presets</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickRecurrence('sunday')}
+                      className={`text-xs ${recurrenceDays.length === 1 && recurrenceDays[0] === 0 ? 'border-purple-500 bg-purple-500/10' : ''}`}
+                    >
+                      Every Sunday
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickRecurrence('weekend')}
+                      className={`text-xs ${recurrenceDays.length === 2 && recurrenceDays.includes(0) && recurrenceDays.includes(6) ? 'border-purple-500 bg-purple-500/10' : ''}`}
+                    >
+                      Every Weekend
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuickRecurrence('weekdays')}
+                      className={`text-xs ${recurrenceDays.length === 5 && !recurrenceDays.includes(0) && !recurrenceDays.includes(6) ? 'border-purple-500 bg-purple-500/10' : ''}`}
+                    >
+                      Every Weekday
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Day Picker */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">Select Days</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {DAY_NAMES.map((day, index) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleDay(index)}
+                        className={`w-10 h-10 rounded-full text-xs font-medium transition-all ${recurrenceDays.includes(index)
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-bg-dark border border-card-border text-text-muted hover:border-purple-500/50'
+                          }`}
+                        title={DAY_NAMES_FULL[index]}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                  {recurrenceDays.length > 0 && (
+                    <p className="text-xs text-purple-400 mt-2">
+                      Every {recurrenceDays.map(d => DAY_NAMES_FULL[d]).join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                {/* Recurrence End Date */}
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">Until</label>
+                  <DatePicker
+                    value={recurrenceEndDate}
+                    onChange={(d) => { if (d instanceof Date) setRecurrenceEndDate(d); }}
+                    minDate={startDate}
+                    placeholder="End of recurrence"
+                  />
+                </div>
+
+                {/* Preview */}
+                {recurrenceDays.length > 0 && selectedResources.length > 0 && (
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <p className="text-sm text-purple-400 font-medium">
+                      📅 This will create {getPreviewCount()} blocks
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {selectedResources.length} resource{selectedResources.length > 1 ? 's' : ''} × {
+                        Math.ceil(getPreviewCount() / selectedResources.length)
+                      } dates
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Quick Date Selection (for single blocks) */}
+          {!isRecurring && (
+            <div>
+              <label className="block text-sm font-medium text-text-main mb-2">
+                Quick Select
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDate('today')}
+                  className="text-xs h-8"
+                >
+                  Today
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDate('tomorrow')}
+                  className="text-xs h-8"
+                >
+                  Tomorrow
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDate('weekend')}
+                  className="text-xs h-8"
+                >
+                  This Weekend
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Date/Time Inputs - Compact Modern UI */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Start Date & Time */}
             <div className="space-y-3">
               <label className="block text-sm font-medium text-text-main">
-                Start Date & Time <span className="text-danger">*</span>
+                {isRecurring ? 'Start Date & Time (for each block)' : 'Start Date & Time'} <span className="text-danger">*</span>
               </label>
               <DatePicker
                 value={startDate}
@@ -519,16 +787,18 @@ export default function BlocksPage() {
             {/* End Date & Time */}
             <div className="space-y-3">
               <label className="block text-sm font-medium text-text-main">
-                End Date & Time <span className="text-danger">*</span>
+                {isRecurring ? 'End Time (same day)' : 'End Date & Time'} <span className="text-danger">*</span>
               </label>
-              <DatePicker
-                value={endDate}
-                onChange={(d) => { if (d instanceof Date) setEndDate(d); }}
-                minDate={startDate}
-                placeholder="Select end date"
-              />
+              {!isRecurring && (
+                <DatePicker
+                  value={endDate}
+                  onChange={(d) => { if (d instanceof Date) setEndDate(d); }}
+                  minDate={startDate}
+                  placeholder="Select end date"
+                />
+              )}
               <TimePicker
-                date={endDate.toISOString().split('T')[0]}
+                date={isRecurring ? startDate.toISOString().split('T')[0] : endDate.toISOString().split('T')[0]}
                 value={endTime}
                 onChange={setEndTime}
                 minTime="00:00"
@@ -559,12 +829,14 @@ export default function BlocksPage() {
               <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-text-main mb-1">
-                  {selectedResources.length > 1
-                    ? `This will block ${selectedResources.length} resources`
-                    : 'This will prevent new bookings'}
+                  {isRecurring
+                    ? `This will create ${getPreviewCount()} blocks`
+                    : selectedResources.length > 1
+                      ? `This will block ${selectedResources.length} resources`
+                      : 'This will prevent new bookings'}
                 </p>
                 <p className="text-xs text-text-muted">
-                  during the specified time period. Existing bookings will not be affected.
+                  during the specified time period. Existing bookings will be cancelled.
                 </p>
               </div>
             </div>
@@ -577,7 +849,7 @@ export default function BlocksPage() {
               variant="outline"
               onClick={() => {
                 setModalOpen(false);
-                setSelectedResources([]);
+                resetForm();
               }}
               className="flex-1"
               disabled={loading}
@@ -586,11 +858,13 @@ export default function BlocksPage() {
             </Button>
             <Button
               type="submit"
-              disabled={loading || selectedResources.length === 0}
+              disabled={loading || selectedResources.length === 0 || (isRecurring && recurrenceDays.length === 0)}
               variant="gradient"
               className="flex-1 btn-ripple"
             >
-              {loading ? 'Creating...' : `Create ${selectedResources.length > 1 ? `${selectedResources.length} Blocks` : 'Block'}`}
+              {loading ? 'Creating...' : isRecurring
+                ? `Create ${getPreviewCount()} Blocks`
+                : `Create ${selectedResources.length > 1 ? `${selectedResources.length} Blocks` : 'Block'}`}
             </Button>
           </div>
         </form>

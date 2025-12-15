@@ -58,6 +58,8 @@ export interface Block {
     end: string;
     reason: string;
     type: 'MAINTENANCE' | 'EVENT';
+    recurringGroupId?: string;
+    recurringPattern?: string;
 }
 
 export interface LibraryBook {

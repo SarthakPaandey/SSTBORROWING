@@ -24,7 +24,9 @@ export type AuditAction =
     | 'BULK_CANCEL'
     | 'BULK_NOTIFY'
     | 'USER_BLOCKED'
-    | 'USER_UNBLOCKED';
+    | 'USER_UNBLOCKED'
+    | 'CREATE_RECURRING_BLOCK'
+    | 'DELETE_RECURRING_BLOCK';
 
 export interface IAuditLog extends Document {
     action: AuditAction;
@@ -70,6 +72,8 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'BULK_NOTIFY',
                 'USER_BLOCKED',
                 'USER_UNBLOCKED',
+                'CREATE_RECURRING_BLOCK',
+                'DELETE_RECURRING_BLOCK',
             ],
             index: true,
         },
@@ -131,4 +135,6 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, { label: string; emoji: st
     BULK_NOTIFY: { label: 'Bulk Notified', emoji: '📢', color: 'info' },
     USER_BLOCKED: { label: 'User Blocked', emoji: '🚷', color: 'danger' },
     USER_UNBLOCKED: { label: 'User Unblocked', emoji: '✋', color: 'success' },
+    CREATE_RECURRING_BLOCK: { label: 'Created Recurring Block', emoji: '🔒🔄', color: 'info' },
+    DELETE_RECURRING_BLOCK: { label: 'Deleted Recurring Block', emoji: '🔓🔄', color: 'warning' },
 };

@@ -49,6 +49,7 @@ export async function GET() {
             durations_lab: policies.filter(p => p.category === 'durations_lab'),
             penalties: policies.filter(p => p.category === 'penalties'),
             general: policies.filter(p => p.category === 'general'),
+            group_booking: policies.filter(p => p.category === 'group_booking'),
         };
 
         return NextResponse.json({

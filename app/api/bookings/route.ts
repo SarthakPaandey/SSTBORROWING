@@ -882,6 +882,11 @@ async function postHandler(req: Request) {
         }
       }
 
+      // Require borrow reason for bookings that need approval
+      if (requiresApproval && (!borrowReason || borrowReason.trim().length === 0)) {
+        throw new ValidationError('Please provide a reason for borrowing this equipment. This helps admins review your request.');
+      }
+
       // Create booking
       const [booking] = await Booking.create([{
         userId: user.id,
@@ -955,7 +960,8 @@ async function postHandler(req: Request) {
             formatDateTime(startDate),
             formatDateTime(endDate),
             approveToken,
-            rejectToken
+            rejectToken,
+            booking.borrowReason // Include reason in email if provided
           );
 
           await sendEmail({

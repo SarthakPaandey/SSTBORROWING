@@ -56,11 +56,19 @@ export function generateApprovalEmailHTML(
   startTime: string,
   endTime: string,
   approveToken: string,
-  rejectToken: string
+  rejectToken: string,
+  borrowReason?: string
 ): string {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
   const approveUrl = `${baseUrl}/api/approve/${approveToken}`;
   const rejectUrl = `${baseUrl}/api/approve/${rejectToken}?action=reject`;
+
+  // Build optional reason row for the table
+  const reasonRow = borrowReason ? `
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; vertical-align: top;">Reason:</td>
+            <td style="padding: 8px 0; font-style: italic;">${borrowReason}</td>
+          </tr>` : '';
 
   return `
     <!DOCTYPE html>
@@ -94,7 +102,7 @@ export function generateApprovalEmailHTML(
           <tr>
             <td style="padding: 8px 0; font-weight: bold;">End Time:</td>
             <td style="padding: 8px 0;">${endTime}</td>
-          </tr>
+          </tr>${reasonRow}
           <tr>
             <td style="padding: 8px 0; font-weight: bold;">Booking ID:</td>
             <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">${bookingId}</td>

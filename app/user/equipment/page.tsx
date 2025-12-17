@@ -382,6 +382,12 @@ export default function EquipmentPage() {
       return;
     }
 
+    // Require borrow reason for lab equipment (requires approval)
+    if (isLab && !borrowReason.trim()) {
+      setError('Please provide a reason for borrowing. This is required for admin approval.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -913,7 +919,8 @@ export default function EquipmentPage() {
                       <div className="space-y-2 pt-2 border-t border-warning/20">
                         <label className="text-sm font-medium text-text-main flex items-center gap-2">
                           📝 Reason for borrowing
-                          <span className="text-xs text-text-muted font-normal">(helps with approval)</span>
+                          <span className="text-destructive">*</span>
+                          <span className="text-xs text-text-muted font-normal">(required for approval)</span>
                         </label>
                         <textarea
                           value={borrowReason}
@@ -962,7 +969,8 @@ export default function EquipmentPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-text-main flex items-center gap-2">
                         📝 Reason for borrowing
-                        <span className="text-xs text-text-muted font-normal">(helps with approval)</span>
+                        <span className="text-destructive">*</span>
+                        <span className="text-xs text-text-muted font-normal">(required for approval)</span>
                       </label>
                       <textarea
                         value={borrowReason}

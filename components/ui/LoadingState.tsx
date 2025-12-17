@@ -104,26 +104,32 @@ export function LoadingState({
           {isGalaxy ? (
             <div className="relative h-24 w-24">
               <div className="absolute inset-[2px] rounded-full border border-accent-blue/15 blur-sm" />
+              {/* Outer orbit - sports equipment */}
               <div
                 className="absolute inset-0.5 rounded-full border border-accent-purple-1/25 animate-spin-slow"
                 style={{ animationDuration: '14s' }}
               >
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-base">🚀</div>
-                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-base">🛰️</div>
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-base">🚀</div>
-                <div className="absolute top-1/2 -left-2 -translate-y-1/2 text-base">🛰️</div>
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-base">🏏</div>
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-base">⚽</div>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-base">🎾</div>
+                <div className="absolute top-1/2 -left-2 -translate-y-1/2 text-base">💻</div>
               </div>
+              {/* Inner orbit */}
               <div
                 className="absolute inset-4 rounded-full border border-accent-cyan/30 animate-spin-slow"
-                style={{ animationDuration: '9s' }}
-              />
+                style={{ animationDuration: '9s', animationDirection: 'reverse' }}
+              >
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-sm">🏸</div>
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 text-sm">📚</div>
+              </div>
               <div className="absolute inset-6 rounded-full bg-gradient-to-br from-accent-blue/40 via-accent-purple-1/30 to-accent-cyan/30 blur-md animate-pulse" />
+              {/* Central icon - sports/booking themed */}
               <div className="absolute inset-[24px] rounded-full bg-bg-dark flex items-center justify-center">
                 <div
                   className="text-3xl drop-shadow-[0_0_14px_rgba(13,140,232,0.6)] animate-spin-slow"
                   style={{ animationDuration: '18s' }}
                 >
-                  🪐
+                  🏟️
                 </div>
               </div>
             </div>

@@ -24,7 +24,7 @@ const nextConfig = {
     optimizePackageImports: ['framer-motion', 'recharts'],
   },
   images: {
-    domains: ['lh3.googleusercontent.com'],
+    domains: ['lh3.googleusercontent.com', 'raw.githubusercontent.com'],
     // Use modern image formats for faster loading
     formats: ['image/avif', 'image/webp'],
   },

@@ -2128,6 +2128,7 @@
     transform: perspective(1000px) rotateX(10deg) rotateY(-10deg);
     opacity: 0;
   }
+
   100% {
     transform: perspective(1000px) rotateX(0) rotateY(0);
     opacity: 1;
@@ -2142,7 +2143,7 @@
 
 .card-3d-tilt:hover {
   transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-8px);
-  box-shadow: 
+  box-shadow:
     0 25px 50px rgba(0, 0, 0, 0.5),
     0 0 40px rgba(13, 140, 232, 0.15),
     20px 20px 60px rgba(0, 0, 0, 0.3);
@@ -2161,12 +2162,10 @@
   left: -150%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    120deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.08) 50%,
-    transparent 80%
-  );
+  background: linear-gradient(120deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 80%);
   transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
@@ -2191,10 +2190,13 @@
 
 /* Sparkle Loading Effect */
 @keyframes sparkle-fade {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0;
     transform: scale(0) rotate(0deg);
   }
+
   50% {
     opacity: 1;
     transform: scale(1) rotate(180deg);
@@ -2224,6 +2226,7 @@
     opacity: 0;
     transform: translateY(4px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -2235,6 +2238,7 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+
   to {
     opacity: 0;
     transform: translateY(4px) scale(0.96);
@@ -2245,7 +2249,7 @@
   animation: tooltip-enter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(10, 15, 26, 0.98));
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(13, 140, 232, 0.1);
   backdrop-filter: blur(12px);
@@ -2264,9 +2268,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.15);
   }
+
   100% {
     transform: scale(1);
   }
@@ -2292,15 +2298,20 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @keyframes parallax-float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0) translateX(0);
   }
+
   25% {
     transform: translateY(-5px) translateX(2px);
   }
+
   50% {
     transform: translateY(-10px) translateX(0);
   }
+
   75% {
     transform: translateY(-5px) translateX(-2px);
   }
@@ -2348,7 +2359,7 @@
   }
 
   /* Larger touch targets for interactive elements */
-  button, 
+  button,
   [role="button"],
   .clickable {
     min-height: 44px;
@@ -2383,8 +2394,11 @@
   }
 
   /* Improve form inputs on mobile */
-  input, textarea, select {
-    font-size: 16px !important; /* Prevents iOS zoom */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    /* Prevents iOS zoom */
   }
 }
 
@@ -2440,6 +2454,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -2507,7 +2522,7 @@
 /* Enhanced focus ring animation */
 .focus-ring-animated:focus-visible {
   outline: none;
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--bg-dark),
     0 0 0 4px var(--accent-blue),
     0 0 20px rgba(13, 140, 232, 0.3);
@@ -2553,8 +2568,8 @@
   padding: 0 4px;
 }
 
-.input-floating:focus ~ .input-floating-label,
-.input-floating:not(:placeholder-shown) ~ .input-floating-label {
+.input-floating:focus~.input-floating-label,
+.input-floating:not(:placeholder-shown)~.input-floating-label {
   top: 0;
   font-size: 0.75rem;
   color: var(--accent-blue);
@@ -2569,6 +2584,7 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -2592,7 +2608,7 @@
 
 .progress-indeterminate {
   width: 30%;
-  animation: 
+  animation:
     progress-shimmer 2s linear infinite,
     progress-slide 1.5s ease-in-out infinite;
 }
@@ -2601,6 +2617,7 @@
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(400%);
   }
@@ -2611,9 +2628,12 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @keyframes badge-bounce {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.15);
   }
@@ -2629,117 +2649,52 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   🎭 CROSS-PLATFORM EMOJI STYLING (Twemoji)
-   Ensures consistent emoji rendering across macOS, Windows, and Linux
+   🎭 FLUENT EMOJI 3D - Premium Cross-Platform Emoji Styling
+   Microsoft Fluent 3D Emojis for consistent, modern rendering everywhere
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Base styles for Twemoji images */
-img.emoji {
+/* FluentEmoji component images - rendered via Next.js Image */
+.fluent-emoji {
   display: inline-block;
-  height: 1.2em;
-  width: 1.2em;
-  margin: 0 0.05em 0 0.1em;
-  vertical-align: -0.15em;
+  vertical-align: middle;
   object-fit: contain;
   /* Prevent selection and dragging */
   user-select: none;
   -webkit-user-drag: none;
-  /* Smooth rendering */
+  /* Smooth 3D rendering */
   image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
-/* Emoji container styles */
+/* Fallback native emoji styling */
+.emoji-fallback {
+  font-family:
+    "Apple Color Emoji",
+    /* macOS/iOS */
+    "Segoe UI Emoji",
+    /* Windows */
+    "Noto Color Emoji",
+    /* Android/Linux */
+    sans-serif;
+  font-style: normal;
+  line-height: 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Emoji container for inline usage */
 .emoji-container {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-}
-
-/* Size variants for emoji containers */
-.emoji-xs img.emoji {
-  height: 0.875em;
-  width: 0.875em;
-}
-
-.emoji-sm img.emoji {
-  height: 1em;
-  width: 1em;
-}
-
-.emoji-md img.emoji {
-  height: 1.25em;
-  width: 1.25em;
-}
-
-.emoji-lg img.emoji {
-  height: 1.5em;
-  width: 1.5em;
-}
-
-.emoji-xl img.emoji {
-  height: 2em;
-  width: 2em;
-}
-
-.emoji-2xl img.emoji {
-  height: 2.5em;
-  width: 2.5em;
-}
-
-.emoji-3xl img.emoji {
-  height: 3em;
-  width: 3em;
-}
-
-/* Specific adjustments for inline text */
-p img.emoji,
-span img.emoji,
-li img.emoji,
-a img.emoji {
-  vertical-align: -0.1em;
-}
-
-/* Prevent emojis from affecting line height in headings */
-h1 img.emoji,
-h2 img.emoji,
-h3 img.emoji,
-h4 img.emoji,
-h5 img.emoji,
-h6 img.emoji {
   vertical-align: middle;
-  margin-bottom: 0.1em;
 }
 
-/* Button emoji adjustments */
-button img.emoji,
-.btn img.emoji {
-  height: 1.1em;
-  width: 1.1em;
-  vertical-align: -0.1em;
+/* Smooth transitions for emoji hover effects */
+.emoji-animated {
+  transition: transform 0.2s ease;
 }
 
-/* Badge emoji adjustments */
-.badge img.emoji {
-  height: 1em;
-  width: 1em;
-  vertical-align: -0.1em;
-}
-
-/* Card stat emoji adjustments */
-.stat-card img.emoji {
-  height: 1.5em;
-  width: 1.5em;
-}
-
-/* Calendar emoji adjustments */
-.calendar-event img.emoji {
-  height: 0.875em;
-  width: 0.875em;
-}
-
-/* Modal title emoji */
-.modal-title img.emoji {
-  height: 1.5em;
-  width: 1.5em;
+.emoji-animated:hover {
+  transform: scale(1.1);
 }

@@ -93,8 +93,9 @@ async function handleBulkApprove(
     for (const booking of bookings) {
         booking.approval = 'APPROVED';
         booking.status = 'CONFIRMED';
-        // Fallback to 'SYSTEM_ADMIN' if user.id is undefined (shouldn't happen but defensive)
-        booking.approvedBy = user.id || 'SYSTEM_ADMIN';
+        // approvedBy expects a User ObjectId - leave undefined if user.id is missing
+        // (consistent with app/api/approve/[token]/route.ts behavior)
+        booking.approvedBy = user.id;
         booking.approvedAt = new Date();
         await booking.save();
 

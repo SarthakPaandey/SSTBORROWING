@@ -92,8 +92,15 @@ export async function GET(
 
   } catch (error) {
     // Return HTML error page instead of JSON for better UX when users click email links
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    const rawMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     const isValidationError = error instanceof ValidationError || error instanceof NotFoundError;
+
+    // SECURITY: Escape HTML to prevent XSS attacks from crafted error messages
+    const escapeHtml = (str: string): string =>
+      str.replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c)
+      );
+    const errorMessage = escapeHtml(rawMessage);
 
     return new NextResponse(`
       <html>

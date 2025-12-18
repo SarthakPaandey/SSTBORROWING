@@ -109,16 +109,42 @@ export async function GET(req: NextRequest) {
         }
 
         // 1.5 Auto-Complete Rooms and Facilities
-        await Booking.updateMany(
-            {
-                status: 'CONFIRMED',
-                kind: { $in: ['ROOM', 'FACILITY'] },
-                end: { $lt: now }
-            },
-            {
-                $set: { status: 'COMPLETED' }
-            }
-        );
+        // FIX: Also update associated GroupBooking records to COMPLETED
+        // This prevents users from being "stuck" in old group bookings
+        const completableBookings = await Booking.find({
+            status: 'CONFIRMED',
+            kind: { $in: ['ROOM', 'FACILITY'] },
+            end: { $lt: now }
+        }).select('_id groupBookingId isGroupBooking');
+
+        // Collect group booking IDs that need to be completed
+        const groupIdsToComplete = completableBookings
+            .filter(b => b.isGroupBooking && b.groupBookingId)
+            .map(b => b.groupBookingId);
+
+        // Update all matching bookings to COMPLETED
+        if (completableBookings.length > 0) {
+            await Booking.updateMany(
+                {
+                    _id: { $in: completableBookings.map(b => b._id) }
+                },
+                {
+                    $set: { status: 'COMPLETED' }
+                }
+            );
+        }
+
+        // Update associated GroupBooking records
+        if (groupIdsToComplete.length > 0) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            await GroupBooking.updateMany(
+                {
+                    _id: { $in: groupIdsToComplete },
+                    status: 'CONFIRMED'  // Only update confirmed ones
+                },
+                { $set: { status: 'COMPLETED' } }
+            );
+        }
 
         // 2. Handle Library Book Pickup Window (with transactions)
         const pickupWindowMs = POLICIES.LIBRARY_BOOK_PICKUP_WINDOW_HOURS * 60 * 60 * 1000;

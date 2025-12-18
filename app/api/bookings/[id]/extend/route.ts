@@ -46,32 +46,39 @@ export async function POST(
                 throw new ValidationError(`Extension cannot exceed ${POLICIES.MAX_EQUIPMENT_EXTENSION_MINUTES} minutes`);
             }
 
-            // Find the booking
-            const booking = await Booking.findById(params.id).session(session);
+            // FIX: Use atomic query with all conditions to prevent race conditions
+            // First, find the booking to validate and get current state
+            const booking = await Booking.findOne({
+                _id: params.id,
+                userId: user.id,  // Ownership check in query
+                kind: 'EQUIPMENT',  // Type check in query
+                status: 'CHECKED_IN',  // Status check in query
+                $or: [
+                    { extensionCount: { $exists: false } },
+                    { extensionCount: { $lt: POLICIES.MAX_EXTENSIONS_PER_BOOKING } }
+                ]
+            }).session(session);
+
             if (!booking) {
-                throw new NotFoundError('Booking');
-            }
-
-            // Verify ownership
-            if (booking.userId !== user.id) {
-                throw new AuthorizationError('You can only extend your own bookings');
-            }
-
-            // Only equipment bookings can be extended
-            if (booking.kind !== 'EQUIPMENT') {
-                throw new ValidationError('Only equipment bookings can be extended');
-            }
-
-            // Must be checked in to extend
-            if (booking.status !== 'CHECKED_IN') {
-                throw new ValidationError('Only checked-in bookings can be extended. Please pick up the equipment first.');
-            }
-
-            // Check extension limit
-            const currentExtensions = booking.extensionCount || 0;
-            if (currentExtensions >= POLICIES.MAX_EXTENSIONS_PER_BOOKING) {
+                // Determine which condition failed for better error message
+                const anyBooking = await Booking.findById(params.id).session(session);
+                if (!anyBooking) {
+                    throw new NotFoundError('Booking');
+                }
+                if (anyBooking.userId !== user.id) {
+                    throw new AuthorizationError('You can only extend your own bookings');
+                }
+                if (anyBooking.kind !== 'EQUIPMENT') {
+                    throw new ValidationError('Only equipment bookings can be extended');
+                }
+                if (anyBooking.status !== 'CHECKED_IN') {
+                    throw new ValidationError('Only checked-in bookings can be extended. Please pick up the equipment first.');
+                }
+                // If we get here, it must be extension limit
                 throw new ConflictError(`You can only extend a booking ${POLICIES.MAX_EXTENSIONS_PER_BOOKING} time(s). This booking has already been extended.`);
             }
+
+            const currentExtensions = booking.extensionCount || 0;
 
             // Calculate new end time
             const currentEnd = new Date(booking.end);
@@ -143,16 +150,37 @@ export async function POST(
                 }
             }
 
-            // Apply the extension
-            booking.end = newEnd;
-            booking.extensionCount = currentExtensions + 1;
-            await booking.save({ session });
+            // FIX: Apply extension atomically with $inc to prevent race conditions
+            // Double-click will fail: first request increments, second sees extensionCount >= limit
+            const updatedBooking = await Booking.findOneAndUpdate(
+                {
+                    _id: params.id,
+                    userId: user.id,
+                    status: 'CHECKED_IN',
+                    kind: 'EQUIPMENT',
+                    // Re-check extension limit atomically - prevents race condition
+                    $or: [
+                        { extensionCount: { $exists: false } },
+                        { extensionCount: { $lt: POLICIES.MAX_EXTENSIONS_PER_BOOKING } }
+                    ]
+                },
+                {
+                    $set: { end: newEnd },
+                    $inc: { extensionCount: 1 }
+                },
+                { new: true, session }
+            );
+
+            if (!updatedBooking) {
+                // Race condition occurred - another request already extended
+                throw new ConflictError('Extension limit reached. If you clicked multiple times, only one extension was applied.');
+            }
 
             return {
-                booking,
+                booking: updatedBooking,
                 extendedBy: minutes,
                 newEnd,
-                extensionsRemaining: POLICIES.MAX_EXTENSIONS_PER_BOOKING - (currentExtensions + 1),
+                extensionsRemaining: POLICIES.MAX_EXTENSIONS_PER_BOOKING - (updatedBooking.extensionCount || 1),
             };
         });
 

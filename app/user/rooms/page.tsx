@@ -88,7 +88,7 @@ export default async function RoomsPage() {
           { label: 'Total Rooms', value: rooms.length, emoji: '🚪' },
           { label: 'Meeting Rooms', value: rooms.filter(r => r.name.toLowerCase().includes('meeting')).length, emoji: '🤝' },
           { label: 'Study Rooms', value: rooms.filter(r => r.name.toLowerCase().includes('study')).length, emoji: '📚' },
-          { label: 'Available Now', value: rooms.length, emoji: '✅' },
+          { label: 'Hours', value: '8AM-8PM', emoji: '🕐' },
         ].map((stat, index) => (
           <div
             key={stat.label}

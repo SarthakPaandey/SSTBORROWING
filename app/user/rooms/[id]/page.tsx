@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -11,7 +12,22 @@ import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
 import { triggerBookingSuccess } from '@/lib/confetti';
-import TimeRangePicker from '@/components/booking/TimeRangePicker';
+
+// Lazy load TimeRangePicker to reduce initial bundle size
+const TimeRangePicker = dynamic(
+  () => import('@/components/booking/TimeRangePicker'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-48 flex items-center justify-center bg-bg-dark/30 rounded-xl border border-card-border/50 animate-pulse">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-accent-purple-1/30 border-t-accent-purple-1 rounded-full animate-spin" />
+          <p className="text-sm text-text-muted">Loading time picker...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 interface Params {
   id: string;

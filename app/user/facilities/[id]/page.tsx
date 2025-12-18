@@ -2,18 +2,38 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { SuccessCelebration } from '@/components/ui/SuccessCelebration';
 import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
 import { Resource } from '@/types/frontend';
-import TimeRangePicker from '@/components/booking/TimeRangePicker';
+
+// Lazy load heavy components to reduce initial bundle size
+const SuccessCelebration = dynamic(
+  () => import('@/components/ui/SuccessCelebration').then(mod => ({ default: mod.SuccessCelebration })),
+  { ssr: false }
+);
+
+const TimeRangePicker = dynamic(
+  () => import('@/components/booking/TimeRangePicker'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-48 flex items-center justify-center bg-white/5 rounded-xl animate-pulse">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <p className="text-sm text-text-muted">Loading time picker...</p>
+        </div>
+      </div>
+    )
+  }
+);
 
 interface Params {
   id: string;
@@ -322,8 +342,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
           } catch (equipErr) {
             console.error(equipErr);
             setError(
-              `Facility booked, but equipment booking failed: ${
-                equipErr instanceof Error ? equipErr.message : 'Unknown error'
+              `Facility booked, but equipment booking failed: ${equipErr instanceof Error ? equipErr.message : 'Unknown error'
               }`
             );
             setLoading(false);

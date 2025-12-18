@@ -4,6 +4,7 @@ import { Booking } from '@/models/Booking';
 import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { QRToken } from '@/models/QRToken';
+import { ApprovalToken } from '@/models/ApprovalToken';
 import { POLICIES, loadDynamicPolicies } from '@/lib/policies';
 import { recalculatePenaltyPoints, expireGroupBookings } from '@/lib/groupBookingPenalties';
 import { handleApiError, AuthorizationError } from '@/lib/errors';
@@ -241,6 +242,18 @@ export async function GET(req: NextRequest) {
             createdAt: { $lt: oneDayAgo }
         });
         results.qrTokensDeleted = deleteResult.deletedCount || 0;
+
+        // 5.5 Cleanup Expired ApprovalTokens (prevents infinite growth)
+        // ApprovalTokens expire after use or when expiresAt passes
+        const approvalDeleteResult = await ApprovalToken.deleteMany({
+            $or: [
+                { used: true },
+                { expiresAt: { $lt: new Date() } }
+            ]
+        });
+        if (approvalDeleteResult.deletedCount > 0) {
+            console.log(`[Cron] Cleaned up ${approvalDeleteResult.deletedCount} expired ApprovalTokens`);
+        }
 
         // 6. Expire stale group bookings
         // FIX: This was imported but never called - now properly integrated

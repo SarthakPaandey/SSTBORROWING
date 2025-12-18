@@ -17,9 +17,18 @@ import { Booking } from '@/models/Booking';
 import { expireGroupBookings } from './groupBookingPenalties';
 
 // Rate limiting: only run expiration tasks once per minute
-let lastRunTimestamp = 0;
+// FIX: Use globalThis to share state across module reloads (HMR in dev)
+// NOTE: In serverless, this still resets per cold start, but throttles warm instances
+const LAZY_EXPIRATION_KEY = Symbol.for('__LAZY_EXPIRATION_TIMESTAMP__');
 const MIN_INTERVAL_MS = 60 * 1000; // 1 minute
-// Note: in serverless, this resets per instance, but still throttles bursts per worker
+
+function getLastRunTimestamp(): number {
+    return (globalThis as any)[LAZY_EXPIRATION_KEY] || 0;
+}
+
+function setLastRunTimestamp(ts: number): void {
+    (globalThis as any)[LAZY_EXPIRATION_KEY] = ts;
+}
 
 /**
  * Trigger lazy expiration tasks in the background.
@@ -30,11 +39,11 @@ export function triggerLazyExpiration(): void {
     const now = Date.now();
 
     // Skip if we ran recently
-    if (now - lastRunTimestamp < MIN_INTERVAL_MS) {
+    if (now - getLastRunTimestamp() < MIN_INTERVAL_MS) {
         return;
     }
 
-    lastRunTimestamp = now;
+    setLastRunTimestamp(now);
 
     // Run in background - don't await, don't block the request
     runExpirationTasks().catch((error) => {

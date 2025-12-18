@@ -30,7 +30,8 @@ import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFaci
 import { countActiveGroupParticipations, getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 import { triggerLazyExpiration } from '@/lib/lazyExpiration';
 
-export async function GET(req: NextRequest) {
+// Internal handler - wrapped with rate limiting below
+async function getHandler(req: NextRequest) {
   try {
     // Trigger background expiration tasks (non-blocking, rate-limited)
     triggerLazyExpiration();
@@ -50,7 +51,13 @@ export async function GET(req: NextRequest) {
     if (me) {
       query.userId = user.id;
     } else if (userId) {
-      query.userId = userId;
+      // FIX: SECURITY - Only admins can query other users' bookings
+      // This prevents privacy leak where any user could view anyone's booking history
+      if (user.role !== 'ADMIN') {
+        query.userId = user.id; // Force to own bookings for non-admins
+      } else {
+        query.userId = userId;
+      }
     }
 
     if (status) {
@@ -74,7 +81,7 @@ export async function GET(req: NextRequest) {
       const participantBookings = await getGroupParticipantBookings(user.id, undefined, {
         requireConfirmedMembership: true
       });
-      
+
       // Filter out duplicates (if user is both owner and participant, which shouldn't happen but for safety)
       const existingIds = new Set(bookings.map(b => b.id.toString()));
       participantBookings.forEach(pb => {
@@ -82,7 +89,7 @@ export async function GET(req: NextRequest) {
           allBookings.push(pb);
         }
       });
-      
+
       // Re-sort combined list
       allBookings.sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
     }
@@ -1021,4 +1028,6 @@ async function postHandler(req: Request) {
   }
 }
 
+// FIX: Add rate limiting to both GET and POST to prevent DoS and data scraping
+export const GET = withRateLimit(getHandler, 30, 60000); // 30 requests/minute for reads
 export const POST = withRateLimit(postHandler);

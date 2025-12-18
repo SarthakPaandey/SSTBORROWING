@@ -77,14 +77,17 @@ export async function POST(req: NextRequest) {
             throw new ValidationError('Updates array is required');
         }
 
-        const results: Array<{ key: string; value: number; success: boolean; error?: string }> = [];
+        // FIX: Validate ALL updates first to prevent partial application
+        // If any validation fails, no changes are applied (atomic semantics)
+        const validatedUpdates: Array<{ key: string; value: number; meta: typeof EDITABLE_POLICIES[EditablePolicyKey] }> = [];
+        const validationErrors: Array<{ key: string; value: number; error: string }> = [];
 
         for (const update of updates) {
             const { key, value } = update;
 
             // Validate key exists in editable policies
             if (!EDITABLE_POLICIES[key as EditablePolicyKey]) {
-                results.push({ key, value, success: false, error: 'Invalid policy key' });
+                validationErrors.push({ key, value, error: 'Invalid policy key' });
                 continue;
             }
 
@@ -92,22 +95,36 @@ export async function POST(req: NextRequest) {
 
             // Validate value is a number
             if (typeof value !== 'number' || isNaN(value)) {
-                results.push({ key, value, success: false, error: 'Value must be a number' });
+                validationErrors.push({ key, value, error: 'Value must be a number' });
                 continue;
             }
 
             // Validate value is within range
             if (value < meta.min || value > meta.max) {
-                results.push({
+                validationErrors.push({
                     key,
                     value,
-                    success: false,
                     error: `Value must be between ${meta.min} and ${meta.max}`
                 });
                 continue;
             }
 
-            // Upsert the config
+            validatedUpdates.push({ key, value, meta });
+        }
+
+        // If any validation errors, return early without applying changes
+        if (validationErrors.length > 0) {
+            return NextResponse.json({
+                success: false,
+                message: `Validation failed for ${validationErrors.length} setting(s). No changes applied.`,
+                errors: validationErrors,
+            }, { status: 400 });
+        }
+
+        // All validations passed - apply all updates
+        const results: Array<{ key: string; value: number; success: boolean }> = [];
+
+        for (const { key, value, meta } of validatedUpdates) {
             await SystemConfig.findOneAndUpdate(
                 { key },
                 {
@@ -119,21 +136,17 @@ export async function POST(req: NextRequest) {
                 },
                 { upsert: true, new: true }
             );
-
             results.push({ key, value, success: true });
         }
 
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
-
         // FIX: Refresh policy cache so new values take effect immediately
-        if (successCount > 0) {
+        if (results.length > 0) {
             await refreshPolicyCache();
         }
 
         return NextResponse.json({
-            success: failCount === 0,
-            message: `Updated ${successCount} policy(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+            success: true,
+            message: `Updated ${results.length} policy(s)`,
             results,
         });
     } catch (error) {

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import { MapPin, Users, Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { POLICIES } from '@/lib/policies';
 
 // Facility icons and colors mapping
 const facilityConfig: Record<string, { emoji: string; gradient: string; borderColor: string }> = {
@@ -188,7 +189,7 @@ export default async function FacilitiesPage() {
             <h3 className="font-semibold text-accent-blue">Booking Tips</h3>
           </div>
           <ul className="text-sm text-text-muted space-y-1">
-            <li>• Book up to 7 days in advance</li>
+            <li>• Book up to {POLICIES.ADVANCE_BOOKING_DAYS} days in advance</li>
             <li>• Generate QR code 15 min before slot</li>
             <li>• Cancel at least 24 hours before start</li>
           </ul>

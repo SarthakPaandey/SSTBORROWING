@@ -243,7 +243,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
     // Ensure minimum duration (15 minutes) and not zero after clamp
     const durationMinutes = (slotEnd.getTime() - slotStart.getTime()) / (1000 * 60);
     if (durationMinutes < 15) {
-      setError('Booking duration must be at least 15 minutes before 8:00 PM closing.');
+      setError(`Booking duration must be at least ${POLICIES.MIN_BOOKING_DURATION_MINUTES} minutes before 8:00 PM closing.`);
       return;
     }
 
@@ -493,7 +493,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                     Group Booking Required (Minimum 6 people)
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
-                    Team sports require at least 6 participants. Invite 5 friends below - bookings must be made at least 15 minutes in advance.
+                    Team sports require at least {POLICIES.GROUP_BOOKING_MIN_MEMBERS} participants. Invite {POLICIES.GROUP_BOOKING_MIN_MEMBERS - 1} friends below - bookings must be made at least {POLICIES.GROUP_BOOKING_CUTOFF_MINUTES} minutes in advance.
                     Friends can confirm until 5 minutes before start. Cancel early if your group can't make it.
                   </p>
                 </div>
@@ -528,7 +528,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                 <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                 <span>
                   Only remaining time slots for today are shown
-                  {isTeamSport && ' (Group bookings require 30 min advance notice)'}
+                  {isTeamSport && ` (Group bookings require ${POLICIES.GROUP_BOOKING_CUTOFF_MINUTES} min advance notice)`}
                 </span>
               </div>
             )}

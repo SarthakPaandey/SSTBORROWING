@@ -226,7 +226,7 @@ export default function BookingsPage() {
     const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     if (hoursUntilStart < 2) {
-      return { allowed: false, reason: 'Cannot reschedule within 2 hours of start time' };
+      return { allowed: false, reason: `Cannot reschedule within ${POLICIES.RESCHEDULE_BLOCK_WINDOW_HOURS} hours of start time` };
     }
 
     return { allowed: true };
@@ -723,7 +723,7 @@ export default function BookingsPage() {
                   if (slots.length === 0) {
                     return (
                       <div className="p-4 bg-warning/10 rounded-lg border border-warning/30 text-sm text-warning">
-                        No available slots for this date. Slots must be at least 2 hours in the future.
+                        No available slots for this date. Slots must be at least {POLICIES.RESCHEDULE_BLOCK_WINDOW_HOURS} hours in the future.
                       </div>
                     );
                   }
@@ -776,7 +776,7 @@ export default function BookingsPage() {
               <ul className="text-xs text-accent-blue space-y-1 list-disc list-inside">
                 <li>You can only reschedule this booking <strong>1 time</strong></li>
                 <li>Maximum <strong>3 reschedules allowed per month</strong></li>
-                <li>Cannot reschedule within <strong>2 hours</strong> of start time</li>
+                <li>Cannot reschedule within <strong>{POLICIES.RESCHEDULE_BLOCK_WINDOW_HOURS} hours</strong> of start time</li>
                 <li><strong>No penalty</strong> for rescheduling (better than cancelling!)</li>
               </ul>
             </div>

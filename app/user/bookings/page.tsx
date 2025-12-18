@@ -650,7 +650,7 @@ export default function BookingsPage() {
                 Show this QR code to the guard for {qrModal.booking?.kind === 'LIBRARY' ? 'book pickup' : 'equipment pickup'}
               </p>
               <p className="text-xs text-danger">
-                ⚠️ QR code expires in 10 minutes. You can generate QR code maximum 2 times per day per booking.
+                ⚠️ QR code expires in {POLICIES.QR_EQUIPMENT_PICKUP_WINDOW} minutes. You can generate QR code maximum 2 times per day per booking.
               </p>
             </div>
           </div>

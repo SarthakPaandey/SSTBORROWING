@@ -494,7 +494,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
                     Team sports require at least {POLICIES.GROUP_BOOKING_MIN_MEMBERS} participants. Invite {POLICIES.GROUP_BOOKING_MIN_MEMBERS - 1} friends below - bookings must be made at least {POLICIES.GROUP_BOOKING_CUTOFF_MINUTES} minutes in advance.
-                    Friends can confirm until 5 minutes before start. Cancel early if your group can't make it.
+                    Friends can confirm until {POLICIES.GROUP_BOOKING_CUTOFF_MINUTES} minutes before start. Cancel early if your group can't make it.
                   </p>
                 </div>
               </div>

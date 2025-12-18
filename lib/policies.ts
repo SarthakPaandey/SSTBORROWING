@@ -337,24 +337,43 @@ export function hasConsecutiveBookings(
 /**
  * Calculate dynamic expiration time for group bookings
  * 
- * Expiration = booking start - cutoff time (configurable via admin)
- * Default cutoff: 5 minutes before start
+ * The slot is blocked for a short window while friends respond:
+ * Expiration = creation time + reply time + cutoff buffer
+ * 
+ * Example: 10 min reply + 5 min buffer = 15 minutes from creation
+ * 
+ * This ensures slots aren't blocked for hours waiting for a future booking.
+ * If friends don't confirm within this window, the slot opens up again.
  */
 export async function calculateGroupBookingExpiration(
   bookingStart: Date,
-  _createdAt: Date = getNow() // No longer used, kept for backward compatibility
+  createdAt: Date = getNow()
 ): Promise<Date> {
   const startDate = new Date(bookingStart);
+  const creationTime = new Date(createdAt);
 
-  // Get dynamic cutoff from DB (in minutes)
-  const cutoffMinutes = await getPolicyValue('GROUP_BOOKING_CUTOFF_MINUTES');
+  // Get dynamic values from DB (in minutes)
+  const [cutoffMinutes, replyMinutes] = await Promise.all([
+    getPolicyValue('GROUP_BOOKING_CUTOFF_MINUTES'),
+    getPolicyValue('GROUP_BOOKING_REPLY_TIME_MINUTES'),
+  ]);
 
-  // Expiration is: booking start time - cutoff period
-  const expiresAt = new Date(
+  // Expiration is: creation time + reply window + buffer
+  // This is the window friends have to respond before slot opens again
+  const expirationFromCreation = new Date(
+    creationTime.getTime() + (replyMinutes + cutoffMinutes) * 60 * 1000
+  );
+
+  // But expiration should never be after (booking start - cutoff)
+  // Otherwise friends could confirm after the booking should have started
+  const latestPossibleExpiration = new Date(
     startDate.getTime() - cutoffMinutes * 60 * 1000
   );
 
-  return expiresAt;
+  // Return the earlier of the two
+  return expirationFromCreation < latestPossibleExpiration
+    ? expirationFromCreation
+    : latestPossibleExpiration;
 }
 
 /**

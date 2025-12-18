@@ -88,7 +88,7 @@ const GroupBookingSchema = new Schema<IGroupBooking>(
   }
 );
 
-GroupBookingSchema.index({ bookingId: 1 });
+// Note: bookingId already has unique:true which creates an index automatically
 GroupBookingSchema.index({ organizerId: 1 });
 GroupBookingSchema.index({ 'members.userId': 1 });
 GroupBookingSchema.index({ status: 1, expiresAt: 1 });

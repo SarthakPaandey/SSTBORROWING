@@ -93,7 +93,8 @@ async function handleBulkApprove(
     for (const booking of bookings) {
         booking.approval = 'APPROVED';
         booking.status = 'CONFIRMED';
-        booking.approvedBy = user.id;
+        // Fallback to 'SYSTEM_ADMIN' if user.id is undefined (shouldn't happen but defensive)
+        booking.approvedBy = user.id || 'SYSTEM_ADMIN';
         booking.approvedAt = new Date();
         await booking.save();
 

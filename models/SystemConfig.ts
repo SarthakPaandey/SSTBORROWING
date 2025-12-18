@@ -25,8 +25,8 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
         key: {
             type: String,
             required: true,
-            unique: true,
-            index: true
+            unique: true
+            // Note: unique: true already creates an index, so index: true is redundant
         },
         value: {
             type: Number,

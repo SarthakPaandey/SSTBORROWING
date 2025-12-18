@@ -91,6 +91,25 @@ export async function GET(
     });
 
   } catch (error) {
-    return handleApiError(error);
+    // Return HTML error page instead of JSON for better UX when users click email links
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    const isValidationError = error instanceof ValidationError || error instanceof NotFoundError;
+
+    return new NextResponse(`
+      <html>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <h1 style="color: #dc3545">
+            ${isValidationError ? 'Request Failed' : 'Error'}
+          </h1>
+          <p>${errorMessage}</p>
+          <p style="color: #666; font-size: 14px; margin-top: 20px;">
+            If you believe this is a mistake, please contact the administrator.
+          </p>
+        </body>
+      </html>
+    `, {
+      status: isValidationError ? 400 : 500,
+      headers: { 'Content-Type': 'text/html' },
+    });
   }
 }

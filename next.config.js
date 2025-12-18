@@ -24,7 +24,19 @@ const nextConfig = {
     optimizePackageImports: ['framer-motion', 'recharts'],
   },
   images: {
-    domains: ['lh3.googleusercontent.com', 'raw.githubusercontent.com'],
+    // Use remotePatterns instead of deprecated 'domains'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        pathname: '/**',
+      },
+    ],
     // Use modern image formats for faster loading
     formats: ['image/avif', 'image/webp'],
   },

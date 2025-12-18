@@ -197,10 +197,13 @@ export function handleApiError(error: unknown): NextResponse {
 
     // Handle standard Error instances
     if (error instanceof Error) {
-        console.error('Unexpected error:', {
-            message: error.message,
-            stack: error.stack,
-        });
+        // Suppress noisy logging during tests to keep test output clean
+        if (process.env.NODE_ENV !== 'test') {
+            console.error('Unexpected error:', {
+                message: error.message,
+                stack: error.stack,
+            });
+        }
 
         return NextResponse.json(
             { error: error.message || 'An unexpected error occurred' },
@@ -209,7 +212,10 @@ export function handleApiError(error: unknown): NextResponse {
     }
 
     // Handle unknown error types
-    console.error('Unknown error type:', error);
+    // Suppress noisy logging during tests to keep test output clean
+    if (process.env.NODE_ENV !== 'test') {
+        console.error('Unknown error type:', error);
+    }
     return NextResponse.json(
         { error: 'An unexpected error occurred' },
         { status: 500 }

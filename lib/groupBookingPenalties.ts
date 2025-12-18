@@ -99,6 +99,9 @@ export async function recalculatePenaltyPoints(
         { userId, served: false, waivedBy: null },
         { served: true, servedAt: now }
       ).session(session ?? null);
+
+      // FIX: Reset penalty points to 0 for consistency (all penalties are now served)
+      user.penaltyPoints = 0;
     } else {
       // Level 0 or 1 -> Suspend and escalate
       const suspensionDate = new Date(now);
@@ -139,7 +142,7 @@ export async function recalculatePenaltyPoints(
  */
 export async function expireGroupBookings(): Promise<number> {
   const conn = await connectDB();
-  
+
   // Find all pending group bookings
   const pendingBookings = await GroupBooking.find({
     status: 'PENDING_CONFIRMATIONS',

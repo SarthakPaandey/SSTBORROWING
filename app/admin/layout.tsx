@@ -1,12 +1,12 @@
 import { Navbar } from '@/components/Navbar';
-import { AnimatedBackground } from '@/components/ui/AnimatedBackground';
+import { SimpleGradientBackground } from '@/components/ui/AnimatedBackground';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen relative">
-      {/* Animated gradient background - intense variant for admin */}
-      <AnimatedBackground variant="default" />
-      
+      {/* Lightweight gradient background for better performance */}
+      <SimpleGradientBackground />
+
       {/* Content */}
       <div className="relative z-10">
         <Navbar />

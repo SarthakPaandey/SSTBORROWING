@@ -158,7 +158,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
 
       setSuccess(true);
       triggerBookingSuccess();
-      setTimeout(() => router.push('/user/bookings'), 2000);
+      setTimeout(() => router.push('/user/bookings'), 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

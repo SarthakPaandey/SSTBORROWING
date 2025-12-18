@@ -44,34 +44,34 @@ export function SuccessCelebration({
                     onAnimationComplete={onAnimationComplete}
                 >
                     <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
+                        initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                         className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-card to-cyan-500/10 border border-emerald-500/30 p-8 max-w-sm mx-4 shadow-2xl"
                     >
-                        {/* Animated background glow */}
+                        {/* Animated background glow - faster pulse */}
                         <motion.div
                             className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"
                             animate={{
-                                opacity: [0.3, 0.6, 0.3],
+                                opacity: [0.3, 0.5, 0.3],
                             }}
                             transition={{
-                                duration: 2,
-                                repeat: Infinity,
+                                duration: 0.8,
+                                repeat: 2,
                             }}
                         />
 
                         <div className="relative flex flex-col items-center text-center space-y-4">
                             {/* Animated checkmark */}
                             <motion.div
-                                initial={{ scale: 0, rotate: -180 }}
+                                initial={{ scale: 0, rotate: -90 }}
                                 animate={{ scale: 1, rotate: 0 }}
                                 transition={{
                                     type: 'spring',
-                                    stiffness: 200,
-                                    damping: 15,
-                                    delay: 0.2,
+                                    stiffness: 400,
+                                    damping: 20,
+                                    delay: 0.1,
                                 }}
                                 className="relative"
                             >
@@ -79,31 +79,31 @@ export function SuccessCelebration({
                                     <CheckCircle2 className="w-10 h-10 text-white" />
                                 </div>
 
-                                {/* Pulse ring */}
+                                {/* Pulse ring - single quick pulse */}
                                 <motion.div
                                     className="absolute inset-0 rounded-full border-2 border-emerald-400"
                                     initial={{ scale: 1, opacity: 1 }}
-                                    animate={{ scale: 1.5, opacity: 0 }}
+                                    animate={{ scale: 1.4, opacity: 0 }}
                                     transition={{
-                                        duration: 1,
-                                        repeat: Infinity,
-                                        repeatDelay: 0.5,
+                                        duration: 0.5,
+                                        repeat: 1,
+                                        repeatDelay: 0.2,
                                     }}
                                 />
                             </motion.div>
 
                             {/* Message */}
                             <motion.div
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.4 }}
+                                transition={{ delay: 0.15, duration: 0.2 }}
                                 className="space-y-2"
                             >
                                 <h3 className="text-2xl font-bold text-text-main flex items-center justify-center gap-2">
                                     {message}
                                     <motion.span
-                                        animate={{ rotate: [0, 15, -15, 0] }}
-                                        transition={{ duration: 0.5, delay: 0.6 }}
+                                        animate={{ rotate: [0, 10, -10, 0] }}
+                                        transition={{ duration: 0.3, delay: 0.25 }}
                                     >
                                         {type === 'booking' ? (
                                             <CalendarCheck className="w-6 h-6 text-emerald-400" />
@@ -115,11 +115,11 @@ export function SuccessCelebration({
                                 <p className="text-text-muted text-sm">{subMessage}</p>
                             </motion.div>
 
-                            {/* Loading dots */}
+                            {/* Loading dots - faster animation */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                transition={{ delay: 0.6 }}
+                                transition={{ delay: 0.2 }}
                                 className="flex items-center gap-1"
                             >
                                 {[0, 1, 2].map((i) => (
@@ -127,13 +127,13 @@ export function SuccessCelebration({
                                         key={i}
                                         className="w-2 h-2 rounded-full bg-emerald-400"
                                         animate={{
-                                            y: [-2, 2, -2],
-                                            opacity: [0.5, 1, 0.5],
+                                            y: [-1, 1, -1],
+                                            opacity: [0.6, 1, 0.6],
                                         }}
                                         transition={{
-                                            duration: 0.6,
-                                            repeat: Infinity,
-                                            delay: i * 0.15,
+                                            duration: 0.4,
+                                            repeat: 2,
+                                            delay: i * 0.08,
                                         }}
                                     />
                                 ))}

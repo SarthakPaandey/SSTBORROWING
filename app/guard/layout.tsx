@@ -1,12 +1,12 @@
 import { Navbar } from '@/components/Navbar';
-import { AnimatedBackground } from '@/components/ui/AnimatedBackground';
+import { SimpleGradientBackground } from '@/components/ui/AnimatedBackground';
 
 export default function GuardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen relative">
-      {/* Animated gradient background - minimal variant for guard station */}
-      <AnimatedBackground variant="minimal" showParticles={false} />
-      
+      {/* Lightweight gradient background for better performance */}
+      <SimpleGradientBackground />
+
       {/* Content */}
       <div className="relative z-10">
         <Navbar />

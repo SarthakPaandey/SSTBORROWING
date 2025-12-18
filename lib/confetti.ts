@@ -122,7 +122,7 @@ export function triggerBookingSuccess() {
         gravity: 1.2,
     });
 
-    // Side bursts after a short delay
+    // Side bursts after a short delay (faster)
     setTimeout(() => {
         confetti({
             particleCount: 30,

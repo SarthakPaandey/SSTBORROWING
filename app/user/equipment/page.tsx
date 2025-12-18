@@ -115,23 +115,7 @@ export default function EquipmentPage() {
     fetchResources();
   }, []);
 
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'lab-duration-pre-fix',
-        hypothesisId: 'H1',
-        location: 'equipment/page.tsx:tabEffect',
-        message: 'Tab changed',
-        data: { tab },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => { });
-  }, [tab]);
-  // #endregion
+
 
   // For Lab tab only, ensure startTime is not in the past if the date is today
   useEffect(() => {
@@ -163,24 +147,7 @@ export default function EquipmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, tab]);
 
-  // #region agent log
-  useEffect(() => {
-    const now = getISTNow();
-    fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'debug-session',
-        runId: 'lab-duration-pre-fix',
-        hypothesisId: 'H2',
-        location: 'equipment/page.tsx:labDurationRender',
-        message: 'Lab render state',
-        data: { tab, labDurationDays, startTime, date: formatISTDate(date), now: now.toISOString() },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => { });
-  }, [tab, labDurationDays, startTime, date]);
-  // #endregion
+
 
   // Refetch items when date or time changes to update availability
   useEffect(() => {
@@ -413,21 +380,7 @@ export default function EquipmentPage() {
           return;
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/f414a5f8-0119-4df2-8bf1-d8bbc7364ecd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: 'debug-session',
-            runId: 'sports-duration-dynamic',
-            hypothesisId: 'H3',
-            location: 'equipment/page.tsx:handleBook-sports',
-            message: 'Sports booking window',
-            data: { start: start.toISOString(), end: end.toISOString(), sessionMinutes },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => { });
-        // #endregion
+
       } else {
         // Lab flow: dynamic duration based on item category
         start = getISTNow();
@@ -502,7 +455,7 @@ export default function EquipmentPage() {
 
       setSuccess(true);
       triggerBookingSuccess();
-      setTimeout(() => router.push('/user/bookings'), 2000);
+      setTimeout(() => router.push('/user/bookings'), 1200);
     } catch (err: any) {
       setError(err.message);
     } finally {

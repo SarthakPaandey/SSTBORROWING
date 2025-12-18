@@ -8,6 +8,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Escape special regex characters to prevent ReDoS attacks
+ * when using user input in MongoDB $regex queries.
+ */
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * GET /api/admin/audit-logs
  * 
  * Query params:
@@ -60,11 +68,13 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // FIX: Escape regex special characters to prevent ReDoS attacks
         if (search) {
+            const escapedSearch = escapeRegex(search);
             query.$or = [
-                { 'actor.email': { $regex: search, $options: 'i' } },
-                { 'actor.name': { $regex: search, $options: 'i' } },
-                { 'target.name': { $regex: search, $options: 'i' } },
+                { 'actor.email': { $regex: escapedSearch, $options: 'i' } },
+                { 'actor.name': { $regex: escapedSearch, $options: 'i' } },
+                { 'target.name': { $regex: escapedSearch, $options: 'i' } },
             ];
         }
 

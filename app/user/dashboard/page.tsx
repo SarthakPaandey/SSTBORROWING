@@ -67,12 +67,17 @@ export default async function UserDashboard() {
   const now = getNow();
 
   // Parallel queries for faster loading (~30-50% improvement)
+  // FIX: Use start + grace period for consistency with bookings page upcoming definition
+  // A booking is "upcoming" if start time + grace period hasn't passed yet
+  const graceMs = POLICIES.NO_SHOW_GRACE_MINUTES * 60 * 1000;
+  const graceAdjustedNow = new Date(now.getTime() - graceMs);
+
   const [user, upcomingBookings] = await Promise.all([
     User.findById(session.user.id),
     Booking.find({
       userId: session.user.id,
       status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
-      end: { $gte: now },
+      start: { $gte: graceAdjustedNow },
     })
       .sort({ start: 1 })
       .limit(5)

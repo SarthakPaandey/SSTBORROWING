@@ -70,7 +70,9 @@ export function showNotification(data: NotificationData): Notification | null {
   }
 
   try {
-    const options: NotificationOptions & { vibrate?: number[] } = {
+    // NOTE: Removed vibrate option - it's only valid in ServiceWorkerRegistration.showNotification()
+    // The Web Notifications API (new Notification()) does not support vibration patterns.
+    const options: NotificationOptions = {
       body: data.body,
       icon: data.icon || '/sst-logo.png',
       badge: '/sst-logo.png',
@@ -81,11 +83,6 @@ export function showNotification(data: NotificationData): Notification | null {
         type: data.type,
       },
     };
-
-    // Add vibration only if supported
-    if ('vibrate' in navigator) {
-      options.vibrate = [200, 100, 200];
-    }
 
     console.log('Creating notification with options:', options);
     const notification = new Notification(data.title, options);

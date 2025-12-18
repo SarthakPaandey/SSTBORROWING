@@ -13,27 +13,36 @@ const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const MAX_MAP_SIZE = 10000;
 
-setInterval(() => {
-    const now = Date.now();
-    const entriesToDelete: string[] = [];
+// FIX: Use global singleton to prevent duplicate intervals on hot-reload in dev
+// In development, module-level code re-executes on each HMR update,
+// creating multiple overlapping intervals. Using globalThis ensures only one exists.
+const CLEANUP_KEY = Symbol.for('__RATE_LIMIT_CLEANUP_INITIALIZED__');
 
-    // Remove entries older than 2x the typical window
-    for (const [ip, record] of rateLimitMap.entries()) {
-        if (now - record.lastReset > 120000) {
-            entriesToDelete.push(ip);
+if (!(globalThis as any)[CLEANUP_KEY]) {
+    (globalThis as any)[CLEANUP_KEY] = true;
+
+    setInterval(() => {
+        const now = Date.now();
+        const entriesToDelete: string[] = [];
+
+        // Remove entries older than 2x the typical window
+        for (const [ip, record] of rateLimitMap.entries()) {
+            if (now - record.lastReset > 120000) {
+                entriesToDelete.push(ip);
+            }
         }
-    }
 
-    entriesToDelete.forEach(ip => rateLimitMap.delete(ip));
+        entriesToDelete.forEach(ip => rateLimitMap.delete(ip));
 
-    // Enforce max size by removing oldest
-    if (rateLimitMap.size > MAX_MAP_SIZE) {
-        const entries = Array.from(rateLimitMap.entries())
-            .sort((a, b) => a[1].lastReset - b[1].lastReset)
-            .slice(0, rateLimitMap.size - MAX_MAP_SIZE);
-        entries.forEach(([ip]) => rateLimitMap.delete(ip));
-    }
-}, CLEANUP_INTERVAL_MS);
+        // Enforce max size by removing oldest
+        if (rateLimitMap.size > MAX_MAP_SIZE) {
+            const entries = Array.from(rateLimitMap.entries())
+                .sort((a, b) => a[1].lastReset - b[1].lastReset)
+                .slice(0, rateLimitMap.size - MAX_MAP_SIZE);
+            entries.forEach(([ip]) => rateLimitMap.delete(ip));
+        }
+    }, CLEANUP_INTERVAL_MS);
+}
 
 export class InMemoryAdapter implements RateLimitAdapter {
     async check(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {

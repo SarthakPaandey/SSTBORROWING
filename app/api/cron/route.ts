@@ -246,6 +246,23 @@ export async function GET(req: NextRequest) {
         // FIX: This was imported but never called - now properly integrated
         results.expiredGroupBookings = await expireGroupBookings();
 
+        // 7. Cancel orphaned group bookings where organizer is blocked
+        // This prevents users from being stuck in groups led by blocked organizers
+        const blockedOrganizers = await User.find({ blocked: true }).select('_id');
+        if (blockedOrganizers.length > 0) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            const orphanedResult = await GroupBooking.updateMany(
+                {
+                    organizerId: { $in: blockedOrganizers.map(u => u._id.toString()) },
+                    status: 'PENDING_CONFIRMATIONS'
+                },
+                { $set: { status: 'CANCELLED' } }
+            );
+            if (orphanedResult.modifiedCount > 0) {
+                console.log(`[Cron] Cancelled ${orphanedResult.modifiedCount} orphaned group bookings`);
+            }
+        }
+
         return NextResponse.json({ success: true, results });
     } catch (error) {
         console.error('Cron job error:', error);

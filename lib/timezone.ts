@@ -119,7 +119,10 @@ export function getTodayEnd(): Date {
  * @example
  * parseISTDateTime('2025-01-15', '14:30') // Returns UTC Date for 2:30 PM IST on Jan 15
  */
+// IST offset matches the TIMEZONE constant 'Asia/Kolkata' = UTC+5:30
+const IST_OFFSET = '+05:30';
+
 export function parseISTDateTime(date: string, time: string): Date {
     // Create ISO string with IST offset
-    return new Date(`${date}T${time}:00+05:30`);
+    return new Date(`${date}T${time}:00${IST_OFFSET}`);
 }

@@ -5,6 +5,8 @@ import { Penalty } from '@/models/Penalty';
 import { User } from '@/models/User';
 import { POLICIES, calculateSuspensionDate, isGroupBookingExpired } from './policies';
 import { getNow } from './timezone';
+import { withTransaction } from './transaction';
+import { connectDB } from './db';
 
 /**
  * Recalculate a user's penalty points and apply escalating suspensions
@@ -136,6 +138,8 @@ export async function recalculatePenaltyPoints(
  * Expires if: expiresAt has passed OR booking start time has passed
  */
 export async function expireGroupBookings(): Promise<number> {
+  const conn = await connectDB();
+  
   // Find all pending group bookings
   const pendingBookings = await GroupBooking.find({
     status: 'PENDING_CONFIRMATIONS',
@@ -144,32 +148,45 @@ export async function expireGroupBookings(): Promise<number> {
   let expiredCount = 0;
 
   for (const gb of pendingBookings) {
-    // Get booking to check start time
-    const booking = await Booking.findById(gb.bookingId);
-    if (!booking) {
-      continue; // Skip if booking not found
-    }
+    try {
+      // FIX: Wrap each expiration in a transaction for atomicity
+      await withTransaction(conn, async (session) => {
+        // Re-fetch within transaction to prevent race conditions
+        const freshGb = await GroupBooking.findById(gb.id).session(session);
+        if (!freshGb || freshGb.status !== 'PENDING_CONFIRMATIONS') {
+          return;
+        }
 
-    // Check if expired (either expiresAt passed OR booking start time passed)
-    if (isGroupBookingExpired(gb.expiresAt, booking.start)) {
-      // Check if minimum is met
-      if (gb.confirmedCount >= gb.requiredMinimum) {
-        // Enough confirmations - mark as confirmed
-        gb.status = 'CONFIRMED';
-        await gb.save();
+        // Get booking to check start time
+        const booking = await Booking.findById(freshGb.bookingId).session(session);
+        if (!booking) {
+          console.warn(`[expireGroupBookings] Booking ${freshGb.bookingId} not found for group booking ${freshGb.id}`);
+          return;
+        }
 
-        booking.status = 'CONFIRMED';
-        await booking.save();
-      } else {
-        // Not enough confirmations - cancel
-        gb.status = 'EXPIRED';
-        await gb.save();
+        // Check if expired (either expiresAt passed OR booking start time passed)
+        if (isGroupBookingExpired(freshGb.expiresAt, booking.start)) {
+          if (freshGb.confirmedCount >= freshGb.requiredMinimum) {
+            // Enough confirmations - mark as confirmed
+            freshGb.status = 'CONFIRMED';
+            await freshGb.save({ session });
 
-        booking.status = 'CANCELLED';
-        await booking.save();
+            booking.status = 'CONFIRMED';
+            await booking.save({ session });
+          } else {
+            // Not enough confirmations - cancel
+            freshGb.status = 'EXPIRED';
+            await freshGb.save({ session });
 
-        expiredCount++;
-      }
+            booking.status = 'CANCELLED';
+            await booking.save({ session });
+
+            expiredCount++;
+          }
+        }
+      });
+    } catch (error) {
+      console.error(`[expireGroupBookings] Failed to process group booking ${gb.id}:`, error);
     }
   }
 

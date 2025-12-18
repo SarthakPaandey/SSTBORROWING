@@ -58,6 +58,15 @@ export async function POST(
 
             await booking.save();
 
+            // FIX: If this is a group booking, update the GroupBooking record as well
+            if (booking.isGroupBooking && booking.groupBookingId) {
+                const { GroupBooking } = await import('@/models/GroupBooking');
+                await GroupBooking.findByIdAndUpdate(
+                    booking.groupBookingId,
+                    { $set: { status: 'CANCELLED' } }
+                );
+            }
+
             return NextResponse.json({
                 success: true,
                 message: 'Booking force cancelled by admin (no penalty applied)',

@@ -13,6 +13,7 @@ export type AuditAction =
     | 'CREATE_BLOCK'
     | 'UPDATE_BLOCK'
     | 'REMOVE_BLOCK'
+    | 'ADD_PENALTY'
     | 'WAIVE_PENALTY'
     | 'CREATE_RESOURCE'
     | 'UPDATE_RESOURCE'
@@ -60,6 +61,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
                 'CREATE_BLOCK',
                 'UPDATE_BLOCK',
                 'REMOVE_BLOCK',
+                'ADD_PENALTY',
                 'WAIVE_PENALTY',
                 'CREATE_RESOURCE',
                 'UPDATE_RESOURCE',
@@ -123,6 +125,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, { label: string; emoji: st
     CREATE_BLOCK: { label: 'Created Block', emoji: '🔒', color: 'info' },
     UPDATE_BLOCK: { label: 'Updated Block', emoji: '✏️', color: 'info' },
     REMOVE_BLOCK: { label: 'Removed Block', emoji: '🔓', color: 'success' },
+    ADD_PENALTY: { label: 'Added Penalty', emoji: '⚠️', color: 'warning' },
     WAIVE_PENALTY: { label: 'Waived Penalty', emoji: '🎁', color: 'success' },
     CREATE_RESOURCE: { label: 'Created Resource', emoji: '➕', color: 'success' },
     UPDATE_RESOURCE: { label: 'Updated Resource', emoji: '✏️', color: 'info' },

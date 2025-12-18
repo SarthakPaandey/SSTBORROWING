@@ -159,6 +159,9 @@ export async function DELETE(req: NextRequest) {
 
         await SystemConfig.findOneAndDelete({ key });
 
+        // FIX: Refresh policy cache so change takes effect immediately
+        await refreshPolicyCache();
+
         const defaultValue = POLICIES[key as keyof typeof POLICIES];
 
         return NextResponse.json({

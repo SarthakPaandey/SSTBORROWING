@@ -13,7 +13,7 @@ import { withTransaction } from '@/lib/transaction';
 import { handleApiError, ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError } from '@/lib/errors';
 import { toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
-import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
+import { countActiveGroupParticipations, getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 import { sendEmail } from '@/lib/email';
 import { formatDateTime } from '@/lib/utils';
 
@@ -190,17 +190,36 @@ async function postHandler(req: Request) {
       // Check for conflicts with existing bookings for all members (including organizer)
       const allMemberIds = [organizer.id, ...members.map(m => m.id)];
 
-      const conflictingBookings = await Booking.findOne({
-        userId: { $in: allMemberIds },
-        status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
-        start: { $lt: new Date(end) },
-        end: { $gt: new Date(start) },  // These are already Date objects from client
-      }).session(txSession);
+      // FIX: Check for BOTH direct bookings and group booking participations for all members
+      // This prevents a member from being in two overlapping bookings (even if not the organizer)
+      for (const memberId of allMemberIds) {
+        // 1. Check direct bookings where user is the primary owner
+        const directConflict = await Booking.findOne({
+          userId: memberId,
+          status: { $in: ['CONFIRMED', 'CHECKED_IN', 'PENDING'] },
+          start: { $lt: new Date(end) },
+          end: { $gt: new Date(start) },
+        }).session(txSession);
 
-      if (conflictingBookings) {
-        // FIX: conflictingBookings.userId is the ObjectId, not email
-        const conflictUser = await User.findById(conflictingBookings.userId).session(txSession);
-        throw new ConflictError(`${conflictUser?.email || 'A member'} has a conflicting booking at this time`);
+        if (directConflict) {
+          const conflictUser = await User.findById(memberId).session(txSession);
+          throw new ConflictError(`${conflictUser?.email || 'A member'} already has a direct booking at this time`);
+        }
+
+        // 2. Check group bookings where user is a participant (but not the owner)
+        const participantBookings = await getGroupParticipantBookings(memberId, txSession);
+        const groupConflict = participantBookings.find(b => {
+          const bStart = new Date(b.start).getTime();
+          const bEnd = new Date(b.end).getTime();
+          const reqStart = new Date(start).getTime();
+          const reqEnd = new Date(end).getTime();
+          return bStart < reqEnd && bEnd > reqStart;
+        });
+
+        if (groupConflict) {
+          const conflictUser = await User.findById(memberId).session(txSession);
+          throw new ConflictError(`${conflictUser?.email || 'A member'} is already participating in another group booking at this time`);
+        }
       }
 
       // Per-user, per-category caps for all members (group booking is always FACILITY)

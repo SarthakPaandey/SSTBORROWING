@@ -69,10 +69,29 @@ export async function POST(
       booking.approvedBy = admin.id;
       // Use UTC timestamp for DB consistency
       booking.approvedAt = new Date();
+
+      // FIX: If this is a group booking, update the GroupBooking record as well
+      if (booking.isGroupBooking && booking.groupBookingId) {
+        const { GroupBooking } = await import('@/models/GroupBooking');
+        await GroupBooking.findByIdAndUpdate(
+          booking.groupBookingId,
+          { $set: { status: 'CONFIRMED' } }
+        );
+      }
     }
     if (action === 'reject') {
       booking.approval = 'REJECTED';
       booking.status = 'CANCELLED';
+
+      // FIX: If this is a group booking, update the GroupBooking record as well
+      if (booking.isGroupBooking && booking.groupBookingId) {
+        const { GroupBooking } = await import('@/models/GroupBooking');
+        await GroupBooking.findByIdAndUpdate(
+          booking.groupBookingId,
+          { $set: { status: 'CANCELLED' } }
+        );
+      }
+
       // Store optional rejection reason
       if (reason && reason.trim()) {
         booking.rejectionReason = reason.trim();

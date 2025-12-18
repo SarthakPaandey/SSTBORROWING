@@ -170,19 +170,44 @@ export async function GET(req: NextRequest) {
         results.overdueCompleted = overdueCheckedIn;
 
         // 4. Handle Expired Pending Bookings (no penalties, just cancel)
-        const expiredPendingResult = await Booking.updateMany(
-            {
-                status: 'PENDING',
-                $or: [
-                    { start: { $lt: now } },
-                    { createdAt: { $lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }
-                ]
-            },
-            {
-                $set: { status: 'CANCELLED', approval: 'REJECTED' }
+        // FIX: Also update associated GroupBooking records for expired pending bookings
+        const expiredPendingBookings = await Booking.find({
+            status: 'PENDING',
+            $or: [
+                { start: { $lt: now } },
+                { createdAt: { $lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } }
+            ]
+        });
+
+        for (const booking of expiredPendingBookings) {
+            const session = await mongoose.startSession();
+            try {
+                await session.startTransaction();
+
+                booking.status = 'CANCELLED';
+                booking.approval = 'REJECTED';
+                await booking.save({ session });
+
+                if (booking.isGroupBooking && booking.groupBookingId) {
+                    const { GroupBooking } = await import('@/models/GroupBooking');
+                    await GroupBooking.findByIdAndUpdate(
+                        booking.groupBookingId,
+                        { $set: { status: 'CANCELLED' } },
+                        { session }
+                    );
+                }
+
+                await session.commitTransaction();
+                results.expiredPending++;
+            } catch (error) {
+                if (session.inTransaction()) {
+                    await session.abortTransaction();
+                }
+                console.error(`Failed to expire pending booking ${booking.id}:`, error);
+            } finally {
+                session.endSession();
             }
-        );
-        results.expiredPending = expiredPendingResult.modifiedCount || 0;
+        }
 
         // 5. Cleanup Old QR Tokens
         const oneDayAgo = getDaysAgo(1);

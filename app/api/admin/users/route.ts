@@ -4,6 +4,7 @@ import { User } from '@/models/User';
 import { Penalty } from '@/models/Penalty';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
+import { logAuditEvent, getActorFromSession } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
     try {
@@ -102,6 +103,21 @@ export async function POST(req: NextRequest) {
         }
 
         await user.save();
+
+        // FIX: Add audit log for block/unblock action
+        await logAuditEvent({
+            action: action === 'block' ? 'USER_BLOCKED' : 'USER_UNBLOCKED',
+            actor: getActorFromSession(admin),
+            target: {
+                type: 'USER',
+                id: userId,
+                name: user.name || user.email,
+            },
+            details: {
+                action,
+                email: user.email,
+            },
+        });
 
         return NextResponse.json({
             success: true,

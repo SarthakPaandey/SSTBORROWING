@@ -88,25 +88,31 @@ async function handleBulkApprove(
     }
 
     // Update all matching bookings
-    const result = await Booking.updateMany(
-        {
-            _id: { $in: bookings.map(b => b._id) },
-            approval: 'PENDING',
-        },
-        {
-            $set: {
-                approval: 'APPROVED',
-                status: 'CONFIRMED',
-                approvedBy: user.id,
-                approvedAt: new Date(),
-            },
+    // FIX: Must also update GroupBooking status for group bookings
+    let modifiedCount = 0;
+    for (const booking of bookings) {
+        booking.approval = 'APPROVED';
+        booking.status = 'CONFIRMED';
+        booking.approvedBy = user.id;
+        booking.approvedAt = new Date();
+        await booking.save();
+
+        if (booking.isGroupBooking && booking.groupBookingId) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            await GroupBooking.findByIdAndUpdate(
+                booking.groupBookingId,
+                { $set: { status: 'CONFIRMED' } }
+            );
         }
-    );
+        modifiedCount++;
+    }
 
     // Get resource names for audit log
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
     const resources = await Resource.find({ _id: { $in: resourceIds } });
     const resourceMap = new Map(resources.map(r => [r._id.toString(), r.name]));
+
+    const result = { modifiedCount }; // Compatible with the rest of the code
 
     // Log audit events
     await logBulkAuditEvent(
@@ -154,18 +160,24 @@ async function handleBulkReject(
         return NextResponse.json({ error: 'No valid pending bookings found' }, { status: 400 });
     }
 
-    const result = await Booking.updateMany(
-        {
-            _id: { $in: bookings.map(b => b._id) },
-            approval: 'PENDING',
-        },
-        {
-            $set: {
-                approval: 'REJECTED',
-                status: 'CANCELLED',
-            },
+    // Update all matching bookings
+    // FIX: Must also update GroupBooking status for group bookings
+    let modifiedCount = 0;
+    for (const booking of bookings) {
+        booking.approval = 'REJECTED';
+        booking.status = 'CANCELLED';
+        await booking.save();
+
+        if (booking.isGroupBooking && booking.groupBookingId) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            await GroupBooking.findByIdAndUpdate(
+                booking.groupBookingId,
+                { $set: { status: 'CANCELLED' } }
+            );
         }
-    );
+        modifiedCount++;
+    }
+    const result = { modifiedCount };
 
     // Get resource names for audit log
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
@@ -242,10 +254,22 @@ async function handleCancelByDate(
     }
 
     // Cancel bookings
-    const result = await Booking.updateMany(
-        { _id: { $in: bookings.map(b => b._id) } },
-        { $set: { status: 'CANCELLED' } }
-    );
+    // FIX: Must also update GroupBooking status for group bookings
+    let modifiedCount = 0;
+    for (const booking of bookings) {
+        booking.status = 'CANCELLED';
+        await booking.save();
+
+        if (booking.isGroupBooking && booking.groupBookingId) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            await GroupBooking.findByIdAndUpdate(
+                booking.groupBookingId,
+                { $set: { status: 'CANCELLED' } }
+            );
+        }
+        modifiedCount++;
+    }
+    const result = { modifiedCount };
 
     // Get resource names for audit log
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];

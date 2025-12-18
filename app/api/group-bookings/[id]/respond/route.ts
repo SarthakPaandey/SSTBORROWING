@@ -176,19 +176,39 @@ export async function PATCH(
 
     } else {
       // REJECT
-      groupBooking.members[memberIndex].status = 'REJECTED';
-      // Store UTC timestamp to avoid IST-shift in DB
-      groupBooking.members[memberIndex].respondedAt = new Date();
-      await groupBooking.save({ session });
+      // FIX: Use atomic findOneAndUpdate to prevent race conditions during rejection
+      const updatedGroupBooking = await GroupBooking.findOneAndUpdate(
+        {
+          _id: params.id,
+          status: 'PENDING_CONFIRMATIONS',
+          'members.userId': user.id,
+          'members.status': 'PENDING',
+        },
+        {
+          $set: {
+            'members.$.status': 'REJECTED',
+            'members.$.respondedAt': new Date(),
+          }
+        },
+        { new: true, session }
+      );
+
+      if (!updatedGroupBooking) {
+        throw new ValidationError('You have already responded to this invitation or it is no longer active');
+      }
 
       // Check if we can still reach minimum with remaining pending members
-      const pendingCount = groupBooking.members.filter(m => m.status === 'PENDING').length;
-      const possibleTotal = groupBooking.confirmedCount + pendingCount;
+      const pendingCount = updatedGroupBooking.members.filter(m => m.status === 'PENDING').length;
+      const possibleTotal = updatedGroupBooking.confirmedCount + pendingCount;
 
-      if (possibleTotal < groupBooking.requiredMinimum) {
+      if (possibleTotal < updatedGroupBooking.requiredMinimum) {
         // Cancel the booking - can't reach minimum even with all pending accepting
-        groupBooking.status = 'CANCELLED';
-        await groupBooking.save({ session });
+        // Atomic status update to CANCELLED
+        await GroupBooking.updateOne(
+          { _id: params.id, status: 'PENDING_CONFIRMATIONS' },
+          { $set: { status: 'CANCELLED' } },
+          { session }
+        );
 
         // Booking already fetched above
         booking.status = 'CANCELLED';
@@ -199,7 +219,7 @@ export async function PATCH(
 
         return NextResponse.json({
           message: 'Invitation rejected. Group booking cancelled (insufficient members).',
-          groupBooking,
+          groupBooking: { ...updatedGroupBooking.toObject(), status: 'CANCELLED' },
         });
       }
 
@@ -208,7 +228,7 @@ export async function PATCH(
 
       return NextResponse.json({
         message: 'Invitation rejected. Organizer can invite a replacement.',
-        groupBooking,
+        groupBooking: updatedGroupBooking,
       });
     }
 

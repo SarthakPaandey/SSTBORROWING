@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Booking, BookingKind, IBooking } from '@/models/Booking';
 import { POLICIES, loadDynamicPolicies } from '@/lib/policies';
-import { getStartOfDay, toIST } from '@/lib/timezone';
+import { getStartOfDayUTC, toIST } from '@/lib/timezone';
 import { getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 
 export type BookingCategory = BookingKind;
@@ -56,7 +56,7 @@ export async function canUserCreateBookingWithCaps(options: {
 
   // DAILY LIMITS (per category & user, based on the day of the booking start in IST)
   const startIST = toIST(start);
-  const dayStart = getStartOfDay(startIST);
+  const dayStart = getStartOfDayUTC(startIST);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
@@ -98,7 +98,7 @@ export async function canUserCreateBookingWithCaps(options: {
   // FIX: Use BOOKING's start month for limits, not current month
   // A booking for January 15th on December 31st should check January limits
   const bookingStartIST = toIST(start);
-  const monthStart = getStartOfDay(new Date(bookingStartIST.getFullYear(), bookingStartIST.getMonth(), 1));
+  const monthStart = getStartOfDayUTC(new Date(bookingStartIST.getFullYear(), bookingStartIST.getMonth(), 1));
   const monthEnd = new Date(monthStart);
   monthEnd.setMonth(monthEnd.getMonth() + 1);
 

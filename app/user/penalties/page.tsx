@@ -6,7 +6,7 @@ import { User } from '@/models/User';
 import { Booking, BookingStatus } from '@/models/Booking';
 import { Penalty } from '@/models/Penalty';
 import { POLICIES, canUserBook } from '@/lib/policies';
-import { getNow, getStartOfDay } from '@/lib/timezone';
+import { getNow, getStartOfDayUTC } from '@/lib/timezone';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatCard } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate, formatDateTime } from '@/lib/utils';
@@ -70,7 +70,7 @@ export default async function PenaltyGuidePage() {
   const activeTotal = facilityActive + roomActive;
 
   const nowIST = getNow();
-  const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
+  const monthStart = getStartOfDayUTC(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
   const monthEnd = new Date(monthStart);
   monthEnd.setMonth(monthEnd.getMonth() + 1);
 

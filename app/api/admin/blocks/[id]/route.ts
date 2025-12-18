@@ -67,6 +67,24 @@ export async function DELETE(
     // Delete single block
     await Block.findByIdAndDelete(params.id);
 
+    // FIX: Add audit log for single block deletion
+    const resource = await Resource.findById(block.resourceId);
+    await logAuditEvent({
+      action: 'REMOVE_BLOCK',
+      actor: getActorFromSession(admin),
+      target: {
+        type: 'BLOCK',
+        id: params.id,
+        name: resource?.name || 'Unknown Resource',
+      },
+      details: {
+        resourceId: block.resourceId,
+        reason: block.reason,
+        start: block.start,
+        end: block.end,
+      },
+    });
+
     return NextResponse.json({
       message: 'Block deleted successfully',
     });

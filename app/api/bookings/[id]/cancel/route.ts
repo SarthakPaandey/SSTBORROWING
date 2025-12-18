@@ -124,6 +124,16 @@ export async function PATCH(
       booking.status = 'CANCELLED';
       await booking.save({ session });
 
+      // FIX: If this is a group booking, update the GroupBooking record as well
+      if (booking.isGroupBooking && booking.groupBookingId) {
+        const { GroupBooking } = await import('@/models/GroupBooking');
+        await GroupBooking.findByIdAndUpdate(
+          booking.groupBookingId,
+          { $set: { status: 'CANCELLED' } },
+          { session }
+        );
+      }
+
       return {
         booking,
         wasLateCancellation: isLateCancellation,

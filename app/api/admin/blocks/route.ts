@@ -146,16 +146,37 @@ export async function POST(req: NextRequest) {
       // Cancel overlapping bookings for all created blocks
       let totalCancelledBookings = 0;
       for (const block of createdBlocks) {
-        const cancelResult = await Booking.updateMany(
-          {
-            resourceId,
-            status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
-            start: { $lt: block.end },
-            end: { $gt: block.start },
-          },
-          { $set: { status: 'CANCELLED' } }
-        );
-        totalCancelledBookings += cancelResult.modifiedCount;
+        // Find bookings to cancel first to handle group booking consistency
+        const bookingsToCancel = await Booking.find({
+          resourceId,
+          status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
+          start: { $lt: block.end },
+          end: { $gt: block.start },
+        });
+
+        if (bookingsToCancel.length > 0) {
+          const bookingIdsToCancel = bookingsToCancel.map(b => b._id);
+          
+          await Booking.updateMany(
+            { _id: { $in: bookingIdsToCancel } },
+            { $set: { status: 'CANCELLED' } }
+          );
+
+          // FIX: Handle group booking consistency
+          const groupBookingIds = bookingsToCancel
+            .filter(b => b.isGroupBooking && b.groupBookingId)
+            .map(b => b.groupBookingId);
+
+          if (groupBookingIds.length > 0) {
+            const { GroupBooking } = await import('@/models/GroupBooking');
+            await GroupBooking.updateMany(
+              { _id: { $in: groupBookingIds } },
+              { $set: { status: 'CANCELLED' } }
+            );
+          }
+
+          totalCancelledBookings += bookingsToCancel.length;
+        }
       }
 
       // Log audit event for recurring block creation
@@ -202,15 +223,37 @@ export async function POST(req: NextRequest) {
     });
 
     // Cancel overlapping active bookings for the blocked resource
-    const cancelResult = await Booking.updateMany(
-      {
-        resourceId,
-        status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] }, // also cancel pickups already in progress
-        start: { $lt: new Date(end) },
-        end: { $gt: new Date(start) },
-      },
-      { $set: { status: 'CANCELLED' } }
-    );
+    // Find bookings to cancel first to handle group booking consistency
+    const bookingsToCancel = await Booking.find({
+      resourceId,
+      status: { $in: ['CONFIRMED', 'PENDING', 'CHECKED_IN'] },
+      start: { $lt: new Date(end) },
+      end: { $gt: new Date(start) },
+    });
+
+    let cancelledCount = 0;
+    if (bookingsToCancel.length > 0) {
+      const bookingIdsToCancel = bookingsToCancel.map(b => b._id);
+      
+      await Booking.updateMany(
+        { _id: { $in: bookingIdsToCancel } },
+        { $set: { status: 'CANCELLED' } }
+      );
+
+      // FIX: Handle group booking consistency
+      const groupBookingIds = bookingsToCancel
+        .filter(b => b.isGroupBooking && b.groupBookingId)
+        .map(b => b.groupBookingId);
+
+      if (groupBookingIds.length > 0) {
+        const { GroupBooking } = await import('@/models/GroupBooking');
+        await GroupBooking.updateMany(
+          { _id: { $in: groupBookingIds } },
+          { $set: { status: 'CANCELLED' } }
+        );
+      }
+      cancelledCount = bookingsToCancel.length;
+    }
 
     // Log audit event
     await logAuditEvent({
@@ -227,7 +270,7 @@ export async function POST(req: NextRequest) {
         blockType: type,
         start: block.start,
         end: block.end,
-        cancelledBookings: cancelResult.modifiedCount,
+        cancelledBookings: cancelledCount,
       },
     });
 

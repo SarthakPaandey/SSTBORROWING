@@ -28,7 +28,35 @@ export function getNow(): Date {
 }
 
 /**
+ * Get the start of day (00:00:00.000) in IST timezone, returned as UTC Date
+ * Use this for database queries.
+ * @param date Optional date to get start of day for. Defaults to today.
+ */
+export function getStartOfDayUTC(date?: Date): Date {
+    const d = date ? new Date(date) : new Date();
+    // Convert to IST representation
+    const zonedDate = toZonedTime(d, TIMEZONE);
+    // Set to start of day in IST
+    zonedDate.setHours(0, 0, 0, 0);
+    // Convert that IST time back to UTC
+    return fromZonedTime(zonedDate, TIMEZONE);
+}
+
+/**
+ * Get the end of day (23:59:59.999) in IST timezone, returned as UTC Date
+ * Use this for database queries.
+ * @param date Optional date to get end of day for. Defaults to today.
+ */
+export function getEndOfDayUTC(date?: Date): Date {
+    const d = date ? new Date(date) : new Date();
+    const zonedDate = toZonedTime(d, TIMEZONE);
+    zonedDate.setHours(23, 59, 59, 999);
+    return fromZonedTime(zonedDate, TIMEZONE);
+}
+
+/**
  * Get the start of day (00:00:00.000) in IST timezone
+ * ⚠️ Shifted date - use ONLY for display or boundary calculations, NOT DB queries.
  * @param date Optional date to get start of day for. Defaults to today.
  */
 export function getStartOfDay(date?: Date): Date {
@@ -40,6 +68,7 @@ export function getStartOfDay(date?: Date): Date {
 
 /**
  * Get the end of day (23:59:59.999) in IST timezone
+ * ⚠️ Shifted date - use ONLY for display or boundary calculations, NOT DB queries.
  * @param date Optional date to get end of day for. Defaults to today.
  */
 export function getEndOfDay(date?: Date): Date {

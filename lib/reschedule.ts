@@ -6,7 +6,7 @@ import { Block } from '@/models/Block';
 import { POLICIES, isWithinAdvanceWindow, hasConsecutiveBookings, calculateTotalHours, canUserBook } from './policies';
 import { checkBookingAvailability } from './inventory';
 import { ValidationError, ConflictError } from './errors';
-import { getStartOfDay, toIST } from './timezone';
+import { getStartOfDayUTC, toIST } from './timezone';
 import mongoose from 'mongoose';
 
 export interface RescheduleParams {
@@ -50,6 +50,16 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
         };
     }
 
+    // FIX: Block rescheduling for group bookings
+    // Group bookings require complex membership management and individual confirmations
+    // which are not supported by the reschedule flow.
+    if (booking.isGroupBooking) {
+        return {
+            allowed: false,
+            reason: 'Group bookings cannot be rescheduled. Please cancel and create a new group booking if needed.',
+        };
+    }
+
     // FIX: Check if user is permanently blocked (takes precedence over suspension)
     // This aligns with requireAuth's blocking check to prevent blocked users from rescheduling
     if ((user as any).blocked) {
@@ -78,7 +88,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
 
     // NEW: 1b. Monthly reschedule limit
     // FIX: Count total reschedule ACTIONS, not unique bookings with history
-    const reschedMonthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
+    const reschedMonthStart = getStartOfDayUTC(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const reschedMonthEnd = new Date(reschedMonthStart);
     reschedMonthEnd.setMonth(reschedMonthEnd.getMonth() + 1);
 
@@ -329,7 +339,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     // 8. Check user policy limits (excluding current booking)
     // Daily limit (per-type) - FIX: Check TARGET day, not today
     // When rescheduling to a future date, we need to check that day's booking count
-    const targetDayStart = getStartOfDay(toIST(newStart));
+    const targetDayStart = getStartOfDayUTC(toIST(newStart));
     const targetDayEnd = new Date(targetDayStart);
     targetDayEnd.setDate(targetDayEnd.getDate() + 1);
 
@@ -358,7 +368,7 @@ export async function validateReschedule(params: RescheduleParams): Promise<Resc
     }
 
     // Monthly limits
-    const monthStart = getStartOfDay(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
+    const monthStart = getStartOfDayUTC(new Date(nowIST.getFullYear(), nowIST.getMonth(), 1));
     const monthEnd = new Date(monthStart);
     monthEnd.setMonth(monthEnd.getMonth() + 1);
 

@@ -62,6 +62,16 @@ export async function POST(req: NextRequest) {
                 booking.overrideReason = reason || 'Bulk cancel by admin';
 
                 await booking.save();
+
+                // FIX: If this is a group booking, update the GroupBooking record as well
+                if (booking.isGroupBooking && booking.groupBookingId) {
+                    const { GroupBooking } = await import('@/models/GroupBooking');
+                    await GroupBooking.findByIdAndUpdate(
+                        booking.groupBookingId,
+                        { $set: { status: 'CANCELLED' } }
+                    );
+                }
+
                 results.push({ id: bookingId, success: true });
             } catch (error) {
                 results.push({

@@ -27,7 +27,7 @@ import { getNow, getTodayStart, getStartOfDay, toIST } from '@/lib/timezone';
 import { canUserCreateBookingWithCaps } from '@/lib/bookingRules';
 import { canBorrowSportCategory, getFacilitySportCategory, getItemsSportCategories, SPORT_CATEGORIES, SportCategory } from '@/lib/sportCategoryRules';
 import { validateSportKitQuantities, getFacilityWarningMessage, getSuggestedFacilities } from '@/lib/sportEquipmentKits';
-import { countActiveGroupParticipations } from '@/lib/groupBookingParticipation';
+import { countActiveGroupParticipations, getGroupParticipantBookings } from '@/lib/groupBookingParticipation';
 import { triggerLazyExpiration } from '@/lib/lazyExpiration';
 
 export async function GET(req: NextRequest) {
@@ -68,19 +68,38 @@ export async function GET(req: NextRequest) {
       .sort({ start: -1 })
       .limit(100);
 
+    // FIX: If fetching own bookings, also include bookings where user is a confirmed participant
+    let allBookings = [...bookings];
+    if (me && !status && !from && !to) {
+      const participantBookings = await getGroupParticipantBookings(user.id, undefined, {
+        requireConfirmedMembership: true
+      });
+      
+      // Filter out duplicates (if user is both owner and participant, which shouldn't happen but for safety)
+      const existingIds = new Set(bookings.map(b => b.id.toString()));
+      participantBookings.forEach(pb => {
+        if (!existingIds.has(pb.id.toString())) {
+          allBookings.push(pb);
+        }
+      });
+      
+      // Re-sort combined list
+      allBookings.sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
+    }
+
     // Populate resource names - filter out invalid ObjectIds to prevent CastError
-    const resourceIds = [...new Set(bookings.map(b => b.resourceId))]
+    const resourceIds = [...new Set(allBookings.map(b => b.resourceId))]
       .filter(id => mongoose.Types.ObjectId.isValid(id));
     const resources = await Resource.find({ _id: { $in: resourceIds } });
     const resourceMap = new Map(resources.map(r => [r.id, r]));
 
     // Populate user details - filter out invalid ObjectIds to prevent CastError
-    const userIds = [...new Set(bookings.map(b => b.userId))]
+    const userIds = [...new Set(allBookings.map(b => b.userId))]
       .filter(id => mongoose.Types.ObjectId.isValid(id));
     const users = await User.find({ _id: { $in: userIds } });
     const userMap = new Map(users.map(u => [u.id, u]));
 
-    const enrichedBookings = bookings.map(b => {
+    const enrichedBookings = allBookings.map(b => {
       const userData = userMap.get(b.userId);
       return {
         ...b.toObject(),

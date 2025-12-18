@@ -30,37 +30,46 @@ export async function acquireCronLock(): Promise<boolean> {
         const now = new Date();
         const instanceId = `${process.pid}-${Date.now()}`;
 
-        // Try to insert lock (fails if already exists and not expired)
+        // FIX: Use atomic findOneAndUpdate with upsert and expiration check
+        // This is a robust way to handle distributed locking in MongoDB
+        const result = await collection.findOneAndUpdate(
+            {
+                _id: lockId,
+                $or: [
+                    { lockedAt: { $lt: new Date(now.getTime() - LOCK_TIMEOUT_MS) } }, // Expired
+                    { lockedBy: instanceId } // Already held by us (re-entrant)
+                ]
+            },
+            {
+                $set: {
+                    lockedAt: now,
+                    lockedBy: instanceId
+                }
+            },
+            {
+                upsert: false, // Don't upsert here, handle initial creation separately
+                returnDocument: 'after'
+            }
+        );
+
+        // MongoDB driver 5+ returns the document directly, not { value: doc }
+        if (result) {
+            return true;
+        }
+
+        // If no document was updated, try to insert for the first time
         try {
             await collection.insertOne({
                 _id: lockId,
                 lockedAt: now,
                 lockedBy: instanceId
             });
-            return true; // Lock acquired
+            return true;
         } catch (error: any) {
-            // Lock exists, check if expired
-            if (error.code === 11000) { // Duplicate key error
-                const existingLock = await collection.findOne({ _id: lockId });
-
-                if (existingLock) {
-                    const lockAge = now.getTime() - new Date(existingLock.lockedAt).getTime();
-
-                    // If lock is expired, force release and acquire
-                    if (lockAge > LOCK_TIMEOUT_MS) {
-                        await collection.deleteOne({ _id: lockId });
-                        await collection.insertOne({
-                            _id: lockId,
-                            lockedAt: now,
-                            lockedBy: instanceId
-                        });
-                        console.log('Acquired expired lock');
-                        return true;
-                    }
-                }
-
+            if (error.code === 11000) {
+                // Someone else created it between our findOneAndUpdate and insertOne
                 console.log('CRON already running, skipping');
-                return false; // Lock held by another instance
+                return false;
             }
             throw error;
         }

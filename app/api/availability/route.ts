@@ -5,7 +5,7 @@ import { Resource } from '@/models/Resource';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { handleApiError, ValidationError, NotFoundError, AuthenticationError } from '@/lib/errors';
-import { toIST, getStartOfDay } from '@/lib/timezone';
+import { toIST, getStartOfDayUTC } from '@/lib/timezone';
 import { POLICIES } from '@/lib/policies';
 
 // Dynamic route: depends on session headers/cookies
@@ -40,8 +40,8 @@ export async function GET(req: Request) {
             throw new NotFoundError('Resource');
         }
 
-        // Parse date and get day boundaries in IST
-        const dayStart = getStartOfDay(new Date(`${date}T00:00:00+05:30`));
+        // Parse date and get day boundaries in IST, returned as UTC for DB queries
+        const dayStart = getStartOfDayUTC(new Date(`${date}T00:00:00+05:30`));
         const dayEnd = new Date(dayStart);
         dayEnd.setDate(dayEnd.getDate() + 1);
 

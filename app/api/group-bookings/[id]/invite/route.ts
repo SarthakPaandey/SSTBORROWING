@@ -134,30 +134,46 @@ export async function POST(
       throw new ConflictError(`${email} has reached their daily facility booking limit`);
     }
 
-    // Add new member to group
-    groupBooking.members.push({
-      userId: newMember.id,
-      email: newMember.email,
-      name: newMember.name,
-      status: 'PENDING',
-      invitedAt: new Date(),
-    });
+    // FIX: Use atomic $push to add new member instead of .save() to prevent race conditions
+    // Only add if user is not already a member (redundant check but good for safety)
+    const updatedGroupBooking = await GroupBooking.findOneAndUpdate(
+      { 
+        _id: params.id,
+        status: 'PENDING_CONFIRMATIONS',
+        'members.userId': { $ne: newMember.id }, // Double-check they aren't already added
+        organizerEmail: { $ne: newMember.email } // Double-check it's not the organizer
+      },
+      {
+        $push: {
+          members: {
+            userId: newMember.id,
+            email: newMember.email,
+            name: newMember.name,
+            status: 'PENDING',
+            invitedAt: new Date(),
+          }
+        }
+      },
+      { new: true, session }
+    );
 
-    await groupBooking.save({ session });
+    if (!updatedGroupBooking) {
+      throw new ConflictError('Invitation failed: user might already be invited or group status changed');
+    }
 
     await session.commitTransaction();
     session.endSession();
 
     await sendSingleInvitationEmail({
-      groupBookingId: groupBooking.id,
-      member: groupBooking.members[groupBooking.members.length - 1],
+      groupBookingId: updatedGroupBooking.id,
+      member: updatedGroupBooking.members[updatedGroupBooking.members.length - 1],
       booking,
       resource: await Resource.findById(booking.resourceId),
     });
 
     return NextResponse.json({
       message: `Invitation sent to ${email}`,
-      groupBooking,
+      groupBooking: updatedGroupBooking,
     });
 
   } catch (error) {

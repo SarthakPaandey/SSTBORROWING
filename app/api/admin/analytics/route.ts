@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/config';
 import { connectDB } from '@/lib/db';
 import { Booking } from '@/models/Booking';
 import { Penalty } from '@/models/Penalty';
 import { Resource } from '@/models/Resource';
 import { getDaysAgo } from '@/lib/timezone';
+import { requireAuth } from '@/lib/auth/guards';
+import { handleApiError } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,12 +18,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session?.user || session.user.role !== 'ADMIN') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
+        await requireAuth(['ADMIN']);
         await connectDB();
 
         const { searchParams } = new URL(request.url);
@@ -248,7 +243,6 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Analytics API Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return handleApiError(error);
     }
 }

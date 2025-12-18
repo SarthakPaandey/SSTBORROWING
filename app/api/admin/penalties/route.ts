@@ -98,6 +98,22 @@ export async function POST(req: NextRequest) {
       // FIX Issue #8: Recalculate from source of truth instead of manual increment
       const totalPoints = await recalculatePenaltyPoints(userId);
 
+      // FIX: Add audit log for adding a penalty
+      await logAuditEvent({
+        action: 'ADD_PENALTY',
+        actor: getActorFromSession(admin),
+        target: {
+          type: 'USER',
+          id: userId,
+          name: user.name || user.email,
+        },
+        details: {
+          points: points || 1,
+          reason: reason,
+          newTotalPoints: totalPoints,
+        },
+      });
+
       return NextResponse.json({
         penalty,
         totalPenaltyPoints: totalPoints

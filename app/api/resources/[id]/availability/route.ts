@@ -5,7 +5,8 @@ import { Booking, IBooking } from '@/models/Booking';
 import { Block } from '@/models/Block';
 import { requireAuth } from '@/lib/auth/guards';
 import { handleApiError, ValidationError, NotFoundError } from '@/lib/errors';
-import { getStartOfDay, getEndOfDay } from '@/lib/timezone';
+import { getStartOfDayUTC, getEndOfDayUTC } from '@/lib/timezone';
+import mongoose from 'mongoose';
 
 export async function GET(
   req: NextRequest,
@@ -15,6 +16,11 @@ export async function GET(
     await requireAuth();
     await connectDB();
 
+    // FIX: Validate ObjectId to prevent MongoDB CastError
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      throw new ValidationError('Invalid resource ID format');
+    }
+
     const { searchParams } = new URL(req.url);
     const dateStr = searchParams.get('date');
 
@@ -22,10 +28,10 @@ export async function GET(
       throw new ValidationError('Date parameter required');
     }
 
-    // FIX: Use IST timezone utilities for accurate day boundaries
+    // FIX: Use UTC day boundaries for DB queries to avoid 5.5h offset error
     const date = new Date(dateStr);
-    const startOfDay = getStartOfDay(date);
-    const endOfDay = getEndOfDay(date);
+    const startOfDay = getStartOfDayUTC(date);
+    const endOfDay = getEndOfDayUTC(date);
 
     const resource = await Resource.findById(params.id);
     if (!resource) {

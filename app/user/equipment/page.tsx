@@ -98,10 +98,9 @@ export default function EquipmentPage() {
     { text: 'The harder you work, the luckier you get.', author: 'Gary Player' },
     { text: 'It always seems impossible until it\'s done.', author: 'Nelson Mandela' },
     { text: 'Practice beats talent when talent doesn\'t practice.', author: 'Unknown' },
-    { text: 'Somewhere, something incredible is waiting to be known.', author: 'Carl Sagan' },
-    { text: 'Imagination is more important than knowledge.', author: 'Albert Einstein' },
+    { text: 'Innovation distinguishes between a leader and a follower.', author: 'Steve Jobs' },
     { text: 'Champions keep playing until they get it right.', author: 'Billie Jean King' },
-    { text: 'In science, we don\'t make predictions, we try to explain.', author: 'Steven Weinberg' },
+    { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
   ];
   const [equipmentThought, setEquipmentThought] = useState(quotes[0]);
 

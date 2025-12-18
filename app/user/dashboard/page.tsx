@@ -14,6 +14,18 @@ import { formatDateTime } from '@/lib/utils';
 import { getNow } from '@/lib/timezone';
 import { EnrichedBooking } from '@/types/booking';
 import { POLICIES } from '@/lib/policies';
+import { Types } from 'mongoose';
+
+// Type for lean() query results (plain objects without Mongoose Document methods)
+interface LeanBooking {
+  _id: Types.ObjectId;
+  resourceId: string;
+  start: Date;
+  end: Date;
+  status: string;
+  kind: string;
+  [key: string]: unknown;
+}
 
 // Quick action cards with emojis and colors
 const quickActions = [
@@ -81,7 +93,7 @@ export default async function UserDashboard() {
     })
       .sort({ start: 1 })
       .limit(5)
-      .lean(),
+      .lean() as Promise<LeanBooking[]>,
   ]);
 
   if (!user) {
@@ -106,7 +118,7 @@ export default async function UserDashboard() {
 
   const enrichedBookings = upcomingBookings.map((b) => ({
     ...b,
-    resourceName: resourceMap.get(b.resourceId)?.name || 'Unknown',
+    resourceName: resourceMap.get(b.resourceId.toString())?.name || 'Unknown',
   }));
 
   // Get greeting based on time

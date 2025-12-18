@@ -60,22 +60,22 @@ export default async function AdminDashboard() {
   const today = getTodayStart();
   const tomorrow = getTodayEnd();
 
-  const todayBookings = await Booking.countDocuments({
-    status: { $in: ['CONFIRMED', 'CHECKED_IN'] },
-    start: { $gte: today, $lte: tomorrow },
-  });
-
-  const pendingApprovals = await Booking.countDocuments({
-    approval: 'PENDING',
-  });
-
-  const activeUsers = await User.countDocuments({
-    role: 'STUDENT',
-  });
-
-  const recentPenalties = await Penalty.countDocuments({
-    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-  });
+  // Parallelize queries for significantly faster page loads
+  const [todayBookings, pendingApprovals, activeUsers, recentPenalties] = await Promise.all([
+    Booking.countDocuments({
+      status: { $in: ['CONFIRMED', 'CHECKED_IN'] },
+      start: { $gte: today, $lte: tomorrow },
+    }),
+    Booking.countDocuments({
+      approval: 'PENDING',
+    }),
+    User.countDocuments({
+      role: 'STUDENT',
+    }),
+    Penalty.countDocuments({
+      createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+    })
+  ]);
 
   const now = new Date();
 

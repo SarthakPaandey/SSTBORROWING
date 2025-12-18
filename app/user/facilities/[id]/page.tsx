@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { ArrowLeft, Users, X, MapPin, Clock, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
@@ -73,10 +74,26 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   }, [date]);
 
   const fetchResource = async () => {
-    const res = await fetch(`/api/resources?type=FACILITY`);
-    const data = await res.json();
-    const found = data.resources.find((r: Resource) => r._id === params.id);
-    setResource(found);
+    try {
+      setError('');
+      const res = await fetch(`/api/resources?type=FACILITY`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to fetch facility');
+        return;
+      }
+
+      const found = data.resources.find((r: Resource) => r._id === params.id);
+      if (!found) {
+        setError('Facility not found');
+        return;
+      }
+      setResource(found);
+    } catch (err) {
+      console.error('Error fetching facility:', err);
+      setError('An unexpected error occurred.');
+    }
   };
 
   // Fetch availability data for TimeRangePicker
@@ -272,7 +289,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
         }
 
         setSuccess(true);
-        setTimeout(() => router.push('/user/bookings'), 1200);
+        router.push('/user/bookings');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -351,7 +368,7 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
         }
 
         setSuccess(true);
-        setTimeout(() => router.push('/user/bookings'), 1200);
+        router.push('/user/bookings');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -384,11 +401,38 @@ export default function FacilityBookingPage({ params }: { params: Params }) {
   maxDate.setDate(maxDate.getDate() + POLICIES.ADVANCE_BOOKING_DAYS);
   const maxDateStr = maxDate.toISOString().split('T')[0];
 
+  if (error && !resource) {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <Link href="/user/facilities">
+          <Button variant="ghost" size="sm" className="group">
+            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            Back to Facilities
+          </Button>
+        </Link>
+        <ErrorDisplay
+          message={error}
+          onRetry={() => fetchResource()}
+          backHref="/user/facilities"
+          backLabel="Back to Facilities"
+          className="animate-fade-in"
+        />
+      </div>
+    );
+  }
+
   if (!resource) {
     return (
-      <div className="space-y-6">
-        <div className="h-10 w-32 animate-pulse rounded bg-card"></div>
-        <div className="h-96 animate-pulse rounded-lg bg-card"></div>
+      <div className="space-y-6 max-w-4xl mx-auto animate-pulse">
+        <div className="h-10 w-32 rounded bg-card"></div>
+        <div className="rounded-2xl border border-card-border overflow-hidden">
+          <div className="h-24 bg-gradient-to-r from-accent-blue/10 to-transparent" />
+          <div className="p-6 space-y-4">
+            <div className="h-8 w-64 rounded bg-card" />
+            <div className="h-48 rounded-xl bg-card" />
+            <div className="h-12 rounded-xl bg-card" />
+          </div>
+        </div>
       </div>
     );
   }

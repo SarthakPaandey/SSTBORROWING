@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth/config';
+import { requireAuth } from '@/lib/auth/guards';
 import { connectDB } from '@/lib/db';
 import { Resource } from '@/models/Resource';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -35,6 +36,8 @@ function getCapacityBadge(capacity: number) {
 }
 
 export default async function RoomsPage() {
+  await requireAuth(); // Trigger error boundary if blocked/suspended
+
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {

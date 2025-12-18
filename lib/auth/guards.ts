@@ -25,12 +25,17 @@ export async function requireAuth(allowedRoles?: UserRole[]) {
 
   // Check if user is permanently blocked (takes precedence over suspension)
   if (dbUser.blocked) {
-    throw new AuthorizationError('Your account has been blocked by an administrator. Please contact support.');
+    throw new AuthorizationError('Your account has been permanently blocked due to repeated policy violations. Please contact support.');
   }
 
   // Check if user is temporarily suspended (compare with UTC timestamps)
   if (dbUser.suspendedUntil && dbUser.suspendedUntil > new Date()) {
-    throw new AuthorizationError('Your account is suspended');
+    const suspendedUntil = new Date(dbUser.suspendedUntil).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    throw new AuthorizationError(`Your account is suspended until ${suspendedUntil} as you have reached the penalty point threshold.`);
   }
 
   // Verify role hasn't changed since token was issued

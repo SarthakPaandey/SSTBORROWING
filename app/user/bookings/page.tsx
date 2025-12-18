@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { toast } from "@/components/ui/Toaster";
 import { SkeletonBookingList } from '@/components/ui/Skeleton';
+import { AccessRestricted } from '@/components/ui/AccessRestricted';
 import { formatDateTime } from '@/lib/utils';
 import { getISTNow } from '@/lib/timezone-client';
 import { POLICIES } from '@/lib/policies';
@@ -45,10 +46,25 @@ export default function BookingsPage() {
   }, []);
 
   const fetchBookings = async () => {
-    const res = await fetch('/api/bookings?me=true');
-    const data = await res.json();
-    setBookings(data.bookings);
-    setLoading(false);
+    try {
+      setLoading(true);
+      setError('');
+      const res = await fetch('/api/bookings?me=true');
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to fetch bookings');
+        setLoading(false);
+        return;
+      }
+
+      setBookings(data.bookings || []);
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError('An unexpected error occurred while loading your bookings.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Countdown timer effect
@@ -390,250 +406,219 @@ export default function BookingsPage() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && !rescheduleModal.open && (
+        <AccessRestricted message={error} className="animate-fade-in" />
+      )}
+
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
-        <div className="p-4 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
-          <p className="text-2xl font-bold text-success">{upcomingBookings.filter(b => b.status === 'CONFIRMED').length}</p>
-          <p className="text-sm text-text-muted">✅ Confirmed</p>
+      {!error && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
+            <p className="text-2xl font-bold text-success">{upcomingBookings.filter(b => b.status === 'CONFIRMED').length}</p>
+            <p className="text-sm text-text-muted">✅ Confirmed</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-warning/10 to-warning/5 border border-warning/20">
+            <p className="text-2xl font-bold text-warning">{upcomingBookings.filter(b => b.status === 'PENDING').length}</p>
+            <p className="text-sm text-text-muted">⏳ Pending</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 border border-accent-blue/20">
+            <p className="text-2xl font-bold text-accent-blue">{upcomingBookings.filter(b => b.status === 'CHECKED_IN').length}</p>
+            <p className="text-sm text-text-muted">📍 Checked In</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-text-muted/10 to-text-muted/5 border border-text-muted/20">
+            <p className="text-2xl font-bold text-text-muted">{pastBookings.length}</p>
+            <p className="text-sm text-text-muted">📜 Past</p>
+          </div>
         </div>
-        <div className="p-4 rounded-xl bg-gradient-to-br from-warning/10 to-warning/5 border border-warning/20">
-          <p className="text-2xl font-bold text-warning">{upcomingBookings.filter(b => b.status === 'PENDING').length}</p>
-          <p className="text-sm text-text-muted">⏳ Pending</p>
-        </div>
-        <div className="p-4 rounded-xl bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 border border-accent-blue/20">
-          <p className="text-2xl font-bold text-accent-blue">{upcomingBookings.filter(b => b.status === 'CHECKED_IN').length}</p>
-          <p className="text-sm text-text-muted">📍 Checked In</p>
-        </div>
-        <div className="p-4 rounded-xl bg-gradient-to-br from-text-muted/10 to-text-muted/5 border border-text-muted/20">
-          <p className="text-2xl font-bold text-text-muted">{pastBookings.length}</p>
-          <p className="text-sm text-text-muted">📜 Past</p>
-        </div>
-      </div>
+      )}
 
       {/* Upcoming Bookings */}
-      <Card variant="glow" className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="text-2xl">📅</span>
-            Upcoming Bookings
-            {upcomingBookings.length > 0 && (
-              <Badge variant="info" className="ml-2">{upcomingBookings.length}</Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {upcomingBookings.length === 0 ? (
-            <div className="empty-state py-12">
-              <div className="empty-state-icon text-6xl">📭</div>
-              <h3 className="text-xl font-semibold text-text-main mb-2">No Upcoming Bookings</h3>
-              <p className="text-text-muted mb-6">Your schedule is clear! Time to book something?</p>
-              <Button variant="gradient" onClick={() => window.location.href = '/user/facilities'}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Browse Facilities
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {upcomingBookings.map((booking, index) => (
-                <div
-                  key={booking._id}
-                  className="group relative overflow-hidden rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-5 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 animate-fade-in-left"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {/* Status indicator line */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${booking.status === 'CONFIRMED' ? 'bg-success' :
-                    booking.status === 'PENDING' ? 'bg-warning' :
-                      booking.status === 'CHECKED_IN' ? 'bg-accent-blue' :
-                        'bg-text-muted'
-                    }`} />
+      {!error && (
+        <Card variant="glow" className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">📅</span>
+              Upcoming Bookings
+              {upcomingBookings.length > 0 && (
+                <Badge variant="info" className="ml-2">{upcomingBookings.length}</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingBookings.length === 0 ? (
+              <div className="empty-state py-12">
+                <div className="empty-state-icon text-6xl">📭</div>
+                <h3 className="text-xl font-semibold text-text-main mb-2">No Upcoming Bookings</h3>
+                <p className="text-text-muted mb-6">Your schedule is clear! Time to book something?</p>
+                <Button variant="gradient" onClick={() => window.location.href = '/user/facilities'}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Browse Facilities
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {upcomingBookings.map((booking, index) => (
+                  <div
+                    key={booking._id}
+                    className="group relative overflow-hidden rounded-xl border border-card-border bg-gradient-to-r from-bg-dark/80 to-bg-dark/40 p-5 transition-all duration-300 hover:border-accent-blue/30 hover:shadow-lg hover:shadow-accent-blue/5 animate-fade-in-left"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {/* Status indicator line */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${booking.status === 'CONFIRMED' ? 'bg-success' :
+                      booking.status === 'PENDING' ? 'bg-warning' :
+                        booking.status === 'CHECKED_IN' ? 'bg-accent-blue' :
+                          'bg-text-muted'
+                      }`} />
 
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-text-main text-lg group-hover:text-accent-blue transition-colors">
-                          {booking.resourceName}
-                        </p>
-                        {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
-                      </div>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-text-main text-lg group-hover:text-accent-blue transition-colors">
+                            {booking.resourceName}
+                          </p>
+                          {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
+                        </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-4 w-4 text-accent-blue" />
-                          {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
-                          {booking.kind !== 'EQUIPMENT' && ` → ${formatDateTime(booking.end)}`}
-                        </span>
-                        {booking.kind === 'EQUIPMENT' && (
-                          <span className="flex items-center gap-1.5 text-warning">
-                            <Clock className="h-4 w-4" />
-                            Return by: {formatDateTime(booking.end)}
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-4 w-4 text-accent-blue" />
+                            {booking.kind === 'EQUIPMENT' ? 'Pickup: ' : ''}{formatDateTime(booking.start)}
+                            {booking.kind !== 'EQUIPMENT' && ` → ${formatDateTime(booking.end)}`}
                           </span>
+                          {booking.kind === 'EQUIPMENT' && (
+                            <span className="flex items-center gap-1.5 text-warning">
+                              <Clock className="h-4 w-4" />
+                              Return by: {formatDateTime(booking.end)}
+                            </span>
+                          )}
+                        </div>
+
+                        {booking.items && booking.items.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {booking.items.map((item: BookingItem, i: number) => (
+                              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-accent-blue/10 text-xs text-accent-blue">
+                                <Package className="h-3 w-3" />
+                                {item.name} ({item.qty})
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {(booking.rescheduleCount || 0) > 0 && (
+                          <Badge variant="secondary" icon="🔄" className="mt-2">
+                            Rescheduled {booking.rescheduleCount}x
+                          </Badge>
                         )}
                       </div>
 
-                      {booking.items && booking.items.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {booking.items.map((item: BookingItem, i: number) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-accent-blue/10 text-xs text-accent-blue">
-                              <Package className="h-3 w-3" />
-                              {item.name} ({item.qty})
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {(booking.rescheduleCount || 0) > 0 && (
-                        <Badge variant="secondary" icon="🔄" className="mt-2">
-                          Rescheduled {booking.rescheduleCount}x
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2">
-                      {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleGenerateQR(booking._id, new Date(booking.start).toISOString())}
-                          loading={generatingQR === booking._id}
-                          className="group/btn"
-                        >
-                          <QrCode className="mr-2 h-4 w-4 group-hover/btn:animate-pulse" />
-                          Get QR
-                        </Button>
-                      )}
-
-                      {/* Reschedule button temporarily disabled - needs availability display
-                      {(() => {
-                        const rescheduleCheck = canReschedule(booking);
-                        if (['CONFIRMED', 'PENDING'].includes(booking.status)) {
-                          return rescheduleCheck.allowed ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const today = getISTNow();
-                                const todayDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                                setRescheduleModal({
-                                  open: true,
-                                  booking,
-                                  selectedDate: todayDateStr,
-                                  selectedSlot: undefined,
-                                  newStart: undefined,
-                                  newEnd: undefined,
-                                });
-                                setConfirmedPenalty(false);
-                              }}
-                              className="group/btn"
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4 group-hover/btn:rotate-180 transition-transform duration-500" />
-                              Reschedule
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled
-                              title={rescheduleCheck.reason}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Reschedule
-                            </Button>
-                          );
-                        }
-                        return null;
-                      })()}
-                      */}
+                      {/* Action buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {booking.status === 'CONFIRMED' && (booking.kind === 'EQUIPMENT' || booking.kind === 'LIBRARY') && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleGenerateQR(booking._id, new Date(booking.start).toISOString())}
+                            loading={generatingQR === booking._id}
+                            className="group/btn"
+                          >
+                            <QrCode className="mr-2 h-4 w-4 group-hover/btn:animate-pulse" />
+                            Get QR
+                          </Button>
+                        )}
 
 
 
-                      {['CONFIRMED', 'PENDING'].includes(booking.status) && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleCancel(booking._id)}
-                          className="group/btn"
-                        >
-                          <X className="mr-2 h-4 w-4 group-hover/btn:rotate-90 transition-transform" />
-                          Cancel
-                        </Button>
-                      )}
+                        {['CONFIRMED', 'PENDING'].includes(booking.status) && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleCancel(booking._id)}
+                            className="group/btn"
+                          >
+                            <X className="mr-2 h-4 w-4 group-hover/btn:rotate-90 transition-transform" />
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Past Bookings */}
-      <Card className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span className="text-2xl">📜</span>
-            Past Bookings
-            {pastBookings.length > 0 && (
-              <Badge variant="secondary" className="ml-2">{pastBookings.length}</Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pastBookings.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-text-muted">No past bookings yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pastBookings.slice(0, 10).map((booking, index) => (
-                <div
-                  key={booking._id}
-                  className="rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
-                        booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
-                          booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
-                            'bg-text-muted/10 text-text-muted'
-                        }`}>
-                        {booking.status === 'COMPLETED' ? '✅' :
-                          booking.status === 'CANCELLED' ? '❌' :
-                            booking.status === 'NO_SHOW' ? '👻' : '📋'}
-                      </div>
-                      <div>
-                        <p className="font-medium text-text-main">{booking.resourceName}</p>
-                        <p className="text-sm text-text-muted flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDateTime(booking.start)}
-                        </p>
-                      </div>
-                    </div>
-                    {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
-                  </div>
-
-                  {/* Show rejection reason if booking was rejected */}
-                  {booking.approval === 'REJECTED' && booking.rejectionReason && (
-                    <div className="mt-3 p-3 bg-danger/10 border border-danger/20 rounded-lg flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-danger flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-medium text-danger">Rejection Reason:</p>
-                        <p className="text-sm text-text-main">{booking.rejectionReason}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {pastBookings.length > 10 && (
-                <p className="text-center text-sm text-text-muted pt-4">
-                  Showing 10 of {pastBookings.length} past bookings
-                </p>
+      {!error && (
+        <Card className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">📜</span>
+              Past Bookings
+              {pastBookings.length > 0 && (
+                <Badge variant="secondary" className="ml-2">{pastBookings.length}</Badge>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pastBookings.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-text-muted">No past bookings yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pastBookings.slice(0, 10).map((booking, index) => (
+                  <div
+                    key={booking._id}
+                    className="rounded-xl border border-card-border/50 bg-bg-dark/30 p-4 transition-all duration-300 hover:bg-bg-dark/50 opacity-75 hover:opacity-100"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${booking.status === 'COMPLETED' ? 'bg-success/10 text-success' :
+                          booking.status === 'CANCELLED' ? 'bg-danger/10 text-danger' :
+                            booking.status === 'NO_SHOW' ? 'bg-warning/10 text-warning' :
+                              'bg-text-muted/10 text-text-muted'
+                          }`}>
+                          {booking.status === 'COMPLETED' ? '✅' :
+                            booking.status === 'CANCELLED' ? '❌' :
+                              booking.status === 'NO_SHOW' ? '👻' : '📋'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-text-main">{booking.resourceName}</p>
+                          <p className="text-sm text-text-muted flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDateTime(booking.start)}
+                          </p>
+                        </div>
+                      </div>
+                      {getStatusBadge(booking.status, booking.approval, booking.kind, booking.start, booking.end)}
+                    </div>
+
+                    {/* Show rejection reason if booking was rejected */}
+                    {booking.approval === 'REJECTED' && booking.rejectionReason && (
+                      <div className="mt-3 p-3 bg-danger/10 border border-danger/20 rounded-lg flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-danger flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-danger">Rejection Reason:</p>
+                          <p className="text-sm text-text-main">{booking.rejectionReason}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {pastBookings.length > 10 && (
+                  <p className="text-center text-sm text-text-muted pt-4">
+                    Showing 10 of {pastBookings.length} past bookings
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Modal
         isOpen={qrModal.open}

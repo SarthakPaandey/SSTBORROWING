@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { AccessRestricted } from '@/components/ui/AccessRestricted';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
 import { triggerBookingSuccess } from '@/lib/confetti';
 import { Search, BookOpen, Grid3X3, List } from 'lucide-react';
@@ -80,17 +81,16 @@ export default function LibraryPage() {
 
   const fetchResources = async () => {
     setResourcesLoading(true);
-
-    const handleUnauthorized = () => {
-      setError('Your session has expired or you do not have access. Please log in again.');
-      signOut({ callbackUrl: '/login' });
-    };
+    setError('');
 
     const parseResponse = async (res: Response, label: string) => {
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
+        signOut({ callbackUrl: '/login' });
+        return null;
+      }
+      if (res.status === 403) {
         const body = await res.json().catch(() => ({}));
-        console.warn(`${label} request unauthorized`, body?.error || body);
-        handleUnauthorized();
+        setError(body.error || 'Access restricted.');
         return null;
       }
       if (!res.ok) {
@@ -105,7 +105,7 @@ export default function LibraryPage() {
         await fetch('/api/resources?type=LIBRARY', { credentials: 'include' }),
         'library resources'
       );
-      if (!data) return;
+      if (data === null) return;
 
       const resources = Array.isArray(data.resources) ? data.resources : [];
       setLibraryResources(resources);
@@ -116,7 +116,7 @@ export default function LibraryPage() {
           await fetch(`/api/admin/equipment?resourceId=${resource._id}`, { credentials: 'include' }),
           `${resource.name} books`
         );
-        if (!itemsData) return;
+        if (itemsData === null) return;
         const items = Array.isArray(itemsData.items) ? itemsData.items : [];
 
         // FIX EC-30: Use exact matching instead of includes() to avoid fragile matching
@@ -195,7 +195,7 @@ export default function LibraryPage() {
 
       setSuccess(true);
       triggerBookingSuccess();
-      setTimeout(() => router.push('/user/bookings'), 2000);
+      router.push('/user/bookings');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -358,7 +358,7 @@ export default function LibraryPage() {
                       <div className="flex-1 max-w-[100px] h-1.5 bg-bg-dark rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${book.qtyAvailable === 0 ? 'bg-destructive' :
-                              book.qtyAvailable < book.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
+                            book.qtyAvailable < book.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
                             }`}
                           style={{ width: `${(book.qtyAvailable / book.qtyTotal) * 100}%` }}
                         />
@@ -520,6 +520,8 @@ export default function LibraryPage() {
           thoughtAuthor={bookThought.author}
           variant="galaxy"
         />
+      ) : error ? (
+        <AccessRestricted message={error} className="animate-fade-in" />
       ) : (
         <Tabs defaultValue="fiction" className="animate-fade-in">
           <TabsList className="mb-6">

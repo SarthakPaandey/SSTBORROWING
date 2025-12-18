@@ -12,6 +12,7 @@ import { CompactTimePicker } from '@/components/ui/CompactTimePicker';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { getISTToday, getISTNow, formatISTDate } from '@/lib/timezone-client';
 import { LoadingState, InlineLoading } from '@/components/ui/LoadingState';
+import { AccessRestricted } from '@/components/ui/AccessRestricted';
 import { triggerBookingSuccess } from '@/lib/confetti';
 import { Package, Sparkles, FlaskConical, Trophy, Clock, ShoppingCart, CheckCircle2, AlertTriangle, Info, Zap } from 'lucide-react';
 import { POLICIES } from '@/lib/policies';
@@ -157,18 +158,15 @@ export default function EquipmentPage() {
   }, [date, startTime]);
 
   const fetchResources = async () => {
-    const handleUnauthorized = () => {
-      setError('Your session has expired or you do not have access. Please log in again.');
-      // Force sign-out to clear any stale/invalid session and redirect to login
-      signOut({ callbackUrl: '/login' });
-    };
-
     const parseResponse = async (res: Response, label: string) => {
-      if (res.status === 401 || res.status === 403) {
-        // Try to surface the server message for easier debugging
+      if (res.status === 401) {
+        // Force sign-out to clear any stale/invalid session and redirect to login
+        signOut({ callbackUrl: '/login' });
+        return null;
+      }
+      if (res.status === 403) {
         const body = await res.json().catch(() => ({}));
-        console.warn(`${label} request unauthorized`, body?.error || body);
-        handleUnauthorized();
+        setError(body.error || 'You do not have permission to access this resource.');
         return null;
       }
       if (!res.ok) {
@@ -180,17 +178,24 @@ export default function EquipmentPage() {
 
     try {
       setInitialLoading(true);
+      setError('');
       const sportsData = await parseResponse(
         await fetch('/api/resources?type=SPORTS_EQUIPMENT', { credentials: 'include' }),
         'sports resources'
       );
-      if (!sportsData) return;
+      if (sportsData === null) {
+        setInitialLoading(false);
+        return;
+      }
 
       const labData = await parseResponse(
         await fetch('/api/resources?type=LAB_EQUIPMENT', { credentials: 'include' }),
         'lab resources'
       );
-      if (!labData) return;
+      if (labData === null) {
+        setInitialLoading(false);
+        return;
+      }
 
       const sportsList = Array.isArray(sportsData.resources) ? sportsData.resources : [];
       const labList = Array.isArray(labData.resources) ? labData.resources : [];
@@ -454,7 +459,7 @@ export default function EquipmentPage() {
 
       setSuccess(true);
       triggerBookingSuccess();
-      setTimeout(() => router.push('/user/bookings'), 1200);
+      router.push('/user/bookings');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -510,7 +515,7 @@ export default function EquipmentPage() {
       </div>
 
       {/* Cart Summary (if items selected) */}
-      {totalSelected > 0 && (
+      {totalSelected > 0 && !error && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-success/10 to-emerald-500/10 border border-success/30 animate-fade-in-up">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -546,329 +551,362 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      {itemsLoading && (
+      {error && (
+        <AccessRestricted message={error} className="animate-fade-in" />
+      )}
+
+      {itemsLoading && !error && (
         <div className="flex items-center gap-3 rounded-xl border border-card-border bg-bg-dark/70 px-4 py-3">
           <InlineLoading text="Updating availability for your selected time..." />
         </div>
       )}
 
-      <Tabs
-        value={tab}
-        className="animate-fade-in"
-        onValueChange={(value) => {
-          setTab(value as 'sports' | 'lab'); // Keep Tabs state in sync so switching works
-          // Clear selected items when switching between tabs to avoid confusion
-          setSelectedItems({});
-          setError('');
-          setSuccess(false); // Also clear success banner so it doesn't appear on other tabs
-        }}
-      >
-        <TabsList className="mb-6">
-          <TabsTrigger value="sports" icon={<Trophy className="h-4 w-4" />}>
-            Sports Equipment
-          </TabsTrigger>
-          <TabsTrigger value="lab" icon={<FlaskConical className="h-4 w-4" />}>
-            Lab Equipment
-          </TabsTrigger>
-        </TabsList>
+      {!error && (
+        <Tabs
+          value={tab}
+          className="animate-fade-in"
+          onValueChange={(value) => {
+            setTab(value as 'sports' | 'lab'); // Keep Tabs state in sync so switching works
+            // Clear selected items when switching between tabs to avoid confusion
+            setSelectedItems({});
+            setError('');
+            setSuccess(false); // Also clear success banner so it doesn't appear on other tabs
+          }}
+        >
+          <TabsList className="mb-6">
+            <TabsTrigger value="sports" icon={<Trophy className="h-4 w-4" />}>
+              Sports Equipment
+            </TabsTrigger>
+            <TabsTrigger value="lab" icon={<FlaskConical className="h-4 w-4" />}>
+              Lab Equipment
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="sports" className="animate-fade-in-up">
-          <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-success/10">
-                  <Trophy className="h-6 w-6 text-success" />
-                </div>
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    🏆 Sports Equipment
-                    <Badge variant="success" className="text-xs">Instant Checkout</Badge>
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 mt-1">
-                    <Zap className="h-3 w-3" />
-                    One sport at a time • Can exceed 3 if same sport
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Sports: instant pickup, no time selection */}
-              <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-text-main">
-                  <Clock className="h-4 w-4 text-success" />
-                  Instant pickup
-                </div>
-                <p className="text-xs text-text-muted">
-                  Starts now. Return by 8:00 PM today.
-                </p>
-              </div>
-
-              {/* Availability Warning Banner */}
-              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-warning text-sm">Availability = Physical Stock</p>
-                  <p className="text-xs text-text-muted">
-                    Shown availability is the current physical count. Equipment is not reserved until you check in with the guard.
-                    Multiple people may book the same slot - first to arrive gets the items.
-                  </p>
-                </div>
-              </div>
-
-              {/* Lab duration selector - only show on Lab tab */}
-              {tab === 'lab' && (
-                <div className="rounded-xl border border-card-border/40 bg-card/60 p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FlaskConical className="h-4 w-4 text-accent-blue" />
-                    <p className="text-sm font-semibold text-text-main">Lab borrow duration</p>
+          <TabsContent value="sports" className="animate-fade-in-up">
+            <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-success/10">
+                    <Trophy className="h-6 w-6 text-success" />
                   </div>
-                  <p className="text-xs text-text-muted">
-                    Choose how many days to keep lab equipment (min 1 day, max 7 days). Lab items require admin approval.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={7}
-                      value={labDurationDays}
-                      onChange={(e) => setLabDurationDays(Math.max(1, Math.min(7, Number(e.target.value) || 1)))}
-                      className="w-24"
-                    />
-                    <span className="text-sm text-text-muted">day(s)</span>
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      🏆 Sports Equipment
+                      <Badge variant="success" className="text-xs">Instant Checkout</Badge>
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-1">
+                      <Zap className="h-3 w-3" />
+                      One sport at a time • Can exceed 3 if same sport
+                    </CardDescription>
                   </div>
                 </div>
-              )}
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Sports: instant pickup, no time selection */}
+                <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-text-main">
+                    <Clock className="h-4 w-4 text-success" />
+                    Instant pickup
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    Starts now. Return by 8:00 PM today.
+                  </p>
+                </div>
 
-              {/* Sport Category Groups - Enhanced */}
-              <div className="space-y-4">
-                {(() => {
-                  // Group items
-                  const grouped = sportsItems.reduce((acc: Record<string, any[]>, item) => {
-                    const category = item.sportCategory || 'GENERAL';
-                    if (!acc[category]) acc[category] = [];
-                    acc[category].push(item);
-                    return acc;
-                  }, {});
+                {/* Availability Warning Banner */}
+                <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-warning text-sm">Availability = Physical Stock</p>
+                    <p className="text-xs text-text-muted">
+                      Shown availability is the current physical count. Equipment is not reserved until you check in with the guard.
+                      Multiple people may book the same slot - first to arrive gets the items.
+                    </p>
+                  </div>
+                </div>
 
-                  const categoryOrder = ['CRICKET', 'BADMINTON', 'BASKETBALL', 'FOOTBALL', 'TABLE_TENNIS', 'VOLLEYBALL', 'TENNIS', 'GENERAL'];
+                {/* Sport Category Groups - Enhanced */}
+                <div className="space-y-4">
+                  {(() => {
+                    // Group items
+                    const grouped = sportsItems.reduce((acc: Record<string, any[]>, item) => {
+                      const category = item.sportCategory || 'GENERAL';
+                      if (!acc[category]) acc[category] = [];
+                      acc[category].push(item);
+                      return acc;
+                    }, {});
 
-                  return categoryOrder.map((category, catIndex) => {
-                    const items = grouped[category];
-                    if (!items || items.length === 0) return null;
+                    const categoryOrder = ['CRICKET', 'BADMINTON', 'BASKETBALL', 'FOOTBALL', 'TABLE_TENNIS', 'VOLLEYBALL', 'TENNIS', 'GENERAL'];
 
-                    const colors = sportColors[category] || sportColors.GENERAL;
-                    const availableCount = items.filter((i: any) => i.availableNow > 0).length;
+                    return categoryOrder.map((category, catIndex) => {
+                      const items = grouped[category];
+                      if (!items || items.length === 0) return null;
 
-                    return (
-                      <div
-                        key={category}
-                        className={`rounded-2xl border ${colors.border} bg-gradient-to-br ${colors.gradient} p-4 space-y-3 animate-fade-in-up hover:shadow-lg transition-all duration-300`}
-                        style={{ animationDelay: `${catIndex * 50}ms` }}
-                      >
-                        {/* Category Header */}
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-card-border/30">
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl hover:scale-125 transition-transform cursor-default">
-                              {sportIcons[category]}
-                            </span>
-                            <div>
-                              <h3 className="font-bold text-text-main text-lg">{sportNames[category]}</h3>
-                              <p className="text-xs text-text-muted">
-                                {availableCount}/{items.length} items available
-                              </p>
+                      const colors = sportColors[category] || sportColors.GENERAL;
+                      const availableCount = items.filter((i: any) => i.availableNow > 0).length;
+
+                      return (
+                        <div
+                          key={category}
+                          className={`rounded-2xl border ${colors.border} bg-gradient-to-br ${colors.gradient} p-4 space-y-3 animate-fade-in-up hover:shadow-lg transition-all duration-300`}
+                          style={{ animationDelay: `${catIndex * 50}ms` }}
+                        >
+                          {/* Category Header */}
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-card-border/30">
+                            <div className="flex items-center gap-3">
+                              <span className="text-3xl hover:scale-125 transition-transform cursor-default">
+                                {sportIcons[category]}
+                              </span>
+                              <div>
+                                <h3 className="font-bold text-text-main text-lg">{sportNames[category]}</h3>
+                                <p className="text-xs text-text-muted">
+                                  {availableCount}/{items.length} items available
+                                </p>
+                              </div>
                             </div>
+                            <Badge className={`${colors.bg} text-xs`}>
+                              {items.length} {items.length === 1 ? 'item' : 'items'}
+                            </Badge>
                           </div>
-                          <Badge className={`${colors.bg} text-xs`}>
-                            {items.length} {items.length === 1 ? 'item' : 'items'}
-                          </Badge>
+
+                          {/* Items */}
+                          <div className="space-y-2">
+                            {items.map((item: any, itemIndex: number) => {
+                              const isSelected = (selectedItems[item._id] || 0) > 0;
+                              const isOutOfStock = item.availableNow === 0;
+                              const itemMaxPerPolicy = getMaxQuantityForItem(item.name, item.sportCategory || 'GENERAL');
+                              const maxSelectable = Math.min(item.availableNow ?? 0, itemMaxPerPolicy);
+                              const plusDisabled =
+                                isOutOfStock ||
+                                (selectedItems[item._id] || 0) >= maxSelectable;
+
+                              return (
+                                <div
+                                  key={item._id}
+                                  className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl p-3 transition-all duration-200 ${isSelected
+                                    ? 'bg-success/10 border border-success/30 shadow-sm'
+                                    : isOutOfStock
+                                      ? 'bg-bg-dark/30 opacity-60'
+                                      : 'bg-card/50 hover:bg-card border border-transparent hover:border-card-border'
+                                    }`}
+                                  style={{ animationDelay: `${itemIndex * 30}ms` }}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      {isSelected && <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />}
+                                      <p className="font-medium text-text-main truncate">{item.name}</p>
+                                      {isOutOfStock && (
+                                        <Badge variant="destructive" className="text-xs flex-shrink-0">
+                                          ❌ Out
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <div className="flex-1 h-1.5 bg-bg-dark rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
+                                            item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
+                                            }`}
+                                          style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-xs text-text-muted whitespace-nowrap">
+                                        {item.availableNow}/{item.qtyTotal} • Max per booking: {itemMaxPerPolicy}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 w-full justify-between sm:w-auto sm:justify-end sm:gap-2 sm:ml-4">
+                                    <button
+                                      onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
+                                      disabled={(selectedItems[item._id] || 0) === 0}
+                                      className="w-9 h-9 rounded-xl bg-bg-dark border border-card-border flex items-center justify-center hover:bg-card hover:border-destructive/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-text-main hover:text-destructive"
+                                    >
+                                      −
+                                    </button>
+                                    <span className={`w-10 text-center font-bold text-lg ${isSelected ? 'text-success' : 'text-text-main'}`}>
+                                      {selectedItems[item._id] || 0}
+                                    </span>
+                                    <button
+                                      onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
+                                      disabled={plusDisabled}
+                                      className="w-9 h-9 rounded-xl bg-success/10 border border-success/30 flex items-center justify-center hover:bg-success/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-success"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Error/Success Messages - Enhanced */}
+                {error && (
+                  <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
+                    <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-destructive">Booking Error</p>
+                      <p className="text-sm text-destructive/80">{error}</p>
+                    </div>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
+                    <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-success">🎉 Booking Successful!</p>
+                      <p className="text-sm text-success/80">Redirecting to your bookings...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Book Button - Enhanced */}
+                <Button
+                  onClick={() => handleBook(sportsResources[0]?._id, 'EQUIPMENT')}
+                  disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
+                  className="w-full h-12 text-lg font-semibold group relative overflow-hidden"
+                  variant={Object.values(selectedItems).some((v) => v > 0) ? 'default' : 'outline'}
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Booking...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Package className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                      {Object.values(selectedItems).some((v) => v > 0)
+                        ? `Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
+                        : 'Select Items to Book'
+                      }
+                    </span>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="lab" className="animate-fade-in-up">
+            <Card className="border-accent-purple-1/20 bg-gradient-to-br from-accent-purple-1/5 to-transparent">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-accent-purple-1/10">
+                    <FlaskConical className="h-6 w-6 text-accent-purple-1" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <CardTitle className="flex items-center gap-2">
+                        🔬 Lab Equipment
+                      </CardTitle>
+                      <Badge variant="warning" className="animate-pulse-subtle">
+                        ⏳ Requires Approval
+                      </Badge>
+                    </div>
+                    <CardDescription className="mt-1">
+                      Max 1 item • Laptops: up to 2 months • VR/Monitors: same-day return
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Info Banner */}
+                <div className="p-4 rounded-xl bg-accent-purple-1/10 border border-accent-purple-1/20 flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-accent-purple-1/10 flex-shrink-0">
+                    <Info className="h-5 w-5 text-accent-purple-1" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-text-main">Approval Required</p>
+                    <p className="text-sm text-text-muted">
+                      Lab equipment requests need admin approval. You&apos;ll receive a notification once approved.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Lab borrow duration - only show when an item is selected */}
+                {(() => {
+                  // Get the currently selected lab item to determine duration settings
+                  const selectedItemId = Object.keys(selectedItems).find(id => selectedItems[id] > 0);
+                  const selectedLabItem = labItems.find((item: any) => item._id === selectedItemId);
+
+                  // Don't show duration section until an item is selected
+                  if (!selectedLabItem) {
+                    return null;
+                  }
+
+                  const labCategory = selectedLabItem?.labCategory || 'GENERAL';
+
+                  if (labCategory === 'SAME_DAY_RETURN') {
+                    // VR Headsets and Monitors - same day return
+                    return (
+                      <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 space-y-4 animate-fade-in-up">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-medium text-warning">
+                            <Clock className="h-4 w-4" />
+                            Same-Day Return Required
+                          </div>
+                          <p className="text-sm text-text-muted">
+                            <strong>{selectedLabItem?.name}</strong> must be returned by <span className="text-warning font-semibold">8:00 PM today</span>.
+                            VR Headsets and Monitors cannot be borrowed overnight.
+                          </p>
                         </div>
 
-                        {/* Items */}
-                        <div className="space-y-2">
-                          {items.map((item: any, itemIndex: number) => {
-                            const isSelected = (selectedItems[item._id] || 0) > 0;
-                            const isOutOfStock = item.availableNow === 0;
-                            const itemMaxPerPolicy = getMaxQuantityForItem(item.name, item.sportCategory || 'GENERAL');
-                            const maxSelectable = Math.min(item.availableNow ?? 0, itemMaxPerPolicy);
-                            const plusDisabled =
-                              isOutOfStock ||
-                              (selectedItems[item._id] || 0) >= maxSelectable;
-
-                            return (
-                              <div
-                                key={item._id}
-                                className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl p-3 transition-all duration-200 ${isSelected
-                                  ? 'bg-success/10 border border-success/30 shadow-sm'
-                                  : isOutOfStock
-                                    ? 'bg-bg-dark/30 opacity-60'
-                                    : 'bg-card/50 hover:bg-card border border-transparent hover:border-card-border'
-                                  }`}
-                                style={{ animationDelay: `${itemIndex * 30}ms` }}
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    {isSelected && <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />}
-                                    <p className="font-medium text-text-main truncate">{item.name}</p>
-                                    {isOutOfStock && (
-                                      <Badge variant="destructive" className="text-xs flex-shrink-0">
-                                        ❌ Out
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <div className="flex-1 h-1.5 bg-bg-dark rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
-                                          item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-success'
-                                          }`}
-                                        style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-xs text-text-muted whitespace-nowrap">
-                                      {item.availableNow}/{item.qtyTotal} • Max per booking: {itemMaxPerPolicy}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 w-full justify-between sm:w-auto sm:justify-end sm:gap-2 sm:ml-4">
-                                  <button
-                                    onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) - 1)}
-                                    disabled={(selectedItems[item._id] || 0) === 0}
-                                    className="w-9 h-9 rounded-xl bg-bg-dark border border-card-border flex items-center justify-center hover:bg-card hover:border-destructive/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-text-main hover:text-destructive"
-                                  >
-                                    −
-                                  </button>
-                                  <span className={`w-10 text-center font-bold text-lg ${isSelected ? 'text-success' : 'text-text-main'}`}>
-                                    {selectedItems[item._id] || 0}
-                                  </span>
-                                  <button
-                                    onClick={() => handleQuantityChange(item._id, (selectedItems[item._id] || 0) + 1)}
-                                    disabled={plusDisabled}
-                                    className="w-9 h-9 rounded-xl bg-success/10 border border-success/30 flex items-center justify-center hover:bg-success/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-lg font-medium text-success"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        {/* Borrow Reason/Purpose */}
+                        <div className="space-y-2 pt-2 border-t border-warning/20">
+                          <label className="text-sm font-medium text-text-main flex items-center gap-2">
+                            📝 Reason for borrowing
+                            <span className="text-destructive">*</span>
+                            <span className="text-xs text-text-muted font-normal">(required for approval)</span>
+                          </label>
+                          <textarea
+                            value={borrowReason}
+                            onChange={(e) => setBorrowReason(e.target.value)}
+                            placeholder="e.g., For VR demo in my final year project presentation..."
+                            maxLength={500}
+                            className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-warning focus:outline-none resize-none text-sm"
+                          />
+                          <p className="text-xs text-text-muted text-right">{borrowReason.length}/500</p>
                         </div>
                       </div>
                     );
-                  });
-                })()}
-              </div>
+                  }
 
-              {/* Error/Success Messages - Enhanced */}
-              {error && (
-                <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
-                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-destructive">Booking Error</p>
-                    <p className="text-sm text-destructive/80">{error}</p>
-                  </div>
-                </div>
-              )}
+                  // LAPTOP or GENERAL - show duration picker
+                  const maxDays = labCategory === 'LAPTOP' ? 60 : 7;
 
-              {success && (
-                <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-success">🎉 Booking Successful!</p>
-                    <p className="text-sm text-success/80">Redirecting to your bookings...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Book Button - Enhanced */}
-              <Button
-                onClick={() => handleBook(sportsResources[0]?._id, 'EQUIPMENT')}
-                disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
-                className="w-full h-12 text-lg font-semibold group relative overflow-hidden"
-                variant={Object.values(selectedItems).some((v) => v > 0) ? 'default' : 'outline'}
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="animate-spin">⏳</span>
-                    Booking...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Package className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    {Object.values(selectedItems).some((v) => v > 0)
-                      ? `Book ${totalSelected} Item${totalSelected !== 1 ? 's' : ''}`
-                      : 'Select Items to Book'
-                    }
-                  </span>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="lab" className="animate-fade-in-up">
-          <Card className="border-accent-purple-1/20 bg-gradient-to-br from-accent-purple-1/5 to-transparent">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-accent-purple-1/10">
-                  <FlaskConical className="h-6 w-6 text-accent-purple-1" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <CardTitle className="flex items-center gap-2">
-                      🔬 Lab Equipment
-                    </CardTitle>
-                    <Badge variant="warning" className="animate-pulse-subtle">
-                      ⏳ Requires Approval
-                    </Badge>
-                  </div>
-                  <CardDescription className="mt-1">
-                    Max 1 item • Laptops: up to 2 months • VR/Monitors: same-day return
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Info Banner */}
-              <div className="p-4 rounded-xl bg-accent-purple-1/10 border border-accent-purple-1/20 flex items-start gap-3">
-                <Info className="h-5 w-5 text-accent-purple-1 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-text-main">Approval Required</p>
-                  <p className="text-sm text-text-muted">
-                    Lab equipment requests need admin approval. You&apos;ll receive a notification once approved.
-                  </p>
-                </div>
-              </div>
-
-              {/* Lab borrow duration - only show when an item is selected */}
-              {(() => {
-                // Get the currently selected lab item to determine duration settings
-                const selectedItemId = Object.keys(selectedItems).find(id => selectedItems[id] > 0);
-                const selectedLabItem = labItems.find((item: any) => item._id === selectedItemId);
-
-                // Don't show duration section until an item is selected
-                if (!selectedLabItem) {
-                  return null;
-                }
-
-                const labCategory = selectedLabItem?.labCategory || 'GENERAL';
-
-                if (labCategory === 'SAME_DAY_RETURN') {
-                  // VR Headsets and Monitors - same day return
                   return (
-                    <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 space-y-4 animate-fade-in-up">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-medium text-warning">
-                          <Clock className="h-4 w-4" />
-                          Same-Day Return Required
-                        </div>
-                        <p className="text-sm text-text-muted">
-                          <strong>{selectedLabItem?.name}</strong> must be returned by <span className="text-warning font-semibold">8:00 PM today</span>.
-                          VR Headsets and Monitors cannot be borrowed overnight.
-                        </p>
+                    <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4 animate-fade-in-up">
+                      <div className="flex items-center gap-2 text-sm font-medium text-text-main">
+                        <Clock className="h-4 w-4 text-accent-purple-1" />
+                        Borrow Duration for <span className="text-accent-purple-1">{selectedLabItem?.name}</span>
+                        {labCategory === 'LAPTOP' && (
+                          <Badge variant="secondary" className="text-xs">💻 Up to 2 months</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        {labCategory === 'LAPTOP'
+                          ? 'Laptops can be borrowed for up to 2 months (60 days).'
+                          : 'Choose how many days to keep this equipment (min 1 day, max 7 days).'
+                        } Requests need admin approval.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={maxDays}
+                          value={labDurationDays}
+                          onChange={(e) => setLabDurationDays(Math.max(1, Math.min(maxDays, Number(e.target.value) || 1)))}
+                          className="w-24"
+                        />
+                        <span className="text-sm text-text-muted">day(s) • max {maxDays}</span>
                       </div>
 
                       {/* Borrow Reason/Purpose */}
-                      <div className="space-y-2 pt-2 border-t border-warning/20">
+                      <div className="space-y-2">
                         <label className="text-sm font-medium text-text-main flex items-center gap-2">
                           📝 Reason for borrowing
                           <span className="text-destructive">*</span>
@@ -877,210 +915,161 @@ export default function EquipmentPage() {
                         <textarea
                           value={borrowReason}
                           onChange={(e) => setBorrowReason(e.target.value)}
-                          placeholder="e.g., For VR demo in my final year project presentation..."
+                          placeholder="e.g., For final year project on machine learning, need laptop for 2 weeks..."
                           maxLength={500}
-                          className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-warning focus:outline-none resize-none text-sm"
+                          className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-accent-purple-1 focus:outline-none resize-none text-sm"
                         />
                         <p className="text-xs text-text-muted text-right">{borrowReason.length}/500</p>
                       </div>
                     </div>
                   );
-                }
+                })()}
 
-                // LAPTOP or GENERAL - show duration picker
-                const maxDays = labCategory === 'LAPTOP' ? 60 : 7;
-
-                return (
-                  <div className="p-4 rounded-xl bg-bg-dark/50 border border-card-border space-y-4 animate-fade-in-up">
-                    <div className="flex items-center gap-2 text-sm font-medium text-text-main">
-                      <Clock className="h-4 w-4 text-accent-purple-1" />
-                      Borrow Duration for <span className="text-accent-purple-1">{selectedLabItem?.name}</span>
-                      {labCategory === 'LAPTOP' && (
-                        <Badge variant="secondary" className="text-xs">💻 Up to 2 months</Badge>
-                      )}
+                {/* Lab Items - Enhanced */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-text-muted flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Available Equipment
+                  </h3>
+                  {labItems.length === 0 ? (
+                    <div className="text-center py-8 text-text-muted">
+                      <span className="text-4xl mb-2 block">🔬</span>
+                      <p>No lab equipment available</p>
                     </div>
-                    <p className="text-xs text-text-muted">
-                      {labCategory === 'LAPTOP'
-                        ? 'Laptops can be borrowed for up to 2 months (60 days).'
-                        : 'Choose how many days to keep this equipment (min 1 day, max 7 days).'
-                      } Requests need admin approval.
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={maxDays}
-                        value={labDurationDays}
-                        onChange={(e) => setLabDurationDays(Math.max(1, Math.min(maxDays, Number(e.target.value) || 1)))}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-text-muted">day(s) • max {maxDays}</span>
-                    </div>
+                  ) : (
+                    labItems.map((item, index) => {
+                      const isSelected = (selectedItems[item._id] || 0) > 0;
+                      const isOutOfStock = item.availableNow === 0;
 
-                    {/* Borrow Reason/Purpose */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-text-main flex items-center gap-2">
-                        📝 Reason for borrowing
-                        <span className="text-destructive">*</span>
-                        <span className="text-xs text-text-muted font-normal">(required for approval)</span>
-                      </label>
-                      <textarea
-                        value={borrowReason}
-                        onChange={(e) => setBorrowReason(e.target.value)}
-                        placeholder="e.g., For final year project on machine learning, need laptop for 2 weeks..."
-                        maxLength={500}
-                        className="w-full h-20 px-3 py-2 rounded-lg border border-card-border bg-bg-dark text-text-main placeholder:text-text-muted focus:border-accent-purple-1 focus:outline-none resize-none text-sm"
-                      />
-                      <p className="text-xs text-text-muted text-right">{borrowReason.length}/500</p>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Lab Items - Enhanced */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-text-muted flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Available Equipment
-                </h3>
-                {labItems.length === 0 ? (
-                  <div className="text-center py-8 text-text-muted">
-                    <span className="text-4xl mb-2 block">🔬</span>
-                    <p>No lab equipment available</p>
-                  </div>
-                ) : (
-                  labItems.map((item, index) => {
-                    const isSelected = (selectedItems[item._id] || 0) > 0;
-                    const isOutOfStock = item.availableNow === 0;
-
-                    return (
-                      <div
-                        key={item._id}
-                        className={`rounded-xl border p-4 transition-all duration-200 animate-fade-in-up ${isSelected
-                          ? 'bg-accent-purple-1/10 border-accent-purple-1/30 shadow-lg shadow-accent-purple-1/10'
-                          : isOutOfStock
-                            ? 'bg-bg-dark/30 opacity-60 border-card-border'
-                            : 'bg-card border-card-border hover:border-accent-purple-1/30 hover:shadow-md'
-                          }`}
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {isSelected && <CheckCircle2 className="h-4 w-4 text-accent-purple-1" />}
-                              <span className="text-xl">
-                                {item.labCategory === 'LAPTOP' ? '💻' :
-                                  item.labCategory === 'SAME_DAY_RETURN' ? '🎮' : '🔬'}
-                              </span>
-                              <p className="font-semibold text-text-main">{item.name}</p>
-                              {/* Category-specific badges */}
-                              {item.labCategory === 'LAPTOP' && (
-                                <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-400">
-                                  📅 Up to 60 days
-                                </Badge>
-                              )}
-                              {item.labCategory === 'SAME_DAY_RETURN' && (
-                                <Badge variant="warning" className="text-xs">
-                                  ⏰ Return by 8 PM
-                                </Badge>
-                              )}
-                              {(!item.labCategory || item.labCategory === 'GENERAL') && (
-                                <Badge variant="secondary" className="text-xs">
-                                  1-7 days
-                                </Badge>
-                              )}
-                              {isOutOfStock && (
-                                <Badge variant="destructive">❌ Out of Stock</Badge>
-                              )}
-                              {item.restricted && (
-                                <Badge variant="destructive" className="text-xs">
-                                  🔒 Restricted
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 mt-2">
-                              <div className="flex-1 max-w-[200px] h-2 bg-bg-dark rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
-                                    item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-accent-purple-1'
-                                    }`}
-                                  style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-sm text-text-muted">
-                                {item.availableNow}/{item.qtyTotal} available
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 w-full justify-between sm:w-auto sm:justify-end sm:ml-4">
-                            <Button
-                              variant={isSelected ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => handleQuantityChange(item._id, isSelected ? 0 : 1)}
-                              disabled={isOutOfStock && !isSelected}
-                              className={`min-w-[100px] transition-all ${isSelected
-                                ? 'bg-accent-purple-1 hover:bg-accent-purple-1/90 text-white'
-                                : 'hover:border-accent-purple-1/30 hover:text-accent-purple-1'
-                                }`}
-                            >
-                              {isSelected ? (
-                                <span className="flex items-center gap-1">
-                                  <CheckCircle2 className="h-4 w-4" />
-                                  Selected
+                      return (
+                        <div
+                          key={item._id}
+                          className={`rounded-xl border p-4 transition-all duration-200 animate-fade-in-up ${isSelected
+                            ? 'bg-accent-purple-1/10 border-accent-purple-1/30 shadow-lg shadow-accent-purple-1/10'
+                            : isOutOfStock
+                              ? 'bg-bg-dark/30 opacity-60 border-card-border'
+                              : 'bg-card border-card-border hover:border-accent-purple-1/30 hover:shadow-md'
+                            }`}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {isSelected && <CheckCircle2 className="h-4 w-4 text-accent-purple-1" />}
+                                <span className="text-xl">
+                                  {item.labCategory === 'LAPTOP' ? '💻' :
+                                    item.labCategory === 'SAME_DAY_RETURN' ? '🎮' : '🔬'}
                                 </span>
-                              ) : 'Select'}
-                            </Button>
+                                <p className="font-semibold text-text-main">{item.name}</p>
+                                {/* Category-specific badges */}
+                                {item.labCategory === 'LAPTOP' && (
+                                  <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-400">
+                                    📅 Up to 60 days
+                                  </Badge>
+                                )}
+                                {item.labCategory === 'SAME_DAY_RETURN' && (
+                                  <Badge variant="warning" className="text-xs">
+                                    ⏰ Return by 8 PM
+                                  </Badge>
+                                )}
+                                {(!item.labCategory || item.labCategory === 'GENERAL') && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    1-7 days
+                                  </Badge>
+                                )}
+                                {isOutOfStock && (
+                                  <Badge variant="destructive">❌ Out of Stock</Badge>
+                                )}
+                                {item.restricted && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    🔒 Restricted
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 mt-2">
+                                <div className="flex-1 max-w-[200px] h-2 bg-bg-dark rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${item.availableNow === 0 ? 'bg-destructive' :
+                                      item.availableNow < item.qtyTotal * 0.3 ? 'bg-warning' : 'bg-accent-purple-1'
+                                      }`}
+                                    style={{ width: `${(item.availableNow / item.qtyTotal) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm text-text-muted">
+                                  {item.availableNow}/{item.qtyTotal} available
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 w-full justify-between sm:w-auto sm:justify-end sm:ml-4">
+                              <Button
+                                variant={isSelected ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleQuantityChange(item._id, isSelected ? 0 : 1)}
+                                disabled={isOutOfStock && !isSelected}
+                                className={`min-w-[100px] transition-all ${isSelected
+                                  ? 'bg-accent-purple-1 hover:bg-accent-purple-1/90 text-white'
+                                  : 'hover:border-accent-purple-1/30 hover:text-accent-purple-1'
+                                  }`}
+                              >
+                                {isSelected ? (
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Selected
+                                  </span>
+                                ) : 'Select'}
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Error/Success Messages */}
-              {error && (
-                <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
-                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-destructive">Request Error</p>
-                    <p className="text-sm text-destructive/80">{error}</p>
-                  </div>
+                      );
+                    })
+                  )}
                 </div>
-              )}
 
-              {success && (
-                <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
-                  <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-success">📨 Request Submitted!</p>
-                    <p className="text-sm text-success/80">Awaiting admin approval...</p>
+                {/* Error/Success Messages */}
+                {error && (
+                  <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 flex items-start gap-3 animate-shake">
+                    <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-destructive">Request Error</p>
+                      <p className="text-sm text-destructive/80">{error}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <Button
-                onClick={() => handleBook(labResources[0]?._id, 'EQUIPMENT')}
-                disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
-                className="w-full h-12 text-lg font-semibold group bg-gradient-to-r from-accent-purple-1 to-pink-500 hover:from-accent-purple-1/90 hover:to-pink-500/90"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="animate-spin">⏳</span>
-                    Submitting Request...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <FlaskConical className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Request Lab Equipment
-                  </span>
                 )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+
+                {success && (
+                  <div className="rounded-xl bg-success/10 border border-success/30 p-4 flex items-start gap-3 animate-success-pop">
+                    <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-success">📨 Request Submitted!</p>
+                      <p className="text-sm text-success/80">Awaiting admin approval...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  onClick={() => handleBook(labResources[0]?._id, 'EQUIPMENT')}
+                  disabled={loading || Object.values(selectedItems).every((v) => v === 0)}
+                  className="w-full h-12 text-lg font-semibold group bg-gradient-to-r from-accent-purple-1 to-pink-500 hover:from-accent-purple-1/90 hover:to-pink-500/90"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Submitting Request...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <FlaskConical className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                      Request Lab Equipment
+                    </span>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

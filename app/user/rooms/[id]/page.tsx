@@ -7,6 +7,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 import { ArrowLeft, MapPin, Users, Clock, AlertTriangle, DoorOpen, Calendar, CheckCircle2, Sparkles, Info } from 'lucide-react';
 import Link from 'next/link';
 import { getISTToday, getISTNow } from '@/lib/timezone-client';
@@ -82,10 +83,26 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   }, [date]);
 
   const fetchResource = async () => {
-    const res = await fetch(`/api/resources?type=ROOM`);
-    const data = await res.json();
-    const found = data.resources.find((r: Resource) => r._id === params.id);
-    setResource(found);
+    try {
+      setError('');
+      const res = await fetch(`/api/resources?type=ROOM`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to fetch room');
+        return;
+      }
+
+      const found = data.resources.find((r: Resource) => r._id === params.id);
+      if (!found) {
+        setError('Room not found');
+        return;
+      }
+      setResource(found);
+    } catch (err) {
+      console.error('Error fetching room:', err);
+      setError('An unexpected error occurred.');
+    }
   };
 
   // Fetch availability data for TimeRangePicker
@@ -158,7 +175,7 @@ export default function RoomBookingPage({ params }: { params: Params }) {
 
       setSuccess(true);
       triggerBookingSuccess();
-      setTimeout(() => router.push('/user/bookings'), 1200);
+      router.push('/user/bookings');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -172,6 +189,26 @@ export default function RoomBookingPage({ params }: { params: Params }) {
   const maxDateStr = maxDate.toISOString().split('T')[0];
 
   const roomConfig = resource ? getRoomConfig(resource.name) : roomTypeConfig.default;
+
+  if (error && !resource) {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <Link href="/user/rooms">
+          <Button variant="ghost" size="sm" className="group hover:bg-accent-purple-1/10">
+            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            Back to Rooms
+          </Button>
+        </Link>
+        <ErrorDisplay
+          message={error}
+          onRetry={() => fetchResource()}
+          backHref="/user/rooms"
+          backLabel="Back to Rooms"
+          className="animate-fade-in"
+        />
+      </div>
+    );
+  }
 
   if (!resource) {
     return (

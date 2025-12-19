@@ -116,6 +116,7 @@ sequenceDiagram
     User->>App: Clicks "Send Invites"
     App->>App: Shows Loading Spinner
     App->>User: Shows "Success" Modal + Redirects
+```
 
 ### 3.2 Scenario: Guard Check-In Flow
 How the Guard validates a student.
@@ -172,7 +173,7 @@ sequenceDiagram
     Dash->>Dash: Refreshes List (Empty)
 ```
 
-```
+
 
 ---
 

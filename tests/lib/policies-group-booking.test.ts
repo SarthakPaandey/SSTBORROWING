@@ -8,16 +8,15 @@ import {
 
 describe('Group Booking Expiration (Dynamic Logic)', () => {
   describe('calculateGroupBookingExpiration', () => {
-    it('should always expire at (start - 5 minutes cutoff)', async () => {
+    it('should expire after (reply + cutoff) window for far-future bookings', async () => {
       const now = new Date();
       const bookingStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
       const expiresAt = await calculateGroupBookingExpiration(bookingStart, now);
 
-      // NEW LOGIC: Expiry is always (start - 5m cutoff) using dynamic policy
-      // Default GROUP_BOOKING_CUTOFF_MINUTES = 5
+      // Default: 10 min reply + 5 min cutoff = 15 minutes window
       const expectedExpiry = new Date(
-        bookingStart.getTime() - POLICIES.GROUP_BOOKING_CUTOFF_MINUTES * 60 * 1000
+        now.getTime() + (POLICIES.GROUP_BOOKING_REPLY_TIME_MINUTES + POLICIES.GROUP_BOOKING_CUTOFF_MINUTES) * 60 * 1000
       );
       const diff = Math.abs(expiresAt.getTime() - expectedExpiry.getTime());
       expect(diff).toBeLessThan(1000); // Within 1 second
@@ -29,18 +28,20 @@ describe('Group Booking Expiration (Dynamic Logic)', () => {
 
       const expiresAt = await calculateGroupBookingExpiration(bookingStart, now);
 
-      // For a booking 3 hours away, expiry should be before start
+      // For a booking 3 hours away, expiry should be 15 mins from now
       expect(expiresAt.getTime()).toBeGreaterThan(now.getTime());
       expect(expiresAt.getTime()).toBeLessThan(bookingStart.getTime());
     });
 
-    it('should set expiry 5 mins before start for urgent bookings', async () => {
+    it('should set expiry to (start - cutoff) for near-term bookings', async () => {
       const now = new Date();
-      const bookingStart = new Date(now.getTime() + 45 * 60 * 1000); // 45 minutes from now
+      // Use 15 minutes notice (the absolute minimum allowed)
+      const bookingStart = new Date(now.getTime() + 15 * 60 * 1000); 
 
       const expiresAt = await calculateGroupBookingExpiration(bookingStart, now);
 
-      // Expiry should be at 45m - 5m = 40m from now (using GROUP_BOOKING_CUTOFF_MINUTES)
+      // Expiry should be at start - 5m = now + 10m
+      // because (now + 10m) < (now + 15m)
       const expectedExpiry = new Date(
         bookingStart.getTime() - POLICIES.GROUP_BOOKING_CUTOFF_MINUTES * 60 * 1000
       );

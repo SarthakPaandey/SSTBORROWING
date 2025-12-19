@@ -1,8 +1,6 @@
 # � Product Design Spec: Facilities Booking Experience
 
-**Project:** SST Booking System - Facilities Module  
-**Audience:** UI/UX Designers, Product Managers  
-**Status:** Ready for Design Review  
+**Project:** SST Booking System - Facilities Module   
 
 ---
 

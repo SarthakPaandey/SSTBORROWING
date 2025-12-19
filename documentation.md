@@ -56,12 +56,12 @@ graph TD
     %% Design Note: This decision is automatic based on facility type, 
     %% but the UI changes significantly.
     
-    TypeCheck -- No (e.g. Table Tennis) --> SimpleFlow[Show "Confirm" Button]
+    TypeCheck -- No (e.g. Table Tennis) --> SimpleFlow["Show 'Confirm' Button"]
     
-    TypeCheck -- Yes (e.g. Football) --> GroupFlow[Show "Invite Friends" Form]
+    TypeCheck -- Yes (e.g. Football) --> GroupFlow["Show 'Invite Friends' Form"]
     GroupFlow --> MinCheck{min. 5 Friends?}
-    MinCheck -- No --> DisabledBtn[Disable "Book" Button]
-    MinCheck -- Yes --> ActiveBtn[Enable "Send Invites" Button]
+    MinCheck -- No --> DisabledBtn["Disable 'Book' Button"]
+    MinCheck -- Yes --> ActiveBtn["Enable 'Send Invites' Button"]
 ```
 
 ### 2.4 The Guard Interface (Access Control)

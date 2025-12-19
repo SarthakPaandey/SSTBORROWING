@@ -1,182 +1,529 @@
-# � Product Design Spec: Facilities Booking Experience
+# 🏟️ SST Facilities Booking — Product Design Specification
 
-**Project:** SST Booking System - Facilities Module   
-
----
-
-## 1. Design Objective
-Create a seamless, premium mobile-first experience for students to book sports infrastructure. The interface must balance **speed** for individual users (e.g., booking a Table Tennis table) with **clarity** for complex group coordination (e.g., organizing a football match).
-
-### Core Design Values
-*   **Clarity**: Instant visibility of "What is available right now?"
-*   **Speed**: Minimized clicks to confirm a booking.
-*   **Premium Feel**: Use glassmorphism, dark mode aesthetics, and fluid micro-interactions to reflect a high-tech campus environment.
+> **Project:** SST Campus Booking System   
 
 ---
 
-## 2. User Flows & Key Screens
+## Table of Contents
+1. [Product Overview](#1-product-overview)
+2. [User Personas](#2-user-personas)
+3. [User Flows by Persona](#3-user-flows-by-persona)
+4. [Screen-by-Screen Breakdown](#4-screen-by-screen-breakdown)
+5. [UI Components Library](#5-ui-components-library)
+6. [State Management & Feedback](#6-state-management--feedback)
+7. [Visual Design System](#7-visual-design-system)
+8. [Interaction Diagrams](#8-interaction-diagrams)
+9. [Edge Cases & Error Handling](#9-edge-cases--error-handling)
+10. [Appendix: Technical Constraints](#10-appendix-technical-constraints)
 
-### 2.1 The Discovery Dashboard (Home)
-**User Goal:** "I want to see what I can play right now."
+---
 
-*   **UI Requirement:** A grid of "Facility Cards".
-*   **Visual Hierarchy:**
-    1.  **Sport Emoji/Icon**: Immediate recognition.
-    2.  **Status Badge**: "Available" (Green) vs "Full" (Red).
-    3.  **Name**: e.g., "Main Turf".
-*   **Interaction:** Hovering over a card should trigger a subtle lift/glow effect.
+## 1. Product Overview
 
-![Facility Dashboard](public/docs/facility_browsing_mockup_1766151164372.png)
+### 1.1 What We're Building
+A **mobile-first booking platform** that enables SST students to reserve campus sports facilities (Turf, Basketball Court, Table Tennis, etc.). The system must handle both **instant individual bookings** and **coordinated group reservations** for team sports.
 
-### 2.2 The Time Scanner (Booking Interface)
-**User Goal:** "I need a slot between 5 PM and 7 PM."
+### 1.2 Design Goals
 
-*   **Primary Component: The Timeline Picker**
-    *   **Visual Metaphor**: A horizontal day timeline.
-    *   **States**:
-        *   🟩 **Green Zone**: Available time.
-        *   🟥 **Red Zone**: Already booked (Busy).
-        *   ⬜ **Gray Zone**: Past time/Closed.
-        *   ✨ **Glow/Highlight**: The currently selected duration (e.g., 1 hour).
-*   **Controls**:
-    *   **Duration Pill**: User selects how long they want to play (15m, 30m, 1h, 2h).
-    *   **Date Switcher**: Horizontal scroll or calendar modal for next 7 days.
+| Priority | Goal | Success Metric |
+|:--------:|:-----|:---------------|
+| 🥇 | **Speed** — Book a facility in under 30 seconds | < 4 taps from home to confirmation |
+| 🥈 | **Clarity** — Instant visibility of availability | Zero user confusion on what's bookable |
+| 🥉 | **Delight** — Premium, modern aesthetic | Positive user feedback on design |
 
-![Time Selection UI](public/docs/booking_selection_mockup_1766151187783.png)
+### 1.3 Key Features at a Glance
 
-### 2.3 logic Branch: Individual vs. Group
-The system behaves differently based on the facility type.
+```mermaid
+flowchart TB
+    subgraph Core["🏟️ Facilities Booking System"]
+        direction TB
+        
+        subgraph Individual["📱 Individual Booking"]
+            I1[Browse Facilities]
+            I2[Select Time Slot]
+            I3[Instant Confirmation]
+            I4[QR Access Pass]
+        end
+        
+        subgraph Group["👥 Group Booking"]
+            G1[Invite Friends via Email]
+            G2[Track Confirmations]
+            G3[Auto-Expire if Quorum Not Met]
+        end
+        
+        subgraph Guard["🛡️ Guard Access"]
+            S1[QR Scanner]
+            S2[Entry/Exit Logging]
+            S3[Audio Feedback]
+        end
+        
+        subgraph Admin["⚙️ Admin Oversight"]
+            A1[Live Booking Feed]
+            A2[Force Cancel]
+            A3[Bulk Operations]
+        end
+    end
+    
+    style Individual fill:#10B981,color:#fff
+    style Group fill:#8B5CF6,color:#fff
+    style Guard fill:#3B82F6,color:#fff
+    style Admin fill:#F59E0B,color:#fff
+```
+
+---
+
+## 2. User Personas
+
+We design for **three distinct users** with different goals and contexts.
+
+### 👨‍🎓 Persona 1: Student (Primary User)
+| Attribute | Details |
+|:----------|:--------|
+| **Goal** | Book a facility quickly between classes |
+| **Context** | Using phone, often in a hurry |
+| **Pain Points** | Slow loading, unclear availability, complex group coordination |
+| **Key Actions** | Browse → Select Slot → Confirm → Show QR at Entry |
+
+### 🛡️ Persona 2: Security Guard
+| Attribute | Details |
+|:----------|:--------|
+| **Goal** | Verify student entitlement, prevent unauthorized access |
+| **Context** | Standing at facility entrance, phone or tablet |
+| **Pain Points** | Fake QR codes, expired bookings, slow verification |
+| **Key Actions** | Scan QR → View Result → Grant/Deny Access |
+
+### 👩‍💼 Persona 3: Admin
+| Attribute | Details |
+|:----------|:--------|
+| **Goal** | Manage facility usage, handle exceptions |
+| **Context** | Desktop, monitoring dashboard |
+| **Pain Points** | No-shows, overbooking conflicts, weather cancellations |
+| **Key Actions** | Monitor → Select Bookings → Cancel/Override |
+
+---
+
+## 3. User Flows by Persona
+
+### 3.1 🎓 Student: Individual Booking Flow
+
+```mermaid
+graph LR
+    A[🏠 Home] --> B[📋 Facility List]
+    B --> C[🏟️ Facility Detail]
+    C --> D[📅 Date Picker]
+    D --> E[⏰ Time Selector]
+    E --> F{Add Equipment?}
+    F -- Yes --> G[🏓 Equipment Selection]
+    G --> H[✅ Confirm]
+    F -- No --> H
+    H --> I[🎉 Success Screen]
+    I --> J[📱 My Bookings]
+```
+
+**Key Moments:**
+1. **Discovery** (B): User scans cards to find available facilities.
+2. **Decision** (E): Timeline picker shows exactly when slots are free.
+3. **Confirmation** (H): Single tap to lock in the booking.
+4. **Celebration** (I): Confetti animation, clear next steps.
+
+---
+
+### 3.2 🎓 Student: Group Booking Flow (Team Sports)
 
 ```mermaid
 graph TD
-    Start([User Selects Facility]) --> TypeCheck{Is it a Team Sport?}
-    
-    %% Design Note: This decision is automatic based on facility type, 
-    %% but the UI changes significantly.
-    
-    TypeCheck -- No (e.g. Table Tennis) --> SimpleFlow["Show 'Confirm' Button"]
-    
-    TypeCheck -- Yes (e.g. Football) --> GroupFlow["Show 'Invite Friends' Form"]
-    GroupFlow --> MinCheck{min. 5 Friends?}
-    MinCheck -- No --> DisabledBtn["Disable 'Book' Button"]
-    MinCheck -- Yes --> ActiveBtn["Enable 'Send Invites' Button"]
+    A[🏟️ Team Sport Selected] --> B[📅 Select Date & Time]
+    B --> C[👥 Enter Friend Emails]
+    C --> D{Min 5 Friends?}
+    D -- No --> E[🔒 Button Disabled]
+    D -- Yes --> F[📧 Send Invitations]
+    F --> G[⏳ Pending State]
+    G --> H{6+ Confirmed?}
+    H -- Yes --> I[✅ Booking Confirmed]
+    H -- No --> J{Timeout?}
+    J -- Yes --> K[❌ Booking Expired]
+    J -- No --> G
 ```
 
-### 2.4 The Guard Interface (Access Control)
-**User Goal:** "Verify student entitlement and log entry/exit."
-
-*   **Primary Interaction**: One-tap QR Scanner (Camera or Manual Code Entry).
-*   **Feedback States**:
-    *   ✅ **Valid**: High-pitched chime + Green Screen + Student Details (Name, Photo).
-    *   ❌ **Invalid/Expired**: Low buzz + Red Screen + Error Message ("Booking Expired").
-*   **Key Information Displayed**:
-    *   **Resource**: "Basketball Court"
-    *   **Time Remaining**: "45 mins left"
-    *   **Identity**: Name & Roll Number (to prevent ID swapping).
-
-### 2.5 The Admin Portal (Oversight)
-**User Goal:** "Manage facility usage and handle exceptions."
-
-*   **Dashboard Features**:
-    *   **Live Feed**: Real-time list of all active/upcoming bookings.
-    *   **Filters**: "Active", "Completed", "Cancelled".
-*   **Critical Actions**:
-    *   **Force Cancel**: Remove a booking (e.g., for unexpected maintenance).
-        *   *UI*: Red outline button -> Modal -> Reason Input.
-    *   **Bulk Select**: Cancel multiple bookings at once (e.g., Rainy day closes open turf).
+**Design Challenges:**
+- **Email Input UX**: Make it effortless to add 5+ emails (autocomplete from directory?).
+- **Waiting State**: Clear progress indicator showing "3/6 confirmed".
+- **Failure State**: Graceful expiration message with retry option.
 
 ---
 
-## 3. Interaction Patterns & Per-Persona Flows
+### 3.3 🛡️ Guard: Access Verification Flow
 
-### 3.1 Scenario: The "Happy Path" Group Booking (Student)
+```mermaid
+graph LR
+    A[� Open Scanner] --> B[🔍 Point at QR]
+    B --> C{Valid?}
+    C -- Yes --> D[🎵 Success Chime]
+    D --> E[📗 Green Card: Student Info]
+    E --> F[👋 Allow Entry]
+    C -- No --> G[🔔 Error Buzz]
+    G --> H[📕 Red Card: Error Message]
+    H --> I[🚫 Deny Entry]
+```
+
+**Audio Feedback:**
+- ✅ **Valid**: Pleasant ascending chime (C5 → E5 → G5).
+- ❌ **Invalid**: Low error buzz (200Hz square wave).
+
+---
+
+### 3.4 👩‍💼 Admin: Bulk Cancellation Flow
+
+```mermaid
+graph TD
+    A[📊 Dashboard] --> B[🔍 Filter: Active Bookings]
+    B --> C[☑️ Select Multiple]
+    C --> D[🗑️ Click Bulk Cancel]
+    D --> E[📝 Enter Reason Modal]
+    E --> F[⚠️ Confirm Action]
+    F --> G[📧 System Sends Cancellation Emails]
+    G --> H[🔄 Dashboard Refreshes]
+```
+
+**Design Requirement:**
+- **Sticky Selection Bar**: When items are selected, show a floating action bar.
+- **Destructive Confirmation**: Red modal with clear warning copy.
+
+---
+
+## 4. Screen-by-Screen Breakdown
+
+### 4.1 Facility Discovery Dashboard
+
+![Facility Dashboard](public/docs/facility_browsing_mockup_1766151164372.png)
+
+| Element | Specification |
+|:--------|:--------------|
+| **Card Layout** | Grid, 2 columns on mobile, 3 on desktop |
+| **Card Content** | Emoji (48px), Name (H3), Status Badge, Location (muted) |
+| **Status Badge** | `Available` (Green), `Full` (Red), `Closed` (Gray) |
+| **Hover State** | Subtle lift (translateY -2px) + glow |
+| **Empty State** | Illustration + "No facilities available right now" |
+
+---
+
+### 4.2 Time Slot Selection
+
+![Time Selection UI](public/docs/booking_selection_mockup_1766151187783.png)
+
+| Element | Specification |
+|:--------|:--------------|
+| **Date Picker** | Horizontal scroll, 7 days ahead, today highlighted |
+| **Timeline** | Horizontal bar, 8 AM → 8 PM IST |
+| **Slot States** | 🟩 Available, 🟥 Busy, ⬜ Past/Closed |
+| **Selection** | Cyan glow on selected range |
+| **Duration Pills** | 15m, 30m, 1h, 2h (tap to select) |
+| **Quick Pick** | "Next Available" smart suggestion |
+
+---
+
+### 4.3 Group Invitation Form
+
+![Group Booking Screen](public/docs/group_booking_mockup_1766151209970.png)
+
+| Element | Specification |
+|:--------|:--------------|
+| **Header** | "Invite your team (min 6 players)" |
+| **Input Fields** | Dynamic list, starts with 5 rows, "+Add More" button |
+| **Validation** | Real-time check for @sst.scaler.com domain |
+| **Progress** | "3/6 friends added" with progress bar |
+| **CTA** | "Send Invitations" (disabled until min met) |
+
+---
+
+### 4.4 Guard Scanner Interface
+
+| Element | Specification |
+|:--------|:--------------|
+| **Camera Feed** | Full width, 250x250 QR target box |
+| **Scanning Indicator** | Pulsing camera icon + "Point at QR..." |
+| **Success Result** | Green card → Student name, Roll No, Resource, Return time |
+| **Error Result** | Red card → Error message, reason |
+| **Mode Toggle** | Camera / Manual Entry tabs |
+
+---
+
+### 4.5 Admin Booking Management
+
+| Element | Specification |
+|:--------|:--------------|
+| **Tabs** | All / Active / Completed / Cancelled |
+| **Booking Card** | Resource, Student (Name + Roll), Time, Status Badge |
+| **Actions** | Cancel (Red outline), Complete (Green outline) |
+| **Selection** | Checkbox per row, "Select All" in header |
+| **Bulk Bar** | Sticky, shows count + "Cancel Selected" button |
+
+---
+
+## 5. UI Components Library
+
+### 5.1 Buttons
+
+| Variant | Use Case | Style |
+|:--------|:---------|:------|
+| `gradient` | Primary CTA | Blue-Cyan gradient, white text |
+| `outline` | Secondary action | Transparent, colored border |
+| `ghost` | Tertiary | No background, text only |
+| `destructive` | Dangerous action | Red background |
+
+### 5.2 Badges
+
+| Variant | Color | Use Case |
+|:--------|:------|:---------|
+| `success` | Emerald | Confirmed, Available |
+| `warning` | Amber | Pending, Awaiting |
+| `destructive` | Red | Cancelled, Denied |
+| `secondary` | Gray | Completed, Inactive |
+
+### 5.3 Cards
+
+- **Background**: `rgba(255,255,255,0.05)` (Glassmorphism)
+- **Border**: `rgba(255,255,255,0.1)`
+- **Border Radius**: `12px`
+- **Shadow**: Subtle glow on hover
+
+---
+
+## 6. State Management & Feedback
+
+Every interactive screen must handle these states:
+
+| State | Visual Treatment |
+|:------|:-----------------|
+| **Empty** | Illustration + Friendly message + CTA |
+| **Loading** | Skeleton shimmer matching content layout |
+| **Success** | Confetti + Green checkmark + Auto-redirect |
+| **Error** | Inline red banner + Retry button |
+
+### 6.1 Toast Notifications
+- **Position**: Bottom center, 16px from edge.
+- **Duration**: 3 seconds auto-dismiss.
+- **Types**: Success (Green), Error (Red), Warning (Amber), Info (Blue).
+
+### 6.2 Modals
+- **Backdrop**: Semi-transparent black (50% opacity).
+- **Animation**: Fade in + scale from 0.95.
+- **Close**: X button top-right + ESC key + click outside.
+
+---
+
+## 7. Visual Design System
+
+### 7.1 Color Palette (Dark Mode)
+
+#### Background Colors
+| Token | Color | Hex | Usage |
+|:------|:-----:|:----|:------|
+| `bg-primary` | ⬛ | `#0A0A0F` | Main app background |
+| `bg-card` | ⬜ | `rgba(255,255,255,0.05)` | Card surfaces, glassmorphism |
+| `bg-dark` | ⬛ | `#1A1A2E` | Secondary containers |
+
+#### Text Colors
+| Token | Color | Hex | Usage |
+|:------|:-----:|:----|:------|
+| `text-main` | ⬜ | `#FFFFFF` | Primary text, headings |
+| `text-muted` | 🩶 | `#A0A0A0` | Secondary text, captions |
+
+#### Brand & Accent Colors
+| Token | Color | Hex | Usage |
+|:------|:-----:|:----|:------|
+| `accent-blue` | 🔵 | `#0D8CE8` | Brand color, links, primary buttons |
+| `accent-cyan` | 🩵 | `#22D3EE` | Highlights, selected states, glow effects |
+
+#### Status Colors
+| Token | Color | Hex | Usage |
+|:------|:-----:|:----|:------|
+| `success` | 🟢 | `#10B981` | Available, confirmed, valid |
+| `warning` | 🟡 | `#F59E0B` | Pending, awaiting action |
+| `danger` | 🔴 | `#EF4444` | Error, cancelled, denied |
+| `info` | 🔵 | `#3B82F6` | Information, neutral states |
+
+### 7.2 Typography
+
+| Element | Font | Size | Weight |
+|:--------|:-----|:-----|:-------|
+| H1 | Inter | 32px | Bold |
+| H2 | Inter | 24px | Semibold |
+| H3 | Inter | 18px | Medium |
+| Body | Inter | 14px | Regular |
+| Caption | Inter | 12px | Regular |
+| Mono (times) | JetBrains Mono | 14px | Regular |
+
+### 7.3 Iconography
+- **Library**: Lucide React
+- **Stroke Width**: 1.5px or 2px
+- **Common Icons**: `Clock`, `MapPin`, `Users`, `QrCode`, `Calendar`, `Camera`
+
+### 7.4 Spacing System
+- Base unit: `4px`
+- Common values: `8px`, `12px`, `16px`, `24px`, `32px`
+
+---
+
+## 8. Interaction Diagrams
+
+### 8.1 Student Group Booking — Technical Sequence
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant App as UI Interface
-    participant System as Backend
+    actor Student
+    participant UI as Mobile App
+    participant API as Backend
+    participant DB as Database
+    participant Email as Email Service
+    actor Friend
 
-    User->>App: Opens "Football Turf" Page
-    App->>System: 1. Fetch Availability
-    System-->>App: Returns: [10AM-11AM is Busy]
+    Student->>UI: Selects Team Sport
+    UI->>API: GET /availability
+    API-->>UI: Returns busy slots
     
-    App->>App: Renders Timeline (Red bar at 10AM)
+    Student->>UI: Picks time + enters emails
+    UI->>UI: Validates emails
+    Student->>UI: Taps Send Invites
     
-    User->>App: Clicks 4:00 PM Slot
-    App->>App: Highlights 4:00 - 5:00 PM
-    App->>App: Reveals "Invite Friends" Form (Slide down animation)
+    UI->>API: POST /bookings/group
+    API->>DB: Create Booking (PENDING)
+    API->>DB: Create GroupBooking
+    API->>Email: Send 5 invitation emails
+    API-->>UI: Success
     
-    User->>App: Types 5 emails
-    App->>App: Validates emails (Green checkmarks)
-    App->>App: Unlocks "Send Invites" Button
+    UI->>Student: Shows Pending screen
     
-    User->>App: Clicks "Send Invites"
-    App->>App: Shows Loading Spinner
-    App->>User: Shows "Success" Modal + Redirects
+    loop Every Friend
+        Friend->>API: Clicks confirmation link
+        API->>DB: Update member status
+        API->>DB: Increment confirmedCount
+    end
+    
+    alt 6+ Confirmed
+        DB->>DB: Status = CONFIRMED
+        API->>Email: Send QR codes to all
+    else Timeout
+        DB->>DB: Status = EXPIRED
+        API->>Email: Send expiry notice
+    end
 ```
 
-### 3.2 Scenario: Guard Check-In Flow
-How the Guard validates a student.
+---
+
+### 8.2 Guard QR Validation — Technical Sequence
 
 ```mermaid
 sequenceDiagram
     actor Guard
     participant Scanner as Scanner App
-    participant BE as Backend API
+    participant API as Backend
+    participant DB as Database
     actor Student
 
-    Student->>Guard: Shows QR Code
-    Guard->>Scanner: Points Camera
-    Scanner->>BE: Sends Token
+    Student->>Guard: Shows QR on phone
+    Guard->>Scanner: Points camera
+    Scanner->>Scanner: Decodes QR token
     
-    alt Token Valid
-        BE-->>Scanner: Returns {Booking + Student Details}
-        Scanner->>Guard: Plays "Chime" (Success Sound)
-        Scanner->>Guard: Displays Green "Access Granted" Card
-        Guard->>Student: Allows Entry
-    else Token Invalid/Expired
-        BE-->>Scanner: Returns Error
-        Scanner->>Guard: Plays "Buzz" (Error Sound)
-        Scanner->>Guard: Displays Red "Access Denied" Alert
-        Guard->>Student: Rejects Entry
+    Scanner->>API: POST /qr/validate
+    API->>DB: Find Booking by token
+    
+    alt Valid & Within Time
+        DB-->>API: Returns Booking + User
+        API->>DB: Update checkedInAt
+        API-->>Scanner: Success + Details
+        Scanner->>Scanner: Play success chime
+        Scanner->>Guard: Show green card
+        Guard->>Student: Allow entry
+    else Invalid/Expired
+        API-->>Scanner: Error message
+        Scanner->>Scanner: Play error buzz
+        Scanner->>Guard: Show red alert
+        Guard->>Student: Deny entry
     end
 ```
 
-### 3.3 Scenario: Admin Override
-When an admin needs to intervene (e.g., Force Cancel for Rain).
+---
+
+### 8.3 Admin Override — Technical Sequence
 
 ```mermaid
 sequenceDiagram
     actor Admin
-    participant Dash as Admin Dashboard
-    participant BE as Backend
-    participant Mail as Email Service
+    participant Dash as Dashboard
+    participant API as Backend
+    participant DB as Database
+    participant Email as Email Service
     actor User
 
-    Admin->>Dash: Selects "Active Bookings"
-    Dash->>Dash: Filters by "Main Turf"
+    Admin->>Dash: Views Active Bookings
+    Admin->>Dash: Filters by Facility
+    Admin->>Dash: Selects 5 bookings
+    Admin->>Dash: Clicks Bulk Cancel
     
-    Admin->>Dash: Clicks "Select All"
-    Admin->>Dash: Clicks "Bulk Cancel"
-    Dash->>Admin: Prompts for Reason
-    Admin->>Dash: Enters "Heavy Rain Forecast"
+    Dash->>Admin: Shows confirmation modal
+    Admin->>Dash: Enters reason
+    Admin->>Dash: Confirms
     
-    Dash->>BE: POST /bulk-cancel {ids, reason}
-    BE->>BE: Update Status -> CANCELLED
-    BE->>Mail: Sends "Booking Cancelled" Email to Users
-    BE-->>Dash: Success Response
+    Dash->>API: POST /bulk-cancel
     
-    Dash->>Admin: Shows Toast "5 Bookings Cancelled"
-    Dash->>Dash: Refreshes List (Empty)
+    loop Each Booking
+        API->>DB: Update status = CANCELLED
+        API->>DB: Log admin override reason
+        API->>Email: Send cancellation email
+    end
+    
+    API-->>Dash: Success response
+    Dash->>Dash: Refresh list
+    Dash->>Admin: Show success toast
 ```
-
-
 
 ---
 
-## Appendix: Developer Constraints
-*(For reference - Design does not need to solve these, but should be aware)*
-*   **Latency**: Checking availability might take ~500ms. UI needs to handle this delay gracefully.
-*   **Race Conditions**: Two users might book the same slot simultaneously. The second user will get an error on submit. Plan for an alert: "Sorry, this slot was just taken."
-*   **Timezones**: All times are IST. Design should clearly state "IST" if ambiguous.
+## 9. Edge Cases & Error Handling
+
+### 9.1 User-Facing Errors
+
+| Scenario | Message | Action |
+|:---------|:--------|:-------|
+| Slot just taken | "This slot was just booked by someone else" | Show toast, refresh timeline |
+| Daily limit reached | "You've reached your limit of 3 bookings today" | Disable booking, show limit |
+| Past time clicked | "Cannot book slots in the past" | Tooltip, prevent selection |
+| No network | "Connection lost. Please check your internet" | Retry button |
+| QR expired | "This QR code has expired" | Show expiry time, suggest regenerate |
+
+### 9.2 Guard-Specific Errors
+
+| Scenario | Visual | Audio |
+|:---------|:-------|:------|
+| Booking not found | Red card: "No booking found" | Error buzz |
+| Already checked in | Amber card: "Already checked in at 10:30" | Warning beep |
+| Time not yet | Amber card: "Booking starts in 45 minutes" | Warning beep |
+
+---
+
+## 10. Appendix: Technical Constraints
+
+> **Note for Designers:** You don't need to solve these, but awareness helps.
+
+### 10.1 Performance
+- Availability API: ~500ms latency. Design for loading state.
+- QR validation: ~200ms. Camera should stay active.
+
+### 10.2 Race Conditions
+- Two users booking same slot simultaneously → One gets error.
+- Design: Show toast + auto-refresh timeline.
+
+### 10.3 Timezone
+- All times are **IST (Asia/Kolkata)**.
+- Display "IST" label where ambiguous.
+
+### 10.4 Booking Limits
+- Individual: Max 3 bookings/day, 7 days advance.
+- Slot duration: 15 min to 2 hours.
+- Group: Minimum 6 members, 10 min confirmation window.
+
+---
+
+**End of Document**
+

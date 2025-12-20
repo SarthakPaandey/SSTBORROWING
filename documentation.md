@@ -21,7 +21,7 @@
 ## 1. Product Overview
 
 ### 1.1 What We're Building
-A **mobile-first booking platform** that enables SST students to reserve campus sports facilities (Turf, Basketball Court, Table Tennis, etc.). The system must handle both **instant individual bookings** and **coordinated group reservations** for team sports.
+A **responsive web application** (Next.js) that enables SST students to reserve campus sports facilities (Turf, Basketball Court, Table Tennis, etc.). The system is designed **desktop-first with full mobile responsiveness**, ensuring a seamless experience on any device. It handles both **instant individual bookings** and **coordinated group reservations** for team sports.
 
 ### 1.2 Design Goals
 

@@ -30,6 +30,18 @@ COPY . .
 # Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Build-time arguments for Next.js (placeholder values for build)
+# Actual values are provided at runtime
+ARG MONGODB_URI="mongodb://localhost:27017/placeholder"
+ARG NEXTAUTH_SECRET="build-time-placeholder-secret"
+ARG NEXTAUTH_URL="http://localhost:3000"
+ARG QR_HMAC_SECRET="build-time-qr-hmac-secret"
+
+ENV MONGODB_URI=$MONGODB_URI
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV QR_HMAC_SECRET=$QR_HMAC_SECRET
+
 # Build the Next.js application
 RUN corepack enable pnpm && pnpm build
 

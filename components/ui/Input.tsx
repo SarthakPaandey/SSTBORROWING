@@ -2,6 +2,7 @@ import { InputHTMLAttributes, forwardRef, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
   error?: boolean;
@@ -9,61 +10,68 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, icon, iconPosition = 'left', error, success, ...props }, ref) => {
+  ({ className, type, label, icon, iconPosition = 'left', error, success, ...props }, ref) => {
     const hasIcon = !!icon;
-    
+
     return (
-      <div className="relative">
-        {/* Icon */}
-        {hasIcon && (
-          <div className={cn(
-            'absolute top-1/2 -translate-y-1/2 text-muted-foreground transition-colors',
-            'peer-focus:text-primary',
-            iconPosition === 'left' ? 'left-3' : 'right-3',
-            error && 'text-danger',
-            success && 'text-success'
-          )}>
-            {icon}
-          </div>
+      <div className="space-y-1.5 w-full">
+        {label && (
+          <label className="text-sm font-medium text-text-muted px-1">
+            {label}
+          </label>
         )}
-        
-        <input
-          type={type}
-          className={cn(
-            // Base styles
-            'peer flex h-11 w-full rounded-xl border bg-secondary/30 text-sm text-foreground',
-            'ring-offset-background transition-all duration-300',
-            'file:border-0 file:bg-transparent file:text-sm file:font-medium',
-            'placeholder:text-muted-foreground/70',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            
-            // Focus styles
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-            'focus-visible:border-primary/50 focus-visible:bg-secondary/50',
-            'focus-visible:shadow-[0_0_20px_rgba(13,140,232,0.15)]',
-            
-            // Hover styles
-            'hover:border-border hover:bg-secondary/40',
-            
-            // Padding based on icon position
-            hasIcon && iconPosition === 'left' ? 'pl-10 pr-4' : '',
-            hasIcon && iconPosition === 'right' ? 'pr-10 pl-4' : '',
-            !hasIcon && 'px-4',
-            
-            // Default border
-            'border-border/50',
-            
-            // Error state
-            error && 'border-danger/50 focus-visible:ring-danger/50 focus-visible:border-danger/50 bg-danger/5',
-            
-            // Success state
-            success && 'border-success/50 focus-visible:ring-success/50 focus-visible:border-success/50 bg-success/5',
-            
-            className
+        <div className="relative">
+          {/* Icon */}
+          {hasIcon && (
+            <div className={cn(
+              'absolute top-1/2 -translate-y-1/2 text-muted-foreground transition-colors',
+              'peer-focus:text-primary',
+              iconPosition === 'left' ? 'left-3' : 'right-3',
+              error && 'text-danger',
+              success && 'text-success'
+            )}>
+              {icon}
+            </div>
           )}
-          ref={ref}
-          {...props}
-        />
+
+          <input
+            type={type}
+            className={cn(
+              // Base styles
+              'peer flex h-11 w-full rounded-xl border bg-secondary/30 text-sm text-foreground',
+              'ring-offset-background transition-all duration-300',
+              'file:border-0 file:bg-transparent file:text-sm file:font-medium',
+              'placeholder:text-muted-foreground/70',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+
+              // Focus styles
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+              'focus-visible:border-primary/50 focus-visible:bg-secondary/50',
+              'focus-visible:shadow-[0_0_20px_rgba(13,140,232,0.15)]',
+
+              // Hover styles
+              'hover:border-border hover:bg-secondary/40',
+
+              // Padding based on icon position
+              hasIcon && iconPosition === 'left' ? 'pl-10 pr-4' : '',
+              hasIcon && iconPosition === 'right' ? 'pr-10 pl-4' : '',
+              !hasIcon && 'px-4',
+
+              // Default border
+              'border-border/50',
+
+              // Error state
+              error && 'border-danger/50 focus-visible:ring-danger/50 focus-visible:border-danger/50 bg-danger/5',
+
+              // Success state
+              success && 'border-success/50 focus-visible:ring-success/50 focus-visible:border-success/50 bg-success/5',
+
+              className
+            )}
+            ref={ref}
+            {...props}
+          />
+        </div>
       </div>
     );
   }
@@ -87,24 +95,24 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           'ring-offset-background transition-all duration-300 resize-none',
           'placeholder:text-muted-foreground/70',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          
+
           // Focus styles
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
           'focus-visible:border-primary/50 focus-visible:bg-secondary/50',
           'focus-visible:shadow-[0_0_20px_rgba(13,140,232,0.15)]',
-          
+
           // Hover styles
           'hover:border-border hover:bg-secondary/40',
-          
+
           // Default border
           'border-border/50',
-          
+
           // Error state
           error && 'border-danger/50 focus-visible:ring-danger/50 focus-visible:border-danger/50 bg-danger/5',
-          
+
           // Success state
           success && 'border-success/50 focus-visible:ring-success/50 focus-visible:border-success/50 bg-success/5',
-          
+
           className
         )}
         ref={ref}

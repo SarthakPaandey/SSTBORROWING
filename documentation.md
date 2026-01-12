@@ -1,9 +1,7 @@
-# 🏟️ SST Facilities Booking — Product Design Specification
-
 > **Project:** SST Campus Booking System  
 > **Module:** Facilities & Sports Infrastructure  
 > **Version:** 3.0 | December 2024  
-> **Audience:** UI/UX Designers, Product Managers  
+> **Audience:** UI/UX Designers, Product Managers
 
 ---
 

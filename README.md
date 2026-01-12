@@ -313,8 +313,37 @@ npm run test
 npm run test:ui
 
 # Run tests with coverage
+# Run tests with coverage
 npm run test:coverage
 ```
+
+## CI/CD Pipeline
+
+This project implements a production-grade **DevSecOps** pipeline using GitHub Actions.
+
+### Pipeline Architecture
+
+```mermaid
+graph LR
+    Push --> Lint --> Test --> SAST --> Build --> Docker --> Scan --> Smoke --> PushHub
+```
+
+### Stages Breakdown
+1.  **Quality Checks**: Linting (ESLint) & Unit Tests (Vitest)
+2.  **Security**: 
+    - **SAST**: CodeQL scans source code for vulnerabilities
+    - **SCA**: Checks dependencies for known CVEs
+    - **Container Scan**: Trivy checks Docker image for OS vulnerabilities
+3.  **Build**: Next.js Standalone Build & Multi-stage Docker Build
+4.  **Verification**: Runtime smoke test before pushing to registry
+
+### Required Secrets
+To run this pipeline in your own fork, configure these **GitHub Secrets**:
+
+| Secret | Value |
+|--------|-------|
+| `DOCKERHUB_USERNAME` | Your DockerHub Username |
+| `DOCKERHUB_TOKEN` | DockerHub Access Token (PAT) |
 
 ## Deployment to Vercel
 

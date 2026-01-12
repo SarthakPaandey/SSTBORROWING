@@ -17,6 +17,8 @@ export interface IEquipmentItem extends Document {
   requiresApproval: boolean; // Whether this item requires admin approval to book
   sportCategory?: string; // Sport category for SPORTS_EQUIPMENT (e.g., 'BADMINTON', 'BASKETBALL', 'CRICKET', 'GENERAL')
   labCategory?: LabEquipmentCategory; // Lab equipment category for LAB_EQUIPMENT (determines borrow duration limits)
+  isbn?: string; // ISBN-13 or ISBN-10 for library books (used for barcode scanning)
+  author?: string; // Author name for library books
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +40,8 @@ const EquipmentItemSchema = new Schema<IEquipmentItem>(
     requiresApproval: { type: Boolean, default: false }, // Requires admin approval
     sportCategory: { type: String }, // Optional: Only for SPORTS_EQUIPMENT items
     labCategory: { type: String, enum: ['LAPTOP', 'SAME_DAY_RETURN', 'GENERAL'] }, // Optional: Only for LAB_EQUIPMENT items
+    isbn: { type: String }, // Optional: ISBN-13 or ISBN-10 for library books
+    author: { type: String }, // Optional: Author name for library books
   },
   {
     timestamps: true,
@@ -46,5 +50,6 @@ const EquipmentItemSchema = new Schema<IEquipmentItem>(
 );
 
 EquipmentItemSchema.index({ resourceId: 1 });
+EquipmentItemSchema.index({ isbn: 1 }); // Index for ISBN lookups
 
 export const EquipmentItem: Model<IEquipmentItem> = mongoose.models.EquipmentItem || mongoose.model<IEquipmentItem>('EquipmentItem', EquipmentItemSchema);

@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     // FIX: Accept both 'id' and 'itemId' for backwards compatibility
     const body = await req.json();
     const itemId = body.id || body.itemId;
-    const { name, qtyTotal, qtyAvailable, safety, restricted } = body;
+    const { name, qtyTotal, qtyAvailable, safety, restricted, isbn, author, imageUrl } = body;
 
     if (!itemId) {
       throw new ValidationError('Item ID is required');
@@ -121,6 +121,9 @@ export async function PATCH(req: NextRequest) {
     }
     if (safety !== undefined) item.safety = safety;
     if (restricted !== undefined) item.restricted = restricted;
+    if (isbn !== undefined) item.isbn = isbn;
+    if (author !== undefined) item.author = author;
+    if (imageUrl !== undefined) item.imageUrl = imageUrl;
 
     await item.save();
 

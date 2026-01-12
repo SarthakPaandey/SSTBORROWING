@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -14,7 +14,8 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { AccessRestricted } from '@/components/ui/AccessRestricted';
 import { getISTToday, getISTNow, isISTToday } from '@/lib/timezone-client';
 import { triggerBookingSuccess } from '@/lib/confetti';
-import { Search, BookOpen, Grid3X3, List } from 'lucide-react';
+import { Search, BookOpen, Grid3X3, List, Camera, Keyboard, X } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -32,7 +33,11 @@ export default function LibraryPage() {
   const [success, setSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const libraryEnabled = false; // Temporarily disable library module for v0 launch
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanningError, setScanningError] = useState('');
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isScanningRef = useRef(false);
+  const libraryEnabled = true; // Enable library module now that we've added ISBN support
   // Keep the loading quote deterministic to avoid SSR/CSR hydration mismatches
   const bookThought = useMemo(
     () => ({ text: 'A room without books is like a body without a soul.', author: 'Cicero' }),
@@ -141,6 +146,92 @@ export default function LibraryPage() {
     setSelectedBook(selectedBook === bookId ? null : bookId);
   };
 
+  const startScanner = async () => {
+    setIsScanning(true);
+    setScanningError('');
+  };
+
+  const stopScanner = async () => {
+    try {
+      if (scannerRef.current && isScanning) {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      }
+      setIsScanning(false);
+      isScanningRef.current = false;
+    } catch (err) {
+      console.error('Error stopping scanner:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!isScanning) return;
+
+    const initCamera = async () => {
+      try {
+        const html5QrCode = new Html5Qrcode('library-scanner');
+        scannerRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          async (decodedText) => {
+            if (isScanningRef.current) return;
+            isScanningRef.current = true;
+
+            await handleIsbnScanned(decodedText);
+
+            setTimeout(() => {
+              isScanningRef.current = false;
+            }, 2000);
+          },
+          (errorMessage) => {
+            console.debug(errorMessage);
+          }
+        );
+      } catch (err) {
+        console.error('Camera error:', err);
+        setScanningError('Failed to start camera. Please check permissions.');
+        setIsScanning(false);
+      }
+    };
+
+    initCamera();
+
+    return () => {
+      stopScanner();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning]);
+
+  const handleIsbnScanned = async (isbn: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/isbn/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isbn }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Book not found');
+
+      setSelectedBook(data.book._id);
+      stopScanner();
+      
+      // Auto-switch tab to the category of the scanned book if needed
+      // (Simplified: we'll just show a success message that it's selected)
+    } catch (err: any) {
+      setError(`ISBN Scan Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBorrow = async (resourceId: string) => {
     if (!selectedBook) {
       setError('Please select a book');
@@ -245,7 +336,7 @@ export default function LibraryPage() {
           />
         </div>
 
-        {/* Search and View Toggle */}
+        {/* ISBN Scanner and Search Toggle */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
@@ -256,21 +347,45 @@ export default function LibraryPage() {
               className="pl-10"
             />
           </div>
-          <div className="flex items-center gap-1 p-1 bg-bg-dark rounded-lg border border-card-border">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isScanning ? 'gradient' : 'outline'}
+              size="sm"
+              onClick={isScanning ? stopScanner : startScanner}
+              className="h-10"
             >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
+              <Camera className="mr-2 h-4 w-4" />
+              {isScanning ? 'Stop Scanner' : 'Scan ISBN'}
+            </Button>
+            <div className="flex items-center gap-1 p-1 bg-bg-dark rounded-lg border border-card-border h-10">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-accent-blue/20 text-accent-blue' : 'text-text-muted hover:text-text-main'}`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
+
+        {isScanning && (
+          <div className="space-y-2">
+            <div
+              id="library-scanner"
+              className="rounded-lg overflow-hidden border-2 border-accent-blue/50 shadow-[0_0_20px_rgba(13,140,232,0.3)] max-w-sm mx-auto"
+            ></div>
+            {scanningError && (
+              <p className="text-center text-xs text-danger">{scanningError}</p>
+            )}
+            <p className="text-center text-xs text-text-muted">Point camera at the book's ISBN barcode</p>
+          </div>
+        )}
 
         {/* Book Selection */}
         <div className={`rounded-xl border bg-gradient-to-br ${config.color} p-4 space-y-3`}>

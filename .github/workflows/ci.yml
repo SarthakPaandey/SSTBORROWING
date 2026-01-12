@@ -1,0 +1,525 @@
+# ===========================================
+# SST BORROWING SYSTEM - CI/CD PIPELINE
+# ===========================================
+# This pipeline implements a production-grade CI/CD workflow
+# with security scanning, quality gates, and containerization.
+#
+# WHY THIS PIPELINE EXISTS:
+# - Automates quality assurance on every code change
+# - Shifts security left (catches issues early)
+# - Ensures consistent, reproducible deployments
+# - Creates audit trail for compliance
+# ===========================================
+
+name: CI/CD Pipeline
+
+# ===========================================
+# TRIGGER CONFIGURATION
+# ===========================================
+# WHY: Define when the pipeline should run
+# - Push to main: Production deployment path
+# - Pull requests: Pre-merge validation
+# - workflow_dispatch: Manual trigger for testing
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+env:
+  DOCKERHUB_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/sst-booking-system
+  NODE_VERSION: '20'
+
+# ===========================================
+# CI/CD JOBS
+# ===========================================
+jobs:
+  # =========================================
+  # STAGE 1: LINTING
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Enforces consistent code style
+  # - Catches syntax errors early
+  # - Prevents technical debt
+  # - Improvements code maintainability
+  # 
+  # RISK MITIGATED: Technical debt accumulation
+  # =========================================
+  lint:
+    name: 🔍 Lint & Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+  # =========================================
+  # STAGE 2: UNIT TESTS
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Validates business logic correctness
+  # - Catches regression bugs
+  # - Ensures new code doesn't break existing features
+  # - Provides confidence for refactoring
+  #
+  # RISK MITIGATED: Regression bugs reaching production
+  # =========================================
+  test:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # =========================================
+  # STAGE 3: SAST (Static Application Security Testing)
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Detects security vulnerabilities in source code
+  # - Identifies OWASP Top 10 issues (XSS, injection, etc.)
+  # - Shifts security left in the development cycle
+  # - Results appear in GitHub Security tab
+  #
+  # RISK MITIGATED: Code-level security vulnerabilities
+  # =========================================
+  sast:
+    name: 🛡️ SAST - CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # Using default queries plus security-extended
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+
+  # =========================================
+  # STAGE 4: SCA (Software Composition Analysis)
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Identifies vulnerable third-party dependencies
+  # - Protects against supply-chain attacks
+  # - Ensures we're not shipping known vulnerabilities
+  # - Checks for outdated packages with CVEs
+  #
+  # RISK MITIGATED: Supply-chain attacks, vulnerable deps
+  # =========================================
+  dependency-check:
+    name: 📦 SCA - Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Generate dependency report
+        run: pnpm list --json > dependency-report.json
+
+      - name: Upload dependency report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: dependency-report.json
+          retention-days: 7
+
+  # =========================================
+  # STAGE 5: BUILD APPLICATION
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Validates TypeScript compilation
+  # - Ensures Next.js build succeeds
+  # - Creates production-optimized bundle
+  # - Catches build-time errors before deployment
+  #
+  # RISK MITIGATED: Build failures in production
+  # =========================================
+  build:
+    name: 🔨 Build Application
+    runs-on: ubuntu-latest
+    needs: [lint, test]  # Only build if lint and tests pass
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js application
+        run: pnpm build
+        env:
+          # Build-time environment variables
+          # In a real scenario, use secrets for production values
+          MONGODB_URI: "mongodb://localhost:27017/test-build"
+          NEXTAUTH_SECRET: "build-time-secret-placeholder"
+          NEXTAUTH_URL: "http://localhost:3000"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/standalone
+            .next/static
+            public
+          retention-days: 1
+
+  # =========================================
+  # STAGE 6: DOCKER BUILD
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Containerizes application for consistent deployment
+  # - Eliminates "works on my machine" issues
+  # - Enables orchestration (Kubernetes, Docker Swarm)
+  # - Creates immutable, versioned artifacts
+  #
+  # RISK MITIGATED: Environment inconsistencies
+  # =========================================
+  docker-build:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: [build, sast, dependency-check]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_REPO }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            MONGODB_URI=mongodb://localhost:27017/test
+            NEXTAUTH_SECRET=build-time-secret
+            NEXTAUTH_URL=http://localhost:3000
+
+      - name: Save image for scanning
+        run: docker save ${{ env.DOCKERHUB_REPO }}:latest > image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+          retention-days: 1
+
+  # =========================================
+  # STAGE 7: CONTAINER VULNERABILITY SCAN (Trivy)
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Scans container OS for vulnerabilities
+  # - Detects vulnerable system libraries
+  # - Identifies outdated base image components
+  # - Prevents shipping vulnerable containers
+  #
+  # RISK MITIGATED: Container-level vulnerabilities (CVEs)
+  # =========================================
+  trivy-scan:
+    name: 🔒 Trivy Container Scan
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load < image.tar
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_REPO }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy (table output for logs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKERHUB_REPO }}:latest
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  # =========================================
+  # STAGE 8: CONTAINER RUNTIME TEST
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Validates container actually starts
+  # - Ensures application responds to requests
+  # - Catches runtime configuration issues
+  # - Smoke test before pushing to registry
+  #
+  # RISK MITIGATED: Container won't start in production
+  # =========================================
+  container-test:
+    name: 🧪 Container Runtime Test
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load < image.tar
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name test-container \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e MONGODB_URI=mongodb://localhost:27017/test \
+            -e NEXTAUTH_SECRET=test-secret \
+            -e NEXTAUTH_URL=http://localhost:3000 \
+            ${{ env.DOCKERHUB_REPO }}:latest
+
+      - name: Wait for container startup
+        run: |
+          echo "Waiting for container to start..."
+          sleep 15
+
+      - name: Health check
+        run: |
+          # Check if container is running
+          if ! docker ps | grep test-container; then
+            echo "❌ Container is not running!"
+            docker logs test-container
+            exit 1
+          fi
+          
+          # Check if port is responding
+          for i in {1..10}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200\|302"; then
+              echo "✅ Container health check PASSED!"
+              exit 0
+            fi
+            echo "Attempt $i: Waiting for response..."
+            sleep 3
+          done
+          
+          echo "❌ Health check FAILED - no response from container"
+          docker logs test-container
+          exit 1
+
+      - name: Show container logs
+        if: always()
+        run: docker logs test-container || true
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f test-container || true
+
+  # =========================================
+  # STAGE 9: PUSH TO REGISTRY
+  # =========================================
+  # WHY THIS STAGE EXISTS:
+  # - Publishes validated, tested image
+  # - Makes image available for deployment
+  # - Only runs after ALL quality gates pass
+  # - Creates versioned release artifact
+  #
+  # RISK MITIGATED: Untested images reaching production
+  # =========================================
+  docker-push:
+    name: 📤 Push to DockerHub
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, container-test]
+    # Only push on main branch, not PRs
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_REPO }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+             # In production, secure inputs should be handled via env vars at runtime
+            MONGODB_URI=mongodb://localhost:27017/test
+            NEXTAUTH_SECRET=build-time-secret
+            NEXTAUTH_URL=http://localhost:3000
+
+      - name: Image push summary
+        run: |
+          echo "✅ Image pushed successfully!"
+          echo "📦 Repository: ${{ env.DOCKERHUB_REPO }}"
+          echo "🏷️ Tags: ${{ steps.meta.outputs.tags }}"

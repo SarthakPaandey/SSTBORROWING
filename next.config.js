@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   // Compiler optimizations
   compiler: {
     // Remove console.log in production for smaller bundle and no debug noise

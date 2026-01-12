@@ -33,6 +33,7 @@ const navIcons: Record<string, string> = {
   '/admin/analytics': '📊',
   '/guard/scanner': '📷',
   '/guard/returns': '↩️',
+  '/guard/library-returns': '📚',
   '/guard/history': '📜',
 };
 
@@ -80,6 +81,7 @@ export function Navbar() {
       return [
         { href: '/guard/scanner', label: 'Scanner' },
         { href: '/guard/returns', label: 'Equipment Returns' },
+        { href: '/guard/library-returns', label: 'Library Returns' },
         { href: '/guard/history', label: 'History' },
       ];
     }
@@ -89,6 +91,7 @@ export function Navbar() {
       return [
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/resources', label: 'Resources' },
+        { href: '/admin/library', label: 'Library' },
         { href: '/admin/lab-approvals', label: 'Approvals' },
         { href: '/admin/bookings', label: 'Bookings' },
         { href: '/admin/group-bookings', label: 'Group Bookings' },
@@ -108,6 +111,7 @@ export function Navbar() {
       { href: '/user/facilities', label: 'Facilities' },
       { href: '/user/rooms', label: 'Rooms' },
       { href: '/user/equipment', label: 'Equipment' },
+      { href: '/user/library', label: 'Library' },
       { href: '/user/group-invitations', label: 'Group Invites' },
       { href: '/user/bookings', label: 'My Bookings' },
 

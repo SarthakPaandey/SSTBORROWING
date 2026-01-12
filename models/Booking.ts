@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export type BookingKind = 'FACILITY' | 'ROOM' | 'EQUIPMENT' | 'LIBRARY';
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'RETURNED';
 export type ApprovalStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface IBookingItem {
@@ -100,7 +100,7 @@ const BookingSchema = new Schema<IBooking>(
     end: { type: Date, required: true },
     status: {
       type: String,
-      enum: ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'CANCELLED', 'NO_SHOW'],
+      enum: ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'RETURNED'],
       default: 'PENDING',
     },
     requiresApproval: { type: Boolean, default: false },

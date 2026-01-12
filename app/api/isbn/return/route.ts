@@ -69,6 +69,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Increment available quantity
+    // Increment available quantity
+    if (!activeBooking.items || activeBooking.items.length === 0) {
+      await session.abortTransaction();
+      throw new ValidationError('Booking has no items');
+    }
+
     const itemInBooking = activeBooking.items.find(
       (item: any) => String(item.itemId) === String(book._id)
     );

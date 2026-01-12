@@ -280,6 +280,7 @@ jobs:
           MONGODB_URI: "mongodb://localhost:27017/test-build"
           NEXTAUTH_SECRET: "build-time-secret-placeholder"
           NEXTAUTH_URL: "http://localhost:3000"
+          QR_HMAC_SECRET: "build-time-qr-secret-placeholder"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

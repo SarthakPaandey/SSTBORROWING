@@ -513,7 +513,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-             # In production, secure inputs should be handled via env vars at runtime
             MONGODB_URI=mongodb://localhost:27017/test
             NEXTAUTH_SECRET=build-time-secret
             NEXTAUTH_URL=http://localhost:3000

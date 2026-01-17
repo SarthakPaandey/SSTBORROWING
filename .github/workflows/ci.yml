@@ -548,62 +548,67 @@ jobs:
   # RISK MITIGATED: Manual deployment errors
   # =========================================
   deploy:
-    name: 🚀 Deploy to Kubernetes
+    name: 🚀 Deploy to Kubernetes (Kind)
     runs-on: ubuntu-latest
     needs: [docker-push]
-    # Only deploy on main branch AND when KUBECONFIG is configured
-    # For local Minikube demo, this stage will be skipped (expected behavior)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.KUBECONFIG != ''
-    environment: production  # Optional: GitHub Environment for approvals
+    # Only deploy on main branch after successful push
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
         with:
-          version: 'v1.29.0'
+          cluster_name: sst-cluster
+          wait: 120s
 
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
-      - name: Verify cluster connection
+      - name: Verify cluster is ready
         run: |
           kubectl cluster-info
           kubectl get nodes
 
-      - name: Create/Update namespace
-        run: kubectl apply -f k8s/namespace.yaml
-
-      - name: Apply ConfigMap
-        run: kubectl apply -f k8s/configmap.yaml
-
-      - name: Apply Secrets
+      - name: Load Docker image into Kind
         run: |
-          # In production, secrets should be managed externally
-          # This applies the secret template (values should be set via kubectl create secret)
-          kubectl apply -f k8s/secret.yaml || true
+          # Pull the image from DockerHub
+          docker pull ${{ env.DOCKERHUB_REPO }}:latest
+          # Load it into the Kind cluster
+          kind load docker-image ${{ env.DOCKERHUB_REPO }}:latest --name sst-cluster
 
-      - name: Deploy application
+      - name: Apply Kubernetes manifests
         run: |
-          # Update the image tag in deployment
-          kubectl set image deployment/sst-booking-app \
-            sst-booking=${{ env.DOCKERHUB_REPO }}:${{ github.sha }} \
-            -n sst-booking || kubectl apply -f k8s/deployment.yaml
+          echo "📦 Creating namespace..."
+          kubectl apply -f k8s/namespace.yaml
+          
+          echo "⚙️ Applying ConfigMap..."
+          kubectl apply -f k8s/configmap.yaml
+          
+          echo "🔐 Applying Secrets..."
+          kubectl apply -f k8s/secret.yaml
+          
+          echo "🚀 Deploying application..."
+          kubectl apply -f k8s/deployment.yaml
+          
+          echo "🌐 Creating Service..."
+          kubectl apply -f k8s/service.yaml
 
-      - name: Apply Service
-        run: kubectl apply -f k8s/service.yaml
-
-      - name: Wait for rollout
+      - name: Wait for deployment rollout
         run: |
-          kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=300s
+          echo "⏳ Waiting for pods to be ready..."
+          kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=180s
 
-      - name: Deployment summary
+      - name: Deployment verification
         run: |
           echo "✅ Deployment successful!"
-          echo "📦 Image: ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}"
-          kubectl get pods -n sst-booking
+          echo ""
+          echo "📊 Cluster Status:"
+          kubectl get nodes
+          echo ""
+          echo "📦 Pods Status:"
+          kubectl get pods -n sst-booking -o wide
+          echo ""
+          echo "🌐 Services:"
           kubectl get svc -n sst-booking
+          echo ""
+          echo "📋 Deployment Details:"
+          kubectl describe deployment sst-booking-app -n sst-booking | head -30

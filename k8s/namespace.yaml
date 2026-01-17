@@ -1,0 +1,11 @@
+# ===========================================
+# KUBERNETES NAMESPACE
+# ===========================================
+# Isolates our application resources from others
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sst-booking
+  labels:
+    app: sst-booking-system
+    environment: production

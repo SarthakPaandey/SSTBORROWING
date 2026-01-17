@@ -1,0 +1,17 @@
+# ===========================================
+# KUBERNETES CONFIGMAP
+# ===========================================
+# Non-sensitive configuration values
+# These are injected as environment variables into the container
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sst-booking-config
+  namespace: sst-booking
+  labels:
+    app: sst-booking-system
+data:
+  NODE_ENV: "production"
+  NEXTAUTH_URL: "http://localhost:3000"
+  # Add your actual domain when deploying to production
+  # NEXTAUTH_URL: "https://sst-booking.example.com"

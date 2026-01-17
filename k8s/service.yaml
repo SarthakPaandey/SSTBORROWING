@@ -1,0 +1,27 @@
+# ===========================================
+# KUBERNETES SERVICE
+# ===========================================
+# Exposes the application pods to network traffic
+# LoadBalancer type for cloud, NodePort for local Minikube
+apiVersion: v1
+kind: Service
+metadata:
+  name: sst-booking-service
+  namespace: sst-booking
+  labels:
+    app: sst-booking-system
+spec:
+  # Use NodePort for Minikube, LoadBalancer for cloud
+  type: NodePort
+  
+  # Port configuration
+  ports:
+    - port: 80            # Service port (external)
+      targetPort: 3000    # Container port
+      nodePort: 30080     # Fixed NodePort for easy access
+      protocol: TCP
+      name: http
+  
+  # Select pods with this label
+  selector:
+    app: sst-booking-system

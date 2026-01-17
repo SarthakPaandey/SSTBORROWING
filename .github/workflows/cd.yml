@@ -221,16 +221,38 @@ jobs:
           cluster_name: sst-dast-cluster
           wait: 120s
 
+      - name: Inject Configuration into Manifests for DAST
+        run: |
+          echo "🔐 Injecting configuration for DAST environment..."
+          # Inject Secrets
+          sed -i "s|MONGODB_URI_PLACEHOLDER|mongodb://mongo-service:27017/sst-booking|g" k8s/secret.yaml
+          sed -i "s|NEXTAUTH_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
+          sed -i "s|QR_HMAC_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
+          
+          # Inject Image Name & Tag
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.DOCKERHUB_REPO }}:latest|g" k8s/deployment.yaml
+
       - name: Load and Deploy for DAST
         run: |
           docker pull ${{ env.DOCKERHUB_REPO }}:latest
           kind load docker-image ${{ env.DOCKERHUB_REPO }}:latest --name sst-dast-cluster
+          
+          echo "📦 Applying manifests..."
           kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/mongodb.yaml
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secret.yaml
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
-          kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=180s
+          
+          echo "⏳ Waiting for MongoDB..."
+          kubectl rollout status deployment/mongodb -n sst-booking --timeout=120s || true
+          
+          echo "⏳ Waiting for app..."
+          kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=180s || true
+          
+          echo "📦 Pod Status:"
+          kubectl get pods -n sst-booking
 
       - name: Start port-forward for DAST
         run: |
@@ -238,6 +260,7 @@ jobs:
           sleep 10
 
       - name: Run DAST Security Header Checks
+
         run: |
           echo "🔓 Running Dynamic Application Security Testing..."
           echo ""

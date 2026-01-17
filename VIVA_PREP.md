@@ -66,7 +66,19 @@ Use this guide to prepare for your VIVA. The examiners will focus on the **"Why"
 
 ---
 
-## 6. Metrics & Success
+## 6. Manifest Optimization & Environment
+### **Q: Why are there placeholders in your deployment.yaml?**
+*   **Avoid Hardcoding**: Just like secrets, the Docker image name/tag should not be hardcoded. This allows the same YAML to be used for different images (e.g., `staging` vs `production`).
+*   **Dynamic Injection**: The CD pipeline injects the correct image tag using `sed` during deployment.
+
+### **Q: Why did you add a MongoDB manifest (mongodb.yaml)?**
+*   **Self-Contained Env**: To make the Kind cluster realistic, it needs a database. By deploying Mongo inside the cluster, the application can verify database connectivity during the DAST and Runtime tests.
+*   **Service Discovery**: The application connects to `mongodb://mongo-service:27017` using Kubernetes internal DNS.
+
+---
+
+## 7. Metrics & Success
+
 
 ### **Q: How does this pipeline improve software delivery? (The "DORA" Metrics)**
 *   **Deployment Frequency**: Automated pipelines allow us to deploy more often.

@@ -42,8 +42,9 @@ spec:
       
       containers:
         - name: sst-booking
-          # Image from DockerHub (updated by CI/CD)
-          image: sarthakpy/sst-booking-system:latest
+          # Image injected during CD
+          image: IMAGE_PLACEHOLDER
+
           imagePullPolicy: Always
           
           ports:

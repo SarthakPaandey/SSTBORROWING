@@ -134,18 +134,24 @@ jobs:
           # Load it into the Kind cluster
           kind load docker-image ${{ env.DOCKERHUB_REPO }}:latest --name sst-cluster
 
-      - name: Inject Secrets into Manifests
+      - name: Inject Configuration into Manifests
         run: |
-          echo "🔐 Injecting secrets into manifests..."
-          # In a real production scenario, these values would come from ${{ secrets.MONGODB_URI }} etc.
-          # Here we use generated/test values for the Kind cluster simulation.
+          echo "🔐 Injecting configuration into manifests..."
+          # Inject Secrets
           sed -i "s|MONGODB_URI_PLACEHOLDER|mongodb://mongo-service:27017/sst-booking|g" k8s/secret.yaml
           sed -i "s|NEXTAUTH_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
           sed -i "s|QR_HMAC_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
+          
+          # Inject Image Name & Tag
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.DOCKERHUB_REPO }}:latest|g" k8s/deployment.yaml
 
       - name: Apply Kubernetes manifests
-
+        run: |
+          echo "📦 Creating namespace..."
           kubectl apply -f k8s/namespace.yaml
+          
+          echo "🍃 Deploying MongoDB..."
+          kubectl apply -f k8s/mongodb.yaml
           
           echo "⚙️ Applying ConfigMap..."
           kubectl apply -f k8s/configmap.yaml
@@ -159,8 +165,10 @@ jobs:
           echo "🌐 Creating Service..."
           kubectl apply -f k8s/service.yaml
 
-      - name: Wait for deployment rollout
+      - name: Wait for MongoDB and App rollout
         run: |
+          echo "⏳ Waiting for MongoDB to be ready..."
+          kubectl rollout status deployment/mongodb -n sst-booking --timeout=120s
           echo "⏳ Waiting for pods to be ready..."
           kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=180s
 

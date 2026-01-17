@@ -134,9 +134,17 @@ jobs:
           # Load it into the Kind cluster
           kind load docker-image ${{ env.DOCKERHUB_REPO }}:latest --name sst-cluster
 
-      - name: Apply Kubernetes manifests
+      - name: Inject Secrets into Manifests
         run: |
-          echo "📦 Creating namespace..."
+          echo "🔐 Injecting secrets into manifests..."
+          # In a real production scenario, these values would come from ${{ secrets.MONGODB_URI }} etc.
+          # Here we use generated/test values for the Kind cluster simulation.
+          sed -i "s|MONGODB_URI_PLACEHOLDER|mongodb://mongo-service:27017/sst-booking|g" k8s/secret.yaml
+          sed -i "s|NEXTAUTH_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
+          sed -i "s|QR_HMAC_SECRET_PLACEHOLDER|$(openssl rand -base64 32)|g" k8s/secret.yaml
+
+      - name: Apply Kubernetes manifests
+
           kubectl apply -f k8s/namespace.yaml
           
           echo "⚙️ Applying ConfigMap..."

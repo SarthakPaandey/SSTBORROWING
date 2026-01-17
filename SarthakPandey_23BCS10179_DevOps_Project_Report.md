@@ -74,49 +74,43 @@ This project was strictly re-architected to follow the **12-Factor App Methodolo
 
 ## 4. CI/CD Pipeline Architecture Details
 
-The pipeline is implemented using a **GitHub Actions** workflow defined in YAML. It is structured into 9 sequential and parallel stages to optimize for both speed and rigorous verification.
+The pipeline is implemented using **two separate GitHub Actions workflows** (CI and CD) defined in YAML. This separation of concerns ensures that CI focuses on validation while CD handles deployment and runtime security testing.
 
 ### 4.1 High-Level Architecture Diagram
 
 ```mermaid
 graph TD
     %% Source Code Management
-    Code[Dev Code Push] -->|Trigger| GH[GitHub Actions Runner]
+    Code[Dev Code Push] -->|Trigger| CI[CI Pipeline - ci.yml]
 
-    %% Stage 1: Continuous Integration (Fast Feedback)
-    subgraph "Stage 1: CI & Quality"
-    GH --> Lint[Linting (ESLint)]
-    GH --> Unit[Unit Tests (Vitest)]
-    end
-
-    %% Stage 2: Security Gates (Shift-Left)
-    subgraph "Stage 2: Security (DevSecOps)"
-    GH --> SAST[SAST (CodeQL)]
-    GH --> SCA[SCA (Dependency Check)]
-    end
-
-    %% Stage 3: Artifact Construction
-    subgraph "Stage 3: Build & Package"
-    Unit --> Build[Next.js Build]
-    Build --> Docker[Docker Build]
-    SAST --> Docker
+    %% CI Pipeline
+    subgraph "CI Pipeline (Validation)"
+    CI --> Lint[Linting - ESLint]
+    CI --> Unit[Unit Tests - Vitest]
+    CI --> SAST[SAST - CodeQL]
+    CI --> SCA[SCA - Dependency Check]
+    Lint --> Build[Next.js Build]
+    Unit --> Build
+    SAST --> Docker[Docker Build]
     SCA --> Docker
-    end
-
-    %% Stage 4: Validation
-    subgraph "Stage 4: Validation"
+    Build --> Docker
     Docker --> Scan[Trivy Vulnerability Scan]
-    Docker --> Smoke[Smoke Test (Runtime)]
+    Docker --> Smoke[Container Smoke Test]
+    Scan --> CI_Complete[CI Complete]
+    Smoke --> CI_Complete
     end
 
-    %% Stage 5: Delivery
-    subgraph "Stage 5: Delivery"
-    Scan --> Push[DockerHub Push]
-    Smoke --> Push
+    %% CD Pipeline
+    subgraph "CD Pipeline (Deployment & DAST)"
+    CI_Complete -.->|Triggers| CD[CD Pipeline - cd.yml]
+    CD --> Push[DockerHub Push]
+    Push --> K8s[Kubernetes Deploy]
+    K8s --> DAST[DAST Security Scan]
     end
 ```
 
 ### 4.2 Detailed Implementation Guide
+
 
 #### Step 1: Containerization (The Dockerfile)
 The foundation of our reproducible build system is the `Dockerfile`. We utilized a **Multi-Stage Build** strategy. This involves using a heavy image for building (with compilers and tools) and a lightweight image (Alpine Linux) for production.
@@ -236,7 +230,17 @@ We integrated **Trivy** to check the runtime environment.
 *   **What it does:** Scans the OS packages (Alpine Linux apk packages) inside the Docker image.
 *   **What it catches:** OS-level vulnerabilities like Heartbleed, Shellshock, or outdated `openssl` libraries.
 
+### 5.4 Dynamic Application Security Testing (DAST)
+We implemented a **DAST stage** in the CD pipeline to test the running application.
+*   **What it does:** Performs security checks against the deployed application in Kubernetes.
+*   **What it catches:** 
+    - Missing security headers (X-Content-Type-Options, X-Frame-Options, CSP)
+    - Exposed sensitive paths (/.env, /.git/config)
+    - Runtime misconfigurations
+*   **Why implementation matters:** DAST complements SAST by testing actual runtime behavior, catching issues that only manifest when the application is running.
+
 ---
+
 
 ## 6. Execution Results & Evidence
 
@@ -290,10 +294,15 @@ This ensures that even if the repository code is public, the credentials remain 
 
 ## 9. Future Scope & Roadmap
 
-While this pipeline represents a significant maturity leap, DevOps is a journey of continuous improvement. Future roadmap items include:
+While this pipeline represents a significant maturity leap, DevOps is a journey of continuous improvement. 
 
-1.  **Continuous Deployment (CD) to Kubernetes:**
-    Currently, the pipeline creates the artifact (Docker Image). The next logical step is to deploy this image to a Kubernetes cluster (EKS/GKE) using GitOps tools like **ArgoCD**.
+### Currently Implemented ✅
+*   **Continuous Deployment (CD) to Kubernetes:** The CD pipeline (`cd.yml`) deploys to a Kind cluster, validating the deployment process.
+*   **DAST (Dynamic Application Security Testing):** Security header checks and vulnerability probes run against the deployed application.
+
+### Future Roadmap Items
+1.  **Production Kubernetes (EKS/GKE):**
+    Deploy to a managed Kubernetes service with GitOps tools like **ArgoCD** for declarative deployments.
 
 2.  **Infrastructure as Code (IaC):**
     Provisioning the underlying infrastructure (EC2, Load Balancers) using **Terraform** or **Ansible** to make the entire stack reproducible.
@@ -303,6 +312,9 @@ While this pipeline represents a significant maturity leap, DevOps is a journey 
 
 4.  **Automatic Versioning:**
     Implementing Semantic Release to automatically version tags (v1.0.1, v1.1.0) based on commit messages.
+
+5.  **Enhanced DAST:**
+    Integrate **OWASP ZAP** for comprehensive dynamic security testing with full vulnerability reports.
 
 ---
 

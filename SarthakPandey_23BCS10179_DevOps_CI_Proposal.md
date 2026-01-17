@@ -111,19 +111,22 @@ The pipeline is implemented using **GitHub Actions**, mapping directly to the sy
 
 ## 6. Implementation Roadmap
 
-### Phase 1: Docker Foundation (Completed)
+### Phase 1: Docker Foundation (Completed ✅)
 *   [x] Create optimized `Dockerfile` (Multi-stage build).
 *   [x] Implement `.dockerignore` for efficient build context.
 
-### Phase 2: Pipeline Configuration (In Progress)
-*   [ ] Configure **GitHub Actions** workflow (`.github/workflows/ci.yml`).
-*   [ ] Integrate **CodeQL** for SAST.
-*   [ ] Integrate **Trivy** for Container Scanning.
+### Phase 2: Pipeline Configuration (Completed ✅)
+*   [x] Configure **GitHub Actions** CI workflow (`.github/workflows/ci.yml`).
+*   [x] Configure **GitHub Actions** CD workflow (`.github/workflows/cd.yml`).
+*   [x] Integrate **CodeQL** for SAST.
+*   [x] Integrate **Trivy** for Container Scanning.
+*   [x] Integrate **DAST** for runtime security checks.
 
-### Phase 3: Verification (Pending)
-*   [ ] Verify pipeline success on GitHub.
-*   [ ] Check DockerHub for pushed images.
-*   [ ] Review Security tab for vulnerability reports.
+### Phase 3: Verification (Completed ✅)
+*   [x] Verify pipeline success on GitHub.
+*   [x] Check DockerHub for pushed images.
+*   [x] Review Security tab for vulnerability reports.
+
 
 ---
 

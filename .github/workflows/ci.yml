@@ -476,139 +476,34 @@ jobs:
         run: docker rm -f test-container || true
 
   # =========================================
-  # STAGE 9: PUSH TO REGISTRY
+  # STAGE 9: CI COMPLETE - TRIGGER CD
   # =========================================
   # WHY THIS STAGE EXISTS:
-  # - Publishes validated, tested image
-  # - Makes image available for deployment
-  # - Only runs after ALL quality gates pass
-  # - Creates versioned release artifact
+  # - Signals successful CI completion
+  # - CD pipeline (cd.yml) is triggered automatically
+  # - Clean separation of CI and CD concerns
   #
-  # RISK MITIGATED: Untested images reaching production
+  # NOTE: Push to registry and K8s deployment moved to cd.yml
   # =========================================
-  docker-push:
-    name: 📤 Push to DockerHub
+  ci-complete:
+    name: ✅ CI Complete
     runs-on: ubuntu-latest
     needs: [trivy-scan, container-test]
-    # Only push on main branch, not PRs
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Generate image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKERHUB_REPO }}
-          tags: |
-            type=sha,prefix=
-            type=ref,event=branch
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
-
-      - name: Build and Push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            MONGODB_URI=mongodb://localhost:27017/test
-            NEXTAUTH_SECRET=build-time-secret
-            NEXTAUTH_URL=http://localhost:3000
-
-      - name: Image push summary
+      - name: CI Pipeline Summary
         run: |
-          echo "✅ Image pushed successfully!"
-          echo "📦 Repository: ${{ env.DOCKERHUB_REPO }}"
-          echo "🏷️ Tags: ${{ steps.meta.outputs.tags }}"
-
-  # =========================================
-  # STAGE 10: KUBERNETES DEPLOYMENT (CD)
-  # =========================================
-  # WHY THIS STAGE EXISTS:
-  # - Deploys the validated image to Kubernetes
-  # - Implements Continuous Deployment (CD)
-  # - Zero-downtime rolling updates
-  # - Automatic rollback on failure
-  #
-  # RISK MITIGATED: Manual deployment errors
-  # =========================================
-  deploy:
-    name: 🚀 Deploy to Kubernetes (Kind)
-    runs-on: ubuntu-latest
-    needs: [docker-push]
-    # Only deploy on main branch after successful push
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create Kind cluster
-        uses: helm/kind-action@v1
-        with:
-          cluster_name: sst-cluster
-          wait: 120s
-
-      - name: Verify cluster is ready
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
-
-      - name: Load Docker image into Kind
-        run: |
-          # Pull the image from DockerHub
-          docker pull ${{ env.DOCKERHUB_REPO }}:latest
-          # Load it into the Kind cluster
-          kind load docker-image ${{ env.DOCKERHUB_REPO }}:latest --name sst-cluster
-
-      - name: Apply Kubernetes manifests
-        run: |
-          echo "📦 Creating namespace..."
-          kubectl apply -f k8s/namespace.yaml
-          
-          echo "⚙️ Applying ConfigMap..."
-          kubectl apply -f k8s/configmap.yaml
-          
-          echo "🔐 Applying Secrets..."
-          kubectl apply -f k8s/secret.yaml
-          
-          echo "🚀 Deploying application..."
-          kubectl apply -f k8s/deployment.yaml
-          
-          echo "🌐 Creating Service..."
-          kubectl apply -f k8s/service.yaml
-
-      - name: Wait for deployment rollout
-        run: |
-          echo "⏳ Waiting for pods to be ready..."
-          kubectl rollout status deployment/sst-booking-app -n sst-booking --timeout=180s
-
-      - name: Deployment verification
-        run: |
-          echo "✅ Deployment successful!"
+          echo "✅ CI Pipeline completed successfully!"
           echo ""
-          echo "📊 Cluster Status:"
-          kubectl get nodes
+          echo "📊 Stages Passed:"
+          echo "  ✓ Linting (ESLint)"
+          echo "  ✓ Unit Tests (Vitest)"
+          echo "  ✓ SAST (CodeQL)"
+          echo "  ✓ SCA (Dependency Audit)"
+          echo "  ✓ Build (Next.js)"
+          echo "  ✓ Docker Build"
+          echo "  ✓ Trivy Scan"
+          echo "  ✓ Container Runtime Test"
           echo ""
-          echo "📦 Pods Status:"
-          kubectl get pods -n sst-booking -o wide
-          echo ""
-          echo "🌐 Services:"
-          kubectl get svc -n sst-booking
-          echo ""
-          echo "📋 Deployment Details:"
-          kubectl describe deployment sst-booking-app -n sst-booking | head -30
+          echo "🚀 CD Pipeline will be triggered automatically on main branch."
+          echo "   See: .github/workflows/cd.yml"
+

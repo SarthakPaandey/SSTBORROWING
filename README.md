@@ -319,23 +319,52 @@ npm run test:coverage
 
 ## CI/CD Pipeline
 
-This project implements a production-grade **DevSecOps** pipeline using GitHub Actions.
+This project implements a production-grade **DevSecOps** pipeline using GitHub Actions, with **separate CI and CD workflows** for clear separation of concerns.
 
 ### Pipeline Architecture
 
 ```mermaid
 graph LR
-    Push --> Lint --> Test --> SAST --> Build --> Docker --> Scan --> Smoke --> PushHub
+    subgraph "CI Pipeline (ci.yml)"
+        Push[Git Push] --> Lint[Linting]
+        Push --> Test[Unit Tests]
+        Push --> SAST[SAST - CodeQL]
+        Push --> SCA[SCA - Dependency Audit]
+        Lint --> Build[Next.js Build]
+        Test --> Build
+        SAST --> Docker[Docker Build]
+        SCA --> Docker
+        Build --> Docker
+        Docker --> Trivy[Trivy Scan]
+        Docker --> Smoke[Smoke Test]
+        Trivy --> CI_Complete[CI Complete]
+        Smoke --> CI_Complete
+    end
+    
+    subgraph "CD Pipeline (cd.yml)"
+        CI_Complete -.->|Triggers| Push_Registry[Push to DockerHub]
+        Push_Registry --> K8s[Deploy to Kubernetes]
+        K8s --> DAST[DAST Security Scan]
+    end
 ```
 
-### Stages Breakdown
+### CI Pipeline Stages (`ci.yml`)
 1.  **Quality Checks**: Linting (ESLint) & Unit Tests (Vitest)
 2.  **Security**: 
     - **SAST**: CodeQL scans source code for vulnerabilities
     - **SCA**: Checks dependencies for known CVEs
-    - **Container Scan**: Trivy checks Docker image for OS vulnerabilities
 3.  **Build**: Next.js Standalone Build & Multi-stage Docker Build
-4.  **Verification**: Runtime smoke test before pushing to registry
+4.  **Verification**: 
+    - Trivy container vulnerability scan
+    - Runtime smoke test
+
+### CD Pipeline Stages (`cd.yml`)
+1.  **Push to Registry**: Pushes validated image to DockerHub
+2.  **Kubernetes Deployment**: Deploys to Kind cluster (simulates production)
+3.  **DAST (Dynamic Application Security Testing)**: 
+    - Security header checks against running application
+    - Sensitive path probing
+    - Generates security report
 
 ### Required Secrets
 To run this pipeline in your own fork, configure these **GitHub Secrets**:
@@ -344,6 +373,7 @@ To run this pipeline in your own fork, configure these **GitHub Secrets**:
 |--------|-------|
 | `DOCKERHUB_USERNAME` | Your DockerHub Username |
 | `DOCKERHUB_TOKEN` | DockerHub Access Token (PAT) |
+
 
 ## Deployment to Vercel
 

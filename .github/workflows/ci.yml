@@ -171,22 +171,23 @@ jobs:
       security-events: write
       actions: read
       contents: read
+      packages: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           # Using default queries plus security-extended
           queries: security-extended
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
 
@@ -375,6 +376,9 @@ jobs:
   trivy-scan:
     name: 🔒 Trivy Container Scan
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
     needs: [docker-build]
     steps:
       - name: Checkout code
@@ -397,7 +401,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         continue-on-error: true  # May fail due to permissions on public repos
         with:
           sarif_file: 'trivy-results.sarif'

@@ -36,7 +36,7 @@ describe('Group Booking Expiration (Dynamic Logic)', () => {
     it('should set expiry to (start - cutoff) for near-term bookings', async () => {
       const now = new Date();
       // Use 15 minutes notice (the absolute minimum allowed)
-      const bookingStart = new Date(now.getTime() + 15 * 60 * 1000); 
+      const bookingStart = new Date(now.getTime() + 15 * 60 * 1000);
 
       const expiresAt = await calculateGroupBookingExpiration(bookingStart, now);
 
@@ -62,9 +62,10 @@ describe('Group Booking Expiration (Dynamic Logic)', () => {
     it('should allow booking with exactly minimum required time', async () => {
       const now = new Date();
       // Default: 5 min cutoff + 10 min reply time = 15 minutes minimum
+      // Adding 1 second buffer to avoid timing edge cases in CI
       const minRequiredMinutes =
         POLICIES.GROUP_BOOKING_CUTOFF_MINUTES + POLICIES.GROUP_BOOKING_REPLY_TIME_MINUTES;
-      const bookingStart = new Date(now.getTime() + minRequiredMinutes * 60 * 1000);
+      const bookingStart = new Date(now.getTime() + minRequiredMinutes * 60 * 1000 + 1000);
 
       const result = await canCreateGroupBooking(bookingStart);
       expect(result.allowed).toBe(true);

@@ -61,7 +61,7 @@ Get the system running locally in 5 minutes!
 ```bash
 git clone <repository-url>
 cd SST-Borrowing-equipments
-npm install
+pnpm install
 ```
 
 ### 2. Set Up MongoDB Atlas
@@ -130,7 +130,7 @@ openssl rand -base64 32
 ### 5. Seed the Database
 
 ```bash
-npm run seed
+pnpm seed
 ```
 
 This creates:
@@ -144,7 +144,7 @@ This creates:
 ### 6. Run the Development Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -314,7 +314,7 @@ npm run test:ui
 
 # Run tests with coverage
 # Run tests with coverage
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ## CI/CD Pipeline
@@ -395,7 +395,7 @@ git push -u origin main
 4. Configure project:
    - Framework Preset: **Next.js**
    - Root Directory: `./`
-   - Build Command: `npm run build`
+   - Build Command: `pnpm build`
    - Output Directory: `.next`
 5. Add **all environment variables** from your `.env` file
 6. Update `NEXTAUTH_URL` to your Vercel domain (e.g., `https://your-app.vercel.app`)
@@ -437,10 +437,10 @@ rm -rf .next
 
 # Reinstall dependencies
 rm -rf node_modules
-npm install
+pnpm install
 
 # Check for TypeScript errors
-npm run lint
+pnpm lint
 ```
 
 ### "Unauthorized" Errors

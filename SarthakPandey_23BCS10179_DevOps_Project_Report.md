@@ -292,7 +292,15 @@ This ensures that even if the repository code is public, the credentials remain 
 
 ---
 
-## 9. Future Scope & Roadmap
+## 9. Limitations & Improvements
++
++### 9.1 Technical Limitations
++*   **Mock DAST:** The current DAST implementation is a baseline scripted scan. While it validates security headers and path protection, it does not perform deep exploit analysis (like SQLi or XSS probing) which a tool like OWASP ZAP would provide.
++*   **Local Cluster:** The deployment target is a Kind (Kubernetes in Docker) cluster. While this proves the deployment logic, it doesn't face the networking and storage challenges of a production-grade managed service like EKS or GKE.
++*   **Testing Coverage:** Unit tests currently cover core business logic, but full end-to-end (E2E) testing with Playwright or Cypress is yet to be integrated into the pipeline.
++*   **Infrastructure management:** The underlying infrastructure for the cluster is not currently managed via Infrastructure as Code (IaC) tools like Terraform.
++
++## 10. Future Scope & Roadmap
 
 While this pipeline represents a significant maturity leap, DevOps is a journey of continuous improvement. 
 
@@ -318,7 +326,7 @@ While this pipeline represents a significant maturity leap, DevOps is a journey 
 
 ---
 
-## 10. Glossary of Terms
+## 11. Glossary of Terms
 
 *   **CI (Continuous Integration):** The practice of automating the integration of code changes from multiple contributors into a single software project.
 *   **CD (Continuous Delivery):** An approach where software is produced in short cycles, ensuring that the software can be reliably released at any time.
@@ -330,7 +338,7 @@ While this pipeline represents a significant maturity leap, DevOps is a journey 
 
 ---
 
-## 11. Conclusion
+## 12. Conclusion
 
 This project successfully demonstrates the implementation of a modern, secure, and automated software delivery pipeline. By combining **Docker** for reproducibility, **GitHub Actions** for orchestration, and **Trivy/CodeQL** for security, we have established a robust foundation for scaling the SST Equipment Borrowing System. The pipeline not only saves developer time but significantly reduces the risk of deploying defective or insecure software to production.
 

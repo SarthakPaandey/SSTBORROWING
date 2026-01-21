@@ -87,6 +87,18 @@ Use this guide to prepare for your VIVA. The examiners will focus on the **"Why"
 
 ---
 
+## 8. Advanced / Troubleshooting
+### **Q: Your DAST stage only checks headers. Is that enough?**
+*   **Answer**: For this project, it's a **Baseline DAST**. In a full production environment, I would integrate a tool like **OWASP ZAP** or **Burp Suite** to perform active scanning (SQLi, XSS probing). The current stage proof-of-concept shows *where* and *how* DAST fits into the lifecycle.
+
+### **Q: What happens if a critical vulnerability is found in the Trivy scan?**
+*   **Answer**: The pipeline is configured to **Fail-Fast**. The `trivy-action` will exit with a non-zero code if it finds "CRITICAL" or "HIGH" issues, stopping the pipeline and preventing the image from being pushed to the registry.
+
+### **Q: How do you handle "False Positives" in security scans?**
+*   **Answer**: I would use a **.trivyignore** or **CodeQL suppression** file to document and skip vulnerabilities that are verified as not applicable to our specific environment, ensuring they don't break the build repeatedly.
+
+---
+
 ## Pro-Tips for the VIVA:
 1.  **Don't just name tools**: Instead of saying "I used Trivy," say "I used Trivy to scan my container images for OS-level vulnerabilities to prevent shipping insecure images."
 2.  **Mention the 12-Factor App**: Explain that your app follows the 12-factor principles (especially **III. Config** for secrets and **V. Build, release, run** for the separation of CI/CD).

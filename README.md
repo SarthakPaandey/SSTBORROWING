@@ -45,64 +45,51 @@ A production-ready unified booking system for SST facilities, rooms, and equipme
 ## System Architecture
 
 ```mermaid
-flowchart LR
-    %% Clients
-    Student[👨‍🎓 Student App]
-    Admin[👩‍💼 Admin Dashboard]
-    Guard[🛡️ Guard Scanner]
-
-    %% Application layer
-    subgraph NextJS["Next.js 15 Application"]
-        UI[App Router Pages + Components]
-        MW[Middleware + Role-Based Access Control]
-        Auth[NextAuth<br/>Google OAuth + Credentials]
-        API[API Routes<br/>/app/api/*]
-        Core[Core Domain Services<br/>Booking · QR · Policies · Inventory · Penalties]
+flowchart TB
+    subgraph Clients
+        ST[Student Portal]
+        AD[Admin Dashboard]
+        GD[Guard Scanner]
     end
 
-    %% Data layer
+    subgraph App["Next.js Application (App Router)"]
+        UI[Pages and UI Components]
+        MW[Middleware and RBAC]
+        AUTH[NextAuth]
+        API[API Routes (/app/api/*)]
+        CORE[Domain Services<br/>Booking · QR · Policies · Inventory · Penalties]
+    end
+
     subgraph Data["Data Layer"]
-        Models[Mongoose Models<br/>User · Booking · Resource · GroupBooking · Penalty · QRToken]
-        Mongo[(MongoDB Atlas)]
+        MODELS[Mongoose Models]
+        DB[(MongoDB Atlas)]
     end
 
-    %% Integrations
     subgraph Integrations["External Integrations"]
-        Google[Google OAuth]
-        Mail[SMTP / Nodemailer]
-        Redis[Upstash Redis<br/>Rate Limiting]
+        GOOGLE[Google OAuth]
+        MAIL[SMTP / Nodemailer]
+        REDIS[Upstash Redis (Rate Limiting)]
         ISBN[ISBN Metadata APIs]
     end
 
-    %% Scheduled jobs
-    Cron[Cron Endpoints<br/>/api/cron · /api/group-bookings/expire]
+    CRON[Cron Endpoints (/api/cron, /api/group-bookings/expire)]
 
-    Student --> UI
-    Admin --> UI
-    Guard --> UI
+    ST --> UI
+    AD --> UI
+    GD --> UI
 
     UI --> MW
-    MW --> Auth
+    MW --> AUTH
     UI --> API
-    API --> Core
-    Core --> Models
-    Models --> Mongo
+    API --> CORE
+    CORE --> MODELS
+    MODELS --> DB
 
-    Auth --> Google
-    Core --> Mail
-    API --> Redis
+    AUTH --> GOOGLE
+    CORE --> MAIL
+    API --> REDIS
     API --> ISBN
-    Cron --> API
-
-    classDef app fill:#1e3a8a,color:#fff,stroke:#93c5fd,stroke-width:1px;
-    classDef data fill:#14532d,color:#fff,stroke:#86efac,stroke-width:1px;
-    classDef ext fill:#7c2d12,color:#fff,stroke:#fdba74,stroke-width:1px;
-    classDef edge fill:#111827,color:#fff,stroke:#9ca3af,stroke-width:1px;
-
-    class UI,MW,Auth,API,Core app;
-    class Models,Mongo data;
-    class Google,Mail,Redis,ISBN ext;
-    class Student,Admin,Guard,Cron edge;
+    CRON --> API
 ```
 
 ## Quick Start

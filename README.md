@@ -42,6 +42,69 @@ A production-ready unified booking system for SST facilities, rooms, and equipme
 - **Email**: Nodemailer
 - **Deployment**: Vercel (free tier compatible)
 
+## System Architecture
+
+```mermaid
+flowchart LR
+    %% Clients
+    Student[👨‍🎓 Student App]
+    Admin[👩‍💼 Admin Dashboard]
+    Guard[🛡️ Guard Scanner]
+
+    %% Application layer
+    subgraph NextJS["Next.js 15 Application"]
+        UI[App Router Pages + Components]
+        MW[Middleware + Role-Based Access Control]
+        Auth[NextAuth<br/>Google OAuth + Credentials]
+        API[API Routes<br/>/app/api/*]
+        Core[Core Domain Services<br/>Booking · QR · Policies · Inventory · Penalties]
+    end
+
+    %% Data layer
+    subgraph Data["Data Layer"]
+        Models[Mongoose Models<br/>User · Booking · Resource · GroupBooking · Penalty · QRToken]
+        Mongo[(MongoDB Atlas)]
+    end
+
+    %% Integrations
+    subgraph Integrations["External Integrations"]
+        Google[Google OAuth]
+        Mail[SMTP / Nodemailer]
+        Redis[Upstash Redis<br/>Rate Limiting]
+        ISBN[ISBN Metadata APIs]
+    end
+
+    %% Scheduled jobs
+    Cron[Cron Endpoints<br/>/api/cron · /api/group-bookings/expire]
+
+    Student --> UI
+    Admin --> UI
+    Guard --> UI
+
+    UI --> MW
+    MW --> Auth
+    UI --> API
+    API --> Core
+    Core --> Models
+    Models --> Mongo
+
+    Auth --> Google
+    Core --> Mail
+    API --> Redis
+    API --> ISBN
+    Cron --> API
+
+    classDef app fill:#1e3a8a,color:#fff,stroke:#93c5fd,stroke-width:1px;
+    classDef data fill:#14532d,color:#fff,stroke:#86efac,stroke-width:1px;
+    classDef ext fill:#7c2d12,color:#fff,stroke:#fdba74,stroke-width:1px;
+    classDef edge fill:#111827,color:#fff,stroke:#9ca3af,stroke-width:1px;
+
+    class UI,MW,Auth,API,Core app;
+    class Models,Mongo data;
+    class Google,Mail,Redis,ISBN ext;
+    class Student,Admin,Guard,Cron edge;
+```
+
 ## Quick Start
 
 Get the system running locally in 5 minutes!
